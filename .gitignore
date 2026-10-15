@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+.ipynb_checkpoints/
+*.log
+.env
+stage-00-colab-scratch.ipynb
