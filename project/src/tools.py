@@ -27,3 +27,11 @@ def lookup_price(part_name: str) -> str:
 def list_parts() -> str:
     """List every part in the catalog, separated by commas."""
     return ", ".join(PRICES)
+
+def line_total(unit_price: float, quantity: int) -> float:
+    """Return the total price for one quote line, rounded to 2 decimal places.
+    unit_price is the price of one item in pounds. Use the value from lookup_price.
+    quantity is the number of items, as a whole number.
+    """
+    # Round to 2 decimals so the amount is a clean currency value
+    return round(unit_price * quantity, 2)
