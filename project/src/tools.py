@@ -22,3 +22,8 @@ def lookup_price(part_name: str) -> str:
     if name in PRICES:
         return str(PRICES[name])
     return f"unknown part '{part_name}'. Valid part: {', '.join(PRICES)}"
+
+
+def list_parts() -> str:
+    """List every part in the catalog, separated by commas."""
+    return ", ".join(PRICES)
