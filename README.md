@@ -39,3 +39,13 @@ Last updated: 26 Oct 2026
 2. Before every push, read `git status`.
 3. Laptop tests use the terminal. Model tests need Colab, because Ollama is not installed on the laptop.
 
+## Status
+
+| Piece | State |
+|---|---|
+| `tools.py` | Done, tested on the laptop and on Colab |
+| `run_tool` | Done, tested on the laptop and on Colab |
+| `run_agent`: model call, stop rule, running the requested tools | Done. Tested on the real model with a no-tool question, a one-tool question and a two-tool question. |
+| Output checks | Not started |
+| Retrieval with sources | Not started |
+| Reading drawing images | Not started |
