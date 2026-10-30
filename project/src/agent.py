@@ -25,7 +25,7 @@ def run_tool(name: str, arguments: dict) -> str:
 
 
 def run_agent(question:str, max_rounds:int = 5) -> str:
-    """Ask the model, stop when it answers in text, and give up at the round limit."""
+    """Ask the model, run the tools it requests, and stop when it answers in text."""
 
     # The history starts with the user's question
     messages = [{"role":"user", "content":question}]
@@ -47,5 +47,11 @@ def run_agent(question:str, max_rounds:int = 5) -> str:
         # No tool request means the model has finished
         if not response.message.tool_calls:
             return response.message.content
+
+        for call in response.message.tool_calls:
+            name = call.function.name
+            result = run_tool(name, call.function.arguments)
+            print(f"  {name}({call.function.arguments}) -> {result}")
+            messages.append({"role": "tool", "tool_name": name, "content": result})
     return "Stopped: reached the round limit."
  
