@@ -1,8 +1,11 @@
-"""Runs the tools from tools.py safely, so a bad request from the model never crashes the agent."""
+"""Runs the tools from tools.py safely and drives the agent loop."""
 
 import ollama
-MODEL = "gemma4:e2b"
+
+from schemas import AgentResult, ToolStep
 from tools import line_total, list_parts, lookup_price
+
+MODEL = "gemma4:e2b"
 
 TOOLS = {
     "lookup_price": lookup_price,
@@ -24,13 +27,14 @@ def run_tool(name: str, arguments: dict) -> str:
         return f"Bad inputs for '{name}': {error}"
 
 
-def run_agent(question:str, max_rounds:int = 5) -> str:
-    """Ask the model, run the tools it requests, and stop when it answers in text."""
-
+def run_agent(question: str, max_rounds: int = 5) -> AgentResult:
+    """Ask the model, run the tools it requests, and return the answer with the steps taken."""
     # The history starts with the user's question
-    messages = [{"role":"user", "content":question}]
+    messages = [{"role": "user", "content": question}]
+    # A record of every tool run, kept for the final result
+    steps: list[ToolStep] = []
 
-    for round_number in range(1, max_rounds+1):
+    for round_number in range(1, max_rounds + 1):
         print(f"Round {round_number}")
 
         # Ask the model, sending the whole history and the tool functions
@@ -46,12 +50,15 @@ def run_agent(question:str, max_rounds:int = 5) -> str:
 
         # No tool request means the model has finished
         if not response.message.tool_calls:
-            return response.message.content
+            return AgentResult(answer=response.message.content or "", steps=steps)
 
+        # Run each requested tool, record the step, and keep the result in the history
         for call in response.message.tool_calls:
             name = call.function.name
-            result = run_tool(name, call.function.arguments)
-            print(f"  {name}({call.function.arguments}) -> {result}")
+            arguments = dict(call.function.arguments)
+            result = run_tool(name, arguments)
+            print(f"  {name}({arguments}) -> {result}")
+            steps.append(ToolStep(name=name, arguments=arguments, result=result))
             messages.append({"role": "tool", "tool_name": name, "content": result})
-    return "Stopped: reached the round limit."
- 
+
+    return AgentResult(answer="Stopped: reached the round limit.", steps=steps)
