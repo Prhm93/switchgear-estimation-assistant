@@ -2,10 +2,10 @@
 
 import ollama
 
-from checks import unsupported_numbers
-from retrieval import search_notes
-from schemas import AgentResult, ToolStep
-from tools import line_total, list_parts, lookup_price
+from .checks import unsupported_numbers
+from .retrieval import search_notes
+from .schemas import AgentResult, ToolStep
+from .tools import line_total, list_parts, lookup_price
 
 MODEL = "gemma4:e2b"
 

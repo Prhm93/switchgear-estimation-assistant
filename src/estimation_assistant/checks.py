@@ -1,7 +1,7 @@
 """Checks that an agent answer is backed by its tool results."""
 
 import re
-from schemas import AgentResult
+from .schemas import AgentResult
 
 # A number: digits with an optional thousands separator and decimals.
 # The lookbehind skips digits that belong to a word, such as the 2 in "D2".
