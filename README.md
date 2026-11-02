@@ -20,6 +20,7 @@ Last updated: 2 Nov 2026
 | `project/notebooks/02-colab-rag.ipynb` | Retrieval experiments and the project test on the real model | You test retrieval |
 | `project/docs/01-tool-layer-and-safe-execution.ipynb` | Written report on the tool layer | You explain the project to someone |
 | `project/docs/02-agent-loop.ipynb` | Written report on the agent loop | You explain the project to someone |
+| `project/docs/03-retrieval.ipynb` | Written report on the note search and the embedding model comparison | You explain the project to someone |
 
 ## Status
 
