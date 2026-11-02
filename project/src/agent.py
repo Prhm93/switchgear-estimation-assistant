@@ -2,6 +2,7 @@
 
 import ollama
 
+from retrieval import search_notes
 from schemas import AgentResult, ToolStep
 from tools import line_total, list_parts, lookup_price
 
@@ -11,6 +12,7 @@ TOOLS = {
     "lookup_price": lookup_price,
     "list_parts": list_parts,
     "line_total": line_total,
+    "search_notes": search_notes,
 }
 
 
