@@ -1,54 +1,126 @@
-# agentic-rag-assistant
+# switchgear-estimation-assistant
 
-Learning notebooks and a small project: an agent that prices electrical parts with tools and answers questions from technical notes, on synthetic data. Built with Gemma 4 and Ollama on Colab.
+An agent that prices electrical parts with tools and answers questions from technical notes, on synthetic data.
 
-Last updated: 2 Nov 2026
+> **Disclaimer:** this is an independent personal project. It uses synthetic data only. It is not affiliated with or endorsed by any company.
 
-## Map
+## Features
 
-| Path | What it is | Read it when |
-|---|---|---|
-| `tutorials/01-llm-basics.ipynb` | Setup, messages, roles, history, JSON output, Pydantic (Stages 0 to 4) | You need the basics |
-| `tutorials/02-tools-and-agent-loop.ipynb` | Functions, tool calls, the agent loop (Stage 5) | You need to understand tools |
-| `tutorials/03-rag-basics.ipynb` | Embeddings, cosine similarity, ranking notes, answering from a note, and a map of how one question moves through the project | You need to understand retrieval |
-| `project/src/tools.py` | The catalogue and three tools | You change parts or prices |
-| `project/src/schemas.py` | The shape of a run: `ToolStep` and `AgentResult` | You change what a run returns |
-| `project/src/retrieval.py` | Four synthetic notes, ranking by meaning, and the `search_notes` tool | You change the notes or the search |
-| `project/src/checks.py` | Finds the numbers in a text and flags answer numbers with no evidence | You change the number check |
-| `project/src/agent.py` | `run_tool` (safe execution), `run_agent` (the loop) and `build_result` | You change how the agent runs |
-| `project/notebooks/01-colab-run-agent.ipynb` | Runs the project files on the real model | You test the agent |
-| `project/notebooks/02-colab-rag.ipynb` | Retrieval experiments and the project test on the real model | You test retrieval |
-| `project/docs/01-tool-layer-and-safe-execution.ipynb` | Written report on the tool layer | You explain the project to someone |
-| `project/docs/02-agent-loop.ipynb` | Written report on the agent loop | You explain the project to someone |
-| `project/docs/03-retrieval.ipynb` | Written report on the note search and the embedding model comparison | You explain the project to someone |
+- **Tools:** look up a price, list the parts, work out a line total. Code does the arithmetic, not the model.
+- **Agent loop:** the model asks for tools, code runs them, and a round limit stops the run.
+- **Note search:** finds the closest of four notes by meaning, using embeddings.
+- **Sources:** the run result lists the note ids used, filled in by code from the run log.
+- **Number check:** the run result lists answer numbers that appear nowhere in the question or the tool log.
+
+Built with Python, Pydantic and Ollama. Models: `gemma4:e2b` for chat, `mxbai-embed-large` for embeddings.
+
+## Architecture
+
+```text
+question
+   |
+   v
+run_agent (agent.py)  <--------------------------+
+   |  asks the chat model, up to 5 rounds        |
+   |                                             |
+   +-- tool request --> run_tool (agent.py)      |
+   |                      |-- lookup_price       |
+   |                      |-- list_parts         |  tool results go
+   |                      |-- line_total         |  back to the model
+   |                      '-- search_notes ------+
+   |                          (retrieval.py, embedding model)
+   |
+   +-- text answer --> build_result (agent.py)
+                         |-- find_sources         note ids from the log
+                         '-- unsupported_numbers  checks.py
+                         |
+                         v
+                       AgentResult (schemas.py)
+                       answer, steps, sources, unsupported
+```
+
+## Quick start
+
+Python 3 is required. On Windows PowerShell, from the repo folder:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python -m pytest
+```
+
+The tests need no model. To run the agent you need a running Ollama server with both models, which this project does on Colab (see below).
+
+## Project structure
+
+| Path | What it is |
+|---|---|
+| `src/estimation_assistant/tools.py` | The catalogue and three tools |
+| `src/estimation_assistant/schemas.py` | The shape of a run: `ToolStep` and `AgentResult` |
+| `src/estimation_assistant/retrieval.py` | Four synthetic notes, ranking by meaning, the `search_notes` tool |
+| `src/estimation_assistant/checks.py` | The number check |
+| `src/estimation_assistant/agent.py` | `run_tool`, `run_agent`, `build_result` |
+| `tests/` | pytest tests for `tools.py` and `checks.py` |
+| `notebooks/` | Colab runs on the real model |
+| `docs/` | Written reports, with an [index](docs/README.md) |
+| `data/` | A note on the data. All data is synthetic and lives in the code for now |
+| `tutorials/` | Learning notebooks, kept separate from the project |
+
+## Run the tests
+
+```powershell
+python -m pytest
+```
+
+There are 35 tests: 15 for `tools.py` and 20 for `checks.py`. They do not import `ollama` or call a model.
+
+## Run on Colab
+
+Colab forgets everything when a session ends, so repeat these steps each session.
+
+1. Open a notebook from `notebooks/` and select a GPU runtime (T4).
+2. Run the setup cells: GPU check, Ollama install, server start, Python client, model downloads.
+3. Run the cell that creates `src/estimation_assistant/` and adds `src` to `sys.path`.
+4. Run the `%%writefile` cells: schemas, tools, retrieval, checks, agent. The `%%writefile` line must be the first line of its cell.
+5. Check the files with `!ls -l src/estimation_assistant`. A file of 1 byte means the cell was empty.
+
+Download models with `ollama.pull(...).status`, not `!ollama pull`, which saves thousands of spinner characters into the notebook. If the embedding model changes, the notes must be embedded again by the same model.
+
+When you change a `src` file, update its `%%writefile` cell too. To load a changed file in a live session, use the `importlib.import_module` cells. `from estimation_assistant import agent` alone can return the old module.
 
 ## Status
 
-| Piece | State |
-|---|---|
-| `tools.py` | Done, tested on the laptop and on Colab |
-| `run_tool` | Done, tested on the laptop and on Colab |
-| `run_agent` | Done. Runs requested tools, tested on the real model with no-tool, one-tool and two-tool questions. |
-| `schemas.py`, typed `AgentResult` (answer plus the steps taken) | Done, tested on the real model |
-| `retrieval.py`, `search_notes` tool | Done. Ranks four notes by meaning and returns the note id, score and text. The agent calls it. Tested on the real model: two question types, two embedding models compared. |
-| Run result carries its sources | Done. `AgentResult.sources` lists the note ids returned by `search_notes`, filled by code from the run log, not by the model. The answer text itself does not repeat them. |
-| Number check (`checks.py`) | Done. `AgentResult.unsupported` lists numbers in the answer that appear nowhere in the question or the tool log. Tested on the laptop with built results, and on the real model with three questions. It reads digits only, so numbers written as words are not checked. |
-| Reading drawing images | Not started |
+| Piece | State | Tested by |
+|---|---|---|
+| `tools.py` | Built | pytest |
+| `checks.py` | Built | pytest |
+| `schemas.py` | Built | Through the `checks.py` tests |
+| Package layout and imports | Built | pytest; Colab cells simulated with a stand-in for Ollama, no real model |
+| `run_tool` | Built | By hand. No automated test |
+| `run_agent` | Built | Real model, before the restructure: no-tool, one-tool and two-tool questions |
+| `retrieval.py`, `search_notes` | Built | Real model, before the restructure: two question types, two embedding models |
+| Sources and number check in the run result | Built | Real model, before the restructure: three questions |
+| `notebooks/` | Updated | Not yet re-run after restructure |
+| Reading drawing images | Not started | |
 
-## How to restart after a break
+## Limits
 
-1. Open a terminal in the repo folder
-2. `.venv\Scripts\Activate.ps1`
-3. `git pull`
-4. Open the Colab notebook, select the Colab kernel (T4), and run the setup cells first. Colab forgets everything when a session ends.
-5. Copy `schemas.py`, `tools.py`, `retrieval.py`, `checks.py` and `agent.py` into Colab with `%%writefile`, in this order: schemas, tools, retrieval, checks, agent. Each file goes in its own cell. The `%%writefile` line must be the first line of the cell.
-6. Download the embedding model in a cell with `ollama.pull("mxbai-embed-large").status`. The chat model is pulled the same way.
-7. Check the files with `ls -l` in a Colab cell. A file of 1 byte means the cell was empty.
+- **Small tests.** Real-model results come from a few questions, on four notes. They show the parts work, not how often.
+- **`run_tool` only catches `TypeError`.** Other errors stop the run. For example, `run_tool("lookup_price", {"part_name": 5})` raises `AttributeError`.
+- **Refusal gap.** The search always returns the nearest note, even when no note fits. A refusal step exists only in a notebook prototype. In the project, `sources` lists the note even if the model declines to answer from it.
+- **Number check, edge cases.** It reads digits only, so "three" is not checked. It ignores signs (`-5` reads as 5) and misreads `.5` as 5, `3rd` as 3, and `2,85` as 2 and 85.
+- **Number check, scope.** It shows a number exists in the evidence, not that it is used correctly.
+- **Unproven notebook cell.** The multi-question cell in `notebooks/02-colab-rag.ipynb` saved only a `NameError`. The results typed up in `tutorials/03-rag-basics.ipynb` cannot be checked against a saved output.
+- **Saved outputs are older than the code.** Notebook outputs predate the restructure, and some come from older versions of the code.
+- **Notebook copies.** `%%writefile` cells are copies of `src` and can drift from it.
+- **Search speed.** All four notes are embedded on every search, and only one note is returned.
+- **Pricing.** There is one invented price per part type. Real quotes depend on ratings and sizes.
 
-## Rules
+## Roadmap
 
-1. Synthetic data only. No real prices, part numbers, drawings or company text.
-2. Before every push, read `git status`.
-3. Laptop tests use the terminal. Model tests need Colab, because Ollama is not installed on the laptop.
-4. Download models with `ollama.pull(...).status`, not `!ollama pull`. The shell command saves thousands of spinner characters into the notebook.
-5. Notes and questions must be embedded by the same model. If the embedding model changes, embed the notes again.
+1. Re-run both notebooks on Colab and update the status table.
+2. Add tests for `run_tool` and catch its other errors.
+3. Add a refusal step to the agent, so a declined answer reports no source.
+4. Keep the note embeddings between searches.
+5. Read drawing images.
