@@ -36,8 +36,18 @@ Last updated: 2 Nov 2026
 
 ## How to restart after a break
 
-1. `cd D:\parham\Parham_Learning\agentic-ai`
+1. Open a terminal in the repo folder
 2. `.venv\Scripts\Activate.ps1`
 3. `git pull`
 4. Open the Colab notebook, select the Colab kernel (T4), and run the setup cells first. Colab forgets everything when a session ends.
-5. Copy `schemas.py`, `tools.py`, `retrieval.py`, `checks.py` and `agent.py` into Colab with
+5. Copy `schemas.py`, `tools.py`, `retrieval.py`, `checks.py` and `agent.py` into Colab with `%%writefile`, in this order: schemas, tools, retrieval, checks, agent. Each file goes in its own cell. The `%%writefile` line must be the first line of the cell.
+6. Download the embedding model in a cell with `ollama.pull("mxbai-embed-large").status`. The chat model is pulled the same way.
+7. Check the files with `ls -l` in a Colab cell. A file of 1 byte means the cell was empty.
+
+## Rules
+
+1. Synthetic data only. No real prices, part numbers, drawings or company text.
+2. Before every push, read `git status`.
+3. Laptop tests use the terminal. Model tests need Colab, because Ollama is not installed on the laptop.
+4. Download models with `ollama.pull(...).status`, not `!ollama pull`. The shell command saves thousands of spinner characters into the notebook.
+5. Notes and questions must be embedded by the same model. If the embedding model changes, embed the notes again.
