@@ -1,0 +1,6 @@
+# Runtime
+ollama>=0.6.3
+pydantic>=2.13
+
+# Development
+pytest>=8
