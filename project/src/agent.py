@@ -2,6 +2,7 @@
 
 import ollama
 
+from checks import unsupported_numbers
 from retrieval import search_notes
 from schemas import AgentResult, ToolStep
 from tools import line_total, list_parts, lookup_price
@@ -37,6 +38,12 @@ def find_sources(steps: list[ToolStep]) -> list[str]:
             sources.append(step.result.split()[1])
     return sources
 
+def build_result(question: str, answer: str, steps: list[ToolStep]) -> AgentResult:
+    """Build the run result, with its sources and any numbers the evidence does not back."""
+    result = AgentResult(answer=answer, steps=steps, sources=find_sources(steps))
+    result.unsupported = unsupported_numbers(question, result)
+    return result
+
 def run_agent(question: str, max_rounds: int = 5) -> AgentResult:
     """Ask the model, run the tools it requests, and return the answer with the steps taken."""
     # The history starts with the user's question
@@ -60,11 +67,7 @@ def run_agent(question: str, max_rounds: int = 5) -> AgentResult:
 
         # No tool request means the model has finished
         if not response.message.tool_calls:
-            return AgentResult(
-                answer=response.message.content or "",
-                steps=steps,
-                sources=find_sources(steps),
-            )
+            return build_result(question, response.message.content or "", steps)
 
         # Run each requested tool, record the step, and keep the result in the history
         for call in response.message.tool_calls:
@@ -75,8 +78,4 @@ def run_agent(question: str, max_rounds: int = 5) -> AgentResult:
             steps.append(ToolStep(name=name, arguments=arguments, result=result))
             messages.append({"role": "tool", "tool_name": name, "content": result})
 
-    return AgentResult(
-        answer="Stopped: reached the round limit.",
-        steps=steps,
-        sources=find_sources(steps),
-    )
+    return build_result(question, "Stopped: reached the round limit.", steps)
