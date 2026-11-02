@@ -29,7 +29,7 @@ Last updated: 2 Nov 2026
 | `run_agent` | Done. Runs requested tools, tested on the real model with no-tool, one-tool and two-tool questions. |
 | `schemas.py`, typed `AgentResult` (answer plus the steps taken) | Done, tested on the real model |
 | `retrieval.py`, `search_notes` tool | Done. Ranks four notes by meaning and returns the note id, score and text. The agent calls it. Tested on the real model: two question types, two embedding models compared. |
-| Final answer names its source | Not started. The source is in the run log but not yet in the answer text. |
+| Run result carries its sources | Done. `AgentResult.sources` lists the note ids returned by `search_notes`, filled by code from the run log, not by the model. The answer text itself does not repeat them. Tested on the real model: a notes question and a price question. |
 | Check that the answer's numbers match the tool results | Not started |
 | Reading drawing images | Not started |
 

@@ -8,3 +8,5 @@ class ToolStep(BaseModel):
 class AgentResult(BaseModel):
     answer: str
     steps: list[ToolStep]
+    sources: list[str] = []
+
