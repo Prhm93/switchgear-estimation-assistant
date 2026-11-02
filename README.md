@@ -1,4 +1,4 @@
-# agentic-ai (private)
+# agentic-rag-assistant
 
 Learning notebooks and a small project: an agent that prices electrical parts with tools and answers questions from technical notes, on synthetic data. Built with Gemma 4 and Ollama on Colab.
 
