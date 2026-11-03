@@ -96,12 +96,13 @@ When you change a `src` file, update its `%%writefile` cell too. To load a chang
 | `tools.py` | Built | pytest |
 | `checks.py` | Built | pytest |
 | `schemas.py` | Built | Through the `checks.py` tests |
-| Package layout and imports | Built | pytest; Colab cells simulated with a stand-in for Ollama, no real model |
+| Package layout and imports | Built | pytest; real model on Colab after the restructure (notebook 02, 3 Nov 2026) |
 | `run_tool` | Built | By hand. No automated test |
-| `run_agent` | Built | Real model, before the restructure: no-tool, one-tool and two-tool questions |
-| `retrieval.py`, `search_notes` | Built | Real model, before the restructure: two question types, two embedding models |
-| Sources and number check in the run result | Built | Real model, before the restructure: three questions |
-| `notebooks/` | Updated | Not yet re-run after restructure |
+| `run_agent` | Built | Real model: one-tool and two-tool questions re-run after the restructure (notebook 02, 3 Nov 2026); no-tool question before the restructure only |
+| `retrieval.py`, `search_notes` | Built | Real model, re-run after the restructure (notebook 02, 3 Nov 2026): two question types, two embedding models |
+| Sources and number check in the run result | Built | Real model, re-run after the restructure (notebook 02, 3 Nov 2026): three questions |
+| `notebooks/01-colab-run-agent.ipynb` | Updated | Outputs predate the restructure; not re-run |
+| `notebooks/02-colab-rag.ipynb` | Updated | Re-run on Colab after the restructure, 3 Nov 2026 |
 | Reading drawing images | Not started | |
 
 ## Limits
@@ -111,15 +112,15 @@ When you change a `src` file, update its `%%writefile` cell too. To load a chang
 - **Refusal gap.** The search always returns the nearest note, even when no note fits. A refusal step exists only in a notebook prototype. In the project, `sources` lists the note even if the model declines to answer from it.
 - **Number check, edge cases.** It reads digits only, so "three" is not checked. It ignores signs (`-5` reads as 5) and misreads `.5` as 5, `3rd` as 3, and `2,85` as 2 and 85.
 - **Number check, scope.** It shows a number exists in the evidence, not that it is used correctly.
-- **Unproven notebook cell.** The multi-question cell in `notebooks/02-colab-rag.ipynb` saved only a `NameError`. The results typed up in `tutorials/03-rag-basics.ipynb` cannot be checked against a saved output.
-- **Saved outputs are older than the code.** Notebook outputs predate the restructure, and some come from older versions of the code.
+- **Tutorial results not yet cross-checked.** The multi-question cell (Cell 18) in `notebooks/02-colab-rag.ipynb` now has a saved output from 3 Nov 2026. The results typed up in `tutorials/03-rag-basics.ipynb` have not yet been checked against it.
+- **Saved outputs are older than the code.** Notebook 01 outputs predate the restructure, and some come from older versions of the code. Notebook 02 was re-run on 3 Nov 2026, except Cell 11 (plain Python, no model), whose output is from an earlier run.
 - **Notebook copies.** `%%writefile` cells are copies of `src` and can drift from it.
 - **Search speed.** All four notes are embedded on every search, and only one note is returned.
 - **Pricing.** There is one invented price per part type. Real quotes depend on ratings and sizes.
 
 ## Roadmap
 
-1. Re-run both notebooks on Colab and update the status table.
+1. Re-run notebook 01 on Colab (notebook 02 was re-run on 3 Nov 2026).
 2. Add tests for `run_tool` and catch its other errors.
 3. Add a refusal step to the agent, so a declined answer reports no source.
 4. Keep the note embeddings between searches.
