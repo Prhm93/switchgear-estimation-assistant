@@ -19,7 +19,7 @@ TOOLS = {
 
 def run_tool(name: str, arguments: dict) -> str:
     """Run one tool by name and return its result as text.
-    An unknown tool name or wrong inputs return a message instead of raising an error."""
+    An unknown tool name, wrong inputs or any other error inside the tool return a message instead of raising an error."""
     # Reject names the model made up
     if name not in TOOLS:
         return f"Unknown tool '{name}'. Valid tools: {', '.join(TOOLS)}"
@@ -28,6 +28,9 @@ def run_tool(name: str, arguments: dict) -> str:
     except TypeError as error:
         # Raised when the inputs do not match the tool's parameters
         return f"Bad inputs for '{name}': {error}"
+    except Exception as error:
+        # Any other failure inside the tool is reported to the model instead of stopping the run
+        return f"Tool '{name}' failed with {type(error).__name__}: {error}"
 
 def find_sources(steps: list[ToolStep]) -> list[str]:
     """Return the note ids that search_notes returned during a run."""
