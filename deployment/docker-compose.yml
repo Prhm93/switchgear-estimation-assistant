@@ -1,0 +1,63 @@
+# Local stack: PostgreSQL with pgvector, and the app.
+# Start from the repo root with:  docker compose up --build
+# (the root compose.yaml includes this file).
+#
+# Memory limits are sized for an 8 GB laptop; see docs/stage-0.md for the
+# measured usage. Credentials are for local development only and can be
+# overridden with environment variables or a .env file.
+
+name: switchgear-estimation-assistant
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sea}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sea-local-only}
+      POSTGRES_DB: ${POSTGRES_DB:-sea}
+    # Small-memory Postgres settings: this is a single-user demo database.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=64MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=32MB
+      - -c
+      - max_connections=20
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    restart: unless-stopped
+
+  app:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      DATABASE_URL: postgresql+pg8000://${POSTGRES_USER:-sea}:${POSTGRES_PASSWORD:-sea-local-only}@db:5432/${POSTGRES_DB:-sea}
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+    restart: unless-stopped
+
+volumes:
+  db-data:

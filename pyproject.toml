@@ -1,3 +1,13 @@
+[project]
+name = "switchgear-estimation-assistant"
+version = "0.0.1"
+description = "Turns a low-voltage switchgear enquiry into a checked, traceable draft estimate. Synthetic data only."
+requires-python = ">=3.12"
+
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+# ai_engine/ holds the estimation_assistant package; "." makes backend/ importable.
+pythonpath = ["ai_engine", "."]
 testpaths = ["tests"]
+markers = [
+    "database: needs a running PostgreSQL with pgvector (skipped when DATABASE_URL is unset)",
+]

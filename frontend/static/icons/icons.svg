@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <!--
+    Switchgear Estimation Assistant icon set. Drawn for this project on a
+    24 x 24 grid as plain line art. Strokes inherit from the .icon class
+    (currentColor, 1.5px, round caps), so no colour is set here.
+    Use: <svg class="icon"><use href="/static/icons/icons.svg#i-breaker"/></svg>
+  -->
+
+  <!-- Switchboard: an isometric cabinet with two module rows and a door handle. -->
+  <symbol id="i-switchboard" viewBox="0 0 24 24">
+    <path d="M12 2.5 20.5 7 12 11.5 3.5 7Z"/>
+    <path d="M3.5 7v10l8.5 4.5v-10"/>
+    <path d="M20.5 7v10L12 21.5"/>
+    <path d="M5.75 10.9 9.75 13M5.75 13.9 9.75 16"/>
+    <path d="M15 14v3"/>
+  </symbol>
+
+  <!-- Breaker: a moulded case with terminals and a toggle. -->
+  <symbol id="i-breaker" viewBox="0 0 24 24">
+    <rect x="6" y="2.5" width="12" height="19" rx="1.5"/>
+    <path d="M8.5 5.5h7M8.5 18.5h7"/>
+    <rect x="10" y="8.5" width="4" height="7" rx="1"/>
+    <path d="M10 12h4"/>
+  </symbol>
+
+  <!-- Document: a page with a folded corner and text lines. -->
+  <symbol id="i-document" viewBox="0 0 24 24">
+    <path d="M6 2.5h8l4.5 4.5v14.5H6Z"/>
+    <path d="M14 2.5V7h4.5"/>
+    <path d="M8.75 11h6.5M8.75 14h6.5M8.75 17h4"/>
+  </symbol>
+
+  <!-- Drawing: a sheet with a busbar and three feeders with breakers. -->
+  <symbol id="i-drawing" viewBox="0 0 24 24">
+    <rect x="3" y="3.5" width="18" height="17" rx="1.5"/>
+    <path d="M6 8h12"/>
+    <path d="M8 8v3M12 8v3M16 8v3M8 14v3M12 14v3M16 14v3"/>
+    <rect x="7" y="11" width="2" height="3"/>
+    <rect x="11" y="11" width="2" height="3"/>
+    <rect x="15" y="11" width="2" height="3"/>
+  </symbol>
+
+  <!-- Check. -->
+  <symbol id="i-check" viewBox="0 0 24 24">
+    <path d="M5 12.5 9.5 17 19 7.5"/>
+  </symbol>
+
+  <!-- Warning: a triangle with an exclamation mark. -->
+  <symbol id="i-warning" viewBox="0 0 24 24">
+    <path d="M12 3.5 21.5 20h-19Z"/>
+    <path d="M12 9.5v5M12 17.25v.01"/>
+  </symbol>
+
+  <!-- Interface icons used by cards and buttons. -->
+  <symbol id="i-view" viewBox="0 0 24 24">
+    <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/>
+    <circle cx="12" cy="12" r="3"/>
+  </symbol>
+
+  <symbol id="i-download" viewBox="0 0 24 24">
+    <path d="M12 3.5v11M7.5 10.5 12 15l4.5-4.5"/>
+    <path d="M4.5 17.5v3h15v-3"/>
+  </symbol>
+
+  <symbol id="i-upload" viewBox="0 0 24 24">
+    <path d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/>
+    <path d="M4.5 17.5v3h15v-3"/>
+  </symbol>
+
+  <symbol id="i-close" viewBox="0 0 24 24">
+    <path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>
+  </symbol>
+
+  <symbol id="i-arrow-right" viewBox="0 0 24 24">
+    <path d="M4.5 12h15M14 6.5l5.5 5.5-5.5 5.5"/>
+  </symbol>
+</svg>

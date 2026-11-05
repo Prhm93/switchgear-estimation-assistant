@@ -1,0 +1,689 @@
+/*
+ * Switchgear Estimation Assistant - design system.
+ *
+ * One hand-written stylesheet. All colours, type sizes, spacing, radii and
+ * shadows are tokens in :root; components use tokens only.
+ *
+ * Rules (checked by tests/unit/test_design_rules.py):
+ *   - no 1px borders: surfaces are separated by tone and soft, wide shadows;
+ *   - no outlined buttons or badges: solid or tonal fills only;
+ *   - one gradient in the whole app, on the header;
+ *   - 150 ms transitions and a clearly visible keyboard focus ring.
+ * Colour pairs are checked against WCAG 2.2 AA by
+ * backend/app/design/contrast.py (tests/unit/test_contrast.py).
+ *
+ * Sections: 1 fonts, 2 tokens, 3 base, 4 layout, 5 components, 6 utilities.
+ */
+
+/* 1. Fonts: IBM Plex, self-hosted, SIL Open Font License 1.1 (fonts/OFL.txt) */
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("../fonts/IBMPlexSans-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("../fonts/IBMPlexSans-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("../fonts/IBMPlexSans-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("../fonts/IBMPlexMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("../fonts/IBMPlexMono-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 2. Tokens */
+
+:root {
+  /* Navy surfaces, from the page up to raised cards. */
+  --bg: #0A1630;
+  --surface: #10224A;
+  --surface-2: #16305F;
+  --surface-row: #13295A;     /* alternate table rows */
+  --header-end: #12306E;      /* royal-blue end of the header gradient */
+
+  /* Text. */
+  --text: #F4F7FB;
+  --text-muted: #A9B8D3;
+
+  /* Red: primary actions and active states. Labels on solid red are pure
+     white, because off-white reaches only 4.37:1 on #E31E24. */
+  --red: #E31E24;
+  --red-hover: #C8181E;
+  --on-red: #FFFFFF;
+  --red-text: #FF8A8E;        /* red text on navy */
+  --red-tint: #3E2142;        /* tonal fill: Conflict badge, conflict pair */
+
+  /* Royal blue: secondary actions. Solid blue is under 3:1 on the navy
+     surfaces, so thin indicators and text use --blue-text instead. */
+  --blue: #1C5FD1;
+  --blue-hover: #1852B8;
+  --on-blue: #FFFFFF;
+  --blue-text: #9CC0FF;
+  --blue-tint: #132F68;       /* tonal fill: Extracted badge */
+  --tonal: #21427F;           /* tonal blue button and icon buttons */
+  --tonal-hover: #2A4F94;
+
+  /* Status. */
+  --success: #3FA46A;
+  --success-text: #6FD69A;
+  --success-tint: #1A3F51;
+  --warning: #E0A126;
+  --warning-text: #F5C463;
+  --warning-tint: #3E3E42;
+  --danger: var(--red);
+
+  /* Keyboard focus ring: light blue, at least 6:1 on every surface. */
+  --focus: #8DB8FF;
+
+  /* Confidence levels map onto the status colours. */
+  --conf-high: var(--success);
+  --conf-medium: var(--warning);
+  --conf-low: var(--blue-text);
+  --conf-conflict: var(--red);
+
+  /* Type. */
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.25rem;
+  --fs-xl: 1.75rem;
+  --fs-2xl: 2.5rem;
+  --lh-tight: 1.2;
+  --lh-body: 1.6;
+
+  /* Spacing on a 4px grid. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  /* Shape and depth. */
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-card: 16px;
+  --radius-pill: 999px;
+  --shadow-card: 0 1px 2px rgb(2 8 23 / 0.35), 0 20px 48px -20px rgb(2 8 23 / 0.75);
+  --shadow-raised: 0 1px 2px rgb(2 8 23 / 0.3), 0 10px 24px -12px rgb(2 8 23 / 0.6);
+  --shadow-btn: 0 1px 2px rgb(2 8 23 / 0.35), 0 8px 18px -8px rgb(2 8 23 / 0.8);
+
+  /* Motion: 150 ms, disabled for reduced-motion users below. */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur: 150ms;
+  --transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease), outline-offset var(--dur) var(--ease);
+
+  --content-max: 1240px;
+  color-scheme: dark;
+}
+
+/* 3. Base */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  line-height: var(--lh-tight);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+h1 { font-size: var(--fs-2xl); font-weight: 400; letter-spacing: -0.02em; }
+h2 { font-size: var(--fs-lg); }
+h3 { font-size: var(--fs-md); }
+
+p { margin: 0; }
+
+a {
+  color: var(--blue-text);
+  text-underline-offset: 3px;
+  transition: var(--transition);
+}
+
+/* Keyboard focus only; mouse clicks do not show the ring. */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--space-4);
+  top: -100px;
+  padding: var(--space-2) var(--space-4);
+  background: var(--blue);
+  color: var(--on-blue);
+  border-radius: var(--radius-pill);
+  z-index: 10;
+}
+.skip-link:focus { top: var(--space-3); }
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur: 0ms; }
+}
+
+/* 4. Layout */
+
+/* Header: the only gradient in the app, with a thin red line under it. */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: var(--space-4) var(--space-7);
+  background: linear-gradient(100deg, var(--bg) 0%, var(--bg) 40%, var(--header-end) 100%);
+  border-bottom: 2px solid var(--red);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.brand .icon { color: var(--red-text); }
+
+.page {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-7);
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-6);
+  margin-bottom: var(--space-7);
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: var(--space-7) 0 var(--space-5);
+}
+.section-heading:first-child { margin-top: 0; }
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: var(--space-3);
+}
+
+.lede {
+  color: var(--text-muted);
+  max-width: 62ch;
+  margin-top: var(--space-4);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--space-6);
+}
+.span-3 { grid-column: span 3; }
+.span-4 { grid-column: span 4; }
+.span-6 { grid-column: span 6; }
+.span-8 { grid-column: span 8; }
+.span-12 { grid-column: span 12; }
+
+@media (max-width: 1100px) {
+  .span-3 { grid-column: span 6; }
+  .span-4, .span-6, .span-8 { grid-column: span 12; }
+}
+
+/* 5. Components */
+
+/* Panel: the base card for every section. Tone and shadow, no border. */
+.panel {
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-6) var(--space-6) var(--space-7);
+}
+.panel__title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+.panel__title .eyebrow { margin: 0; }
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.stack { display: grid; gap: var(--space-5); align-content: start; }
+
+/* Icons: currentColor line art from icons.svg. */
+.icon {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.icon--sm { width: 18px; height: 18px; }
+.icon--lg { width: 40px; height: 40px; stroke-width: 1.25; }
+
+/* Buttons: pill shaped, filled, never outlined.
+   Primary: solid red. Secondary: solid royal blue. Tonal: soft blue fill.
+   Tertiary (ghost): text only, soft background on hover. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 42px;
+  padding: 0 var(--space-5);
+  border: 0;
+  border-radius: var(--radius-pill);
+  font: 500 var(--fs-sm) / 1 var(--font-sans);
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  text-decoration: none;
+  transition: var(--transition);
+}
+.btn--primary {
+  background: var(--red);
+  color: var(--on-red);
+  box-shadow: var(--shadow-btn);
+}
+.btn--primary:hover { background: var(--red-hover); }
+.btn--secondary {
+  background: var(--blue);
+  color: var(--on-blue);
+  box-shadow: var(--shadow-btn);
+}
+.btn--secondary:hover { background: var(--blue-hover); }
+.btn--tonal {
+  background: var(--tonal);
+  color: var(--text);
+}
+.btn--tonal:hover { background: var(--tonal-hover); }
+.btn--ghost {
+  background: transparent;
+  color: var(--text-muted);
+}
+.btn--ghost:hover { background: var(--surface-2); color: var(--text); }
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Circular icon button: a filled tonal circle, no border. */
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--tonal);
+  color: var(--text);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.icon-btn:hover { background: var(--tonal-hover); }
+.icon-btn--red { background: var(--red); color: var(--on-red); box-shadow: var(--shadow-btn); }
+.icon-btn--red:hover { background: var(--red-hover); }
+
+/* Segmented toggle: native radio inputs, so arrow keys work without script.
+   The track is the page navy; the selected segment is solid royal blue. */
+.segmented {
+  display: inline-flex;
+  justify-self: start;
+  margin: 0;
+  padding: var(--space-1);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--bg);
+}
+.segmented input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.segmented label {
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.segmented label:hover { color: var(--text); }
+.segmented input:checked + label {
+  background: var(--blue);
+  color: var(--on-blue);
+  box-shadow: var(--shadow-btn);
+}
+.segmented input:focus-visible + label {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Tabs: no baseline rule; the active tab gets a red underline. */
+.tabs {
+  display: flex;
+  gap: var(--space-6);
+}
+.tab {
+  position: relative;
+  padding: var(--space-2) 0 var(--space-3);
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font: 500 var(--fs-sm) / 1.2 var(--font-sans);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.tab:hover { color: var(--text); }
+.tab[aria-selected="true"] { color: var(--text); }
+.tab[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--red);
+}
+.tab-panel { padding-top: var(--space-5); color: var(--text-muted); }
+.tab-panel[hidden] { display: none; }
+
+/* Document card: raised tone, no border. */
+.doc-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  background: var(--surface-2);
+  border: 0;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-raised);
+}
+.doc-card__icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  background: var(--tonal);
+  color: var(--text);
+}
+.doc-card__name { font-weight: 500; }
+.doc-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin-top: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.doc-card__meta > span { white-space: nowrap; }
+.doc-card__status { margin-top: var(--space-3); }
+.doc-card__actions { display: flex; align-items: center; gap: var(--space-2); }
+
+/* Badges: tonal filled pills, coloured text on its own tint. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-pill);
+  font: 500 var(--fs-xs) / 1.4 var(--font-sans);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.badge .icon { width: 14px; height: 14px; stroke-width: 2; }
+.badge--extracted { background: var(--blue-tint); color: var(--blue-text); }
+.badge--review { background: var(--warning-tint); color: var(--warning-text); }
+.badge--conflict { background: var(--red-tint); color: var(--red-text); }
+.badge--approved { background: var(--success-tint); color: var(--success-text); }
+.badge--sample { background: var(--surface-2); color: var(--text-muted); }
+
+/* Confidence chip: a dot plus the level as text. Low is a ring only. */
+.conf {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.conf::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--conf-color);
+}
+.conf--high { --conf-color: var(--conf-high); }
+.conf--medium { --conf-color: var(--conf-medium); }
+.conf--low { --conf-color: var(--conf-low); }
+.conf--low::before { background: transparent; box-shadow: inset 0 0 0 2px var(--conf-color); }
+.conf--conflict { --conf-color: var(--conf-conflict); }
+
+/* Extracted value: a tonal block with value, unit, source and method. */
+.value-list { display: grid; gap: var(--space-3); }
+.value-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+.value-row__label { color: var(--text-muted); font-size: var(--fs-sm); }
+.value-row__value { font-size: var(--fs-lg); }
+.value-row__source { color: var(--text-muted); font-size: var(--fs-xs); }
+
+/* Conflict pair: both sources side by side on a red tint. */
+.conflict-pair {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--red-tint);
+}
+
+/* Status list for the health check: spacing, not rules. */
+.status-list { display: grid; gap: var(--space-4); margin: 0; }
+.status-list div { display: flex; justify-content: space-between; gap: var(--space-4); }
+.status-list dt { color: var(--text-muted); }
+.status-list dd { margin: 0; }
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: var(--space-2);
+  border-radius: 50%;
+  background: var(--text-muted);
+  vertical-align: 1px;
+}
+.dot--ok { background: var(--success); }
+.dot--warn { background: var(--warning); }
+.dot--error { background: var(--red); }
+
+/* KPI tile. */
+.kpi {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-5) var(--space-6) var(--space-6);
+  background: var(--surface);
+  border: 0;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+.kpi__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.kpi__label .icon { color: var(--blue-text); }
+.kpi__value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 2.25rem;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.kpi__note { color: var(--text-muted); font-size: var(--fs-xs); }
+
+/* Data table: rows separated by tone, not lines. */
+.data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--fs-sm);
+}
+.data-table th {
+  padding: 0 var(--space-4) var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+}
+.data-table td {
+  padding: var(--space-4);
+  vertical-align: middle;
+}
+.data-table tbody tr:nth-child(odd) td { background: var(--surface-row); }
+.data-table tbody tr td:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.data-table tbody tr td:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.data-table th.num { text-align: right; }
+.data-table__sub { display: block; color: var(--text-muted); font-size: var(--fs-xs); }
+
+/* Colour swatches. */
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: var(--space-4);
+}
+.swatch {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--surface-2);
+  font-size: var(--fs-xs);
+}
+.swatch__chip { height: 56px; }
+.swatch__label { padding: var(--space-2) var(--space-3); }
+
+/* Icon gallery. */
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+.icon-tile {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-2) var(--space-5);
+  border-radius: var(--radius-card);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: var(--fs-xs);
+}
+.icon-tile span { color: var(--text-muted); }
+
+/* Type specimen. */
+.specimen-number {
+  font-size: var(--fs-xl);
+  letter-spacing: -0.01em;
+}
+
+/* 6. Utilities */
+
+/* Numbers, part codes and quantities: mono with tabular figures. */
+.mono,
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums slashed-zero;
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
+.num { text-align: right; }
+.muted { color: var(--text-muted); }
+.small { font-size: var(--fs-sm); }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

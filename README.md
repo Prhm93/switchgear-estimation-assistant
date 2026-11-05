@@ -1,20 +1,96 @@
-# switchgear-estimation-assistant
+# Switchgear Estimation Assistant
 
-An agent that prices electrical parts with tools and answers questions from technical notes, on synthetic data.
+A web application that helps an engineer turn a customer enquiry for low-voltage switchgear into a checked, traceable draft estimate. The engineer uploads a specification, a schematic and a requirements document; the system extracts requirements, reads the drawing, cross-checks the two, matches parts to a catalogue and builds a draft estimate from approved values only. Every value links to its source and shows how it was found and how confident the system is.
 
-> **Disclaimer:** this is an independent personal project. It uses synthetic data only. It is not affiliated with or endorsed by any company.
+> **Disclaimer:** this is an independent personal project. It uses synthetic data only: every document, drawing, part code and price is invented. It is not affiliated with or endorsed by any company.
 
-## Features
+The product is being built in stages. Stage 0 (this version) sets up the structure, the Docker stack and the design system. The estimation workflow itself is not built yet; see [Status](#status).
 
-- **Tools:** look up a price, list the parts, work out a line total. Code does the arithmetic, not the model.
-- **Agent loop:** the model asks for tools, code runs them, and a round limit stops the run.
-- **Note search:** finds the closest of four notes by meaning, using embeddings.
-- **Sources:** the run result lists the note ids used, filled in by code from the run log.
-- **Number check:** the run result lists answer numbers that appear nowhere in the question or the tool log.
+![Design system health-check page](docs/images/stage-0-health-check.png)
 
-Built with Python, Pydantic and Ollama. Models: `gemma4:e2b` for chat, `mxbai-embed-large` for embeddings.
+## Quick start (Docker)
 
-## Architecture
+Needs Docker Desktop. On an 8 GB laptop, cap the Docker memory first ([steps](docs/stage-0.md#cap-docker-and-wsl-memory)). From the repo folder in PowerShell:
+
+```powershell
+docker compose up --build
+```
+
+Then open <http://127.0.0.1:8000/> for the health-check page, or <http://127.0.0.1:8000/healthz> for the JSON status. Stop with `Ctrl+C`, or `docker compose down` (add `-v` to delete the database volume).
+
+## Local development
+
+Python 3.12 or later. In PowerShell, from the repo folder:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
+Run the app without Docker (no database; the health page shows "Not configured"):
+
+```powershell
+$env:PYTHONPATH = "ai_engine;."
+uvicorn backend.app.main:app --reload
+```
+
+Run the database tests against the Docker database:
+
+```powershell
+docker compose up -d db
+$env:DATABASE_URL = "postgresql+pg8000://sea:sea-local-only@127.0.0.1:5432/sea"
+python -m pytest
+Remove-Item Env:DATABASE_URL
+```
+
+## Project structure
+
+| Path | What it is |
+|---|---|
+| `backend/app/` | FastAPI app: settings, database check, routes, design-token contrast checker |
+| `backend/migrations/` | Alembic migrations (`backend/alembic.ini`) |
+| `ai_engine/estimation_assistant/` | The AI engine: tools, safe tool runner, agent loop, retrieval, number check |
+| `frontend/templates/` | Jinja2 templates |
+| `frontend/static/` | The one stylesheet (`css/app.css`), self-hosted fonts, line icons, small scripts |
+| `tests/unit/`, `tests/integration/`, `tests/accuracy/` | pytest suites; accuracy tests arrive with the synthetic data |
+| `deployment/` | Dockerfile and docker compose file (the root `compose.yaml` includes it) |
+| `data/` | Synthetic data (Stage 1) |
+| `docs/` | Stage reports (`stage-N.md`) and the earlier engine reports |
+| `notebooks/` | Colab notebooks that run the engine on a T4 GPU |
+| `tutorials/` | Learning notebooks, kept separate from the product |
+
+## Status
+
+| Stage | Scope | State |
+|---|---|---|
+| 0 Setup | Repo structure, Docker stack (Postgres + pgvector, app), design system health-check page, CI | Done: [report](docs/stage-0.md) |
+| 1 Synthetic data | Enquiry generator, showcase project, 20 test projects, parts catalogue | Not started |
+| 2 Thin slice (rules mode) | Upload to DOCX report with audit log | Not started |
+| 3 LLM extraction | Ollama and recorded modes, quote check, rules vs LLM scores | Not started |
+| 4 Drawing understanding | OCR, vision reading, symbol detector | Not started |
+| 5 Cross-document checks | Conflicts and missing information | Not started |
+| 6 Confidence and review | Approve, edit, reject; approved values only | Not started |
+| 7 Evaluation | One-command evaluation of all test projects | Not started (CI already runs the tests) |
+| 8 Hardening | Login, roles, upload checks, logging | Not started |
+| 9 Assistant | Questions about a project, with sources | Not started |
+
+### AI engine (carried over)
+
+| Piece | State | Tested by |
+|---|---|---|
+| `tools.py` | Built | pytest |
+| `checks.py` (number check) | Built | pytest |
+| `schemas.py` | Built | Through the `checks.py` tests |
+| `run_tool` | Built | pytest: a wrong input type and a failing search backend both return a message |
+| `run_agent` | Built | Real model on Colab (notebook 02, 3 Nov 2026) |
+| `retrieval.py`, `search_notes` | Built | Real model on Colab (notebook 02, 3 Nov 2026) |
+| Move to `ai_engine/` (Stage 0) | Done | pytest (all 37 engine tests pass); notebooks not re-run on Colab since the move |
+
+## AI engine
+
+The engine is the `estimation_assistant` package in `ai_engine/`. It is a tool-using agent: the model asks for tools, code runs them, and a round limit stops the run. Code does the arithmetic, not the model; a number check lists answer numbers that appear nowhere in the question or the tool log. Models: `gemma4:e2b` for chat, `mxbai-embed-large` for embeddings, served by Ollama on Colab. Ollama is not needed on the laptop.
 
 ```text
 question
@@ -39,88 +115,49 @@ run_agent (agent.py)  <--------------------------+
                        answer, steps, sources, unsupported
 ```
 
-## Quick start
-
-Python 3 is required. On Windows PowerShell, from the repo folder:
-
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-python -m pytest
-```
-
-The tests need no model. To run the agent you need a running Ollama server with both models, which this project does on Colab (see below).
-
-## Project structure
-
-| Path | What it is |
-|---|---|
-| `src/estimation_assistant/tools.py` | The catalogue and three tools |
-| `src/estimation_assistant/schemas.py` | The shape of a run: `ToolStep` and `AgentResult` |
-| `src/estimation_assistant/retrieval.py` | Four synthetic notes, ranking by meaning, the `search_notes` tool |
-| `src/estimation_assistant/checks.py` | The number check |
-| `src/estimation_assistant/agent.py` | `run_tool`, `run_agent`, `build_result` |
-| `tests/` | pytest tests for `tools.py` and `checks.py` |
-| `notebooks/` | Colab runs on the real model |
-| `docs/` | Written reports, with an [index](docs/README.md) |
-| `data/` | A note on the data. All data is synthetic and lives in the code for now |
-| `tutorials/` | Learning notebooks, kept separate from the project |
-
-## Run the tests
-
-```powershell
-python -m pytest
-```
-
-There are 35 tests: 15 for `tools.py` and 20 for `checks.py`. They do not import `ollama` or call a model.
-
-## Run on Colab
+### Run on Colab
 
 Colab forgets everything when a session ends, so repeat these steps each session.
 
 1. Open a notebook from `notebooks/` and select a GPU runtime (T4).
 2. Run the setup cells: GPU check, Ollama install, server start, Python client, model downloads.
-3. Run the cell that creates `src/estimation_assistant/` and adds `src` to `sys.path`.
+3. Run the cell that creates `ai_engine/estimation_assistant/` and adds `ai_engine` to `sys.path`.
 4. Run the `%%writefile` cells: schemas, tools, retrieval, checks, agent. The `%%writefile` line must be the first line of its cell.
-5. Check the files with `!ls -l src/estimation_assistant`. A file of 1 byte means the cell was empty.
+5. Check the files with `!ls -l ai_engine/estimation_assistant`. A file of 1 byte means the cell was empty.
 
-Download models with `ollama.pull(...).status`, not `!ollama pull`, which saves thousands of spinner characters into the notebook. If the embedding model changes, the notes must be embedded again by the same model.
+Download models with `ollama.pull(...).status`, not `!ollama pull`, which saves thousands of spinner characters into the notebook. When you change an engine file, update its `%%writefile` cell too.
 
-When you change a `src` file, update its `%%writefile` cell too. To load a changed file in a live session, use the `importlib.import_module` cells. `from estimation_assistant import agent` alone can return the old module.
+## Licences
 
-## Status
+Only permissive licences are used. AGPL libraries (for example PyMuPDF and Ultralytics YOLO) are excluded. Versions are those tested in Stage 0.
 
-| Piece | State | Tested by |
-|---|---|---|
-| `tools.py` | Built | pytest |
-| `checks.py` | Built | pytest |
-| `schemas.py` | Built | Through the `checks.py` tests |
-| Package layout and imports | Built | pytest; real model on Colab after the restructure (notebook 02, 3 Nov 2026) |
-| `run_tool` | Built | pytest: a wrong input type and a failing search backend both return a message |
-| `run_agent` | Built | Real model: one-tool and two-tool questions re-run after the restructure (notebook 02, 3 Nov 2026); no-tool question before the restructure only |
-| `retrieval.py`, `search_notes` | Built | Real model, re-run after the restructure (notebook 02, 3 Nov 2026): two question types, two embedding models |
-| Sources and number check in the run result | Built | Real model, re-run after the restructure (notebook 02, 3 Nov 2026): three questions |
-| `notebooks/01-colab-run-agent.ipynb` | Updated | Outputs predate the restructure; not re-run |
-| `notebooks/02-colab-rag.ipynb` | Updated | Re-run on Colab after the restructure, 3 Nov 2026 |
-| Reading drawing images | Not started | |
+| Component | Version | Licence | Used for |
+|---|---|---|---|
+| FastAPI | 0.162.0 | MIT | Web framework |
+| Starlette | 1.10.0 | BSD-3-Clause | ASGI toolkit under FastAPI |
+| Uvicorn | 0.54.0 | BSD-3-Clause | ASGI server |
+| Jinja2 | 3.1.6 | BSD-3-Clause | Templates |
+| Pydantic, pydantic-settings | 2.14.1, 2.16.2 | MIT | Data models, settings |
+| SQLAlchemy | 2.1.8 | MIT | Database access |
+| Alembic | 1.20.1 | MIT | Migrations |
+| pg8000 | 1.31.6 | BSD-3-Clause | PostgreSQL driver (chosen over psycopg, which is LGPL) |
+| ollama (Python client) | 0.6.3 | MIT | Model calls in live mode |
+| pytest | 9.2.0 | MIT | Tests (development only) |
+| httpx | 0.28.1 | BSD-3-Clause | Test client (development only) |
+| PostgreSQL | 16 | PostgreSQL Licence | Database (Docker image) |
+| pgvector | 0.8.7 | PostgreSQL Licence | Vector search extension |
+| IBM Plex Sans, IBM Plex Mono | 1.1.0 | SIL OFL 1.1 | Fonts, self-hosted (`frontend/static/fonts/OFL.txt`) |
+| Icons | n/a | This repo | Drawn for this project |
+| Gemma 4 E2B (`gemma4:e2b`) | n/a | Apache-2.0 ([model card](https://huggingface.co/google/gemma-4-E2B-it)) | Chat and vision model, on Colab only |
+| mxbai-embed-large | v1 | Apache-2.0 ([model card](https://huggingface.co/mixedbread-ai/mxbai-embed-large-v1)) | Embedding model, on Colab only |
+
+Transitive dependencies (for example AnyIO, Click, MarkupSafe, Mako, scramp, typing-extensions) are MIT, BSD, MIT-0 or PSF-2.0. Model licences are from the Hugging Face model cards (checked 5 Nov 2026).
 
 ## Limits
 
-- **Small tests.** Real-model results come from a few questions, on four notes. They show the parts work, not how often.
-- **Refusal gap.** The search always returns the nearest note, even when no note fits. A refusal step exists only in a notebook prototype. In the project, `sources` lists the note even if the model declines to answer from it.
-- **Number check, edge cases.** It reads digits only, so "three" is not checked. It ignores signs (`-5` reads as 5) and misreads `.5` as 5, `3rd` as 3, and `2,85` as 2 and 85.
-- **Number check, scope.** It shows a number exists in the evidence, not that it is used correctly.
-- **Tutorial results not yet cross-checked.** The multi-question cell (Cell 18) in `notebooks/02-colab-rag.ipynb` now has a saved output from 3 Nov 2026. The results typed up in `tutorials/03-rag-basics.ipynb` have not yet been checked against it.
-- **Saved outputs are older than the code.** Notebook 01 outputs predate the restructure, and some come from older versions of the code. Notebook 02 was re-run on 3 Nov 2026, except Cell 11 (plain Python, no model), whose output is from an earlier run.
-- **Notebook copies.** `%%writefile` cells are copies of `src` and can drift from it.
-- **Search speed.** All four notes are embedded on every search, and only one note is returned.
-- **Pricing.** There is one invented price per part type. Real quotes depend on ratings and sizes.
-
-## Roadmap
-
-1. Re-run notebook 01 on Colab (notebook 02 was re-run on 3 Nov 2026).
-2. ~~Add tests for `run_tool` and catch its other errors.~~ Done 3 Nov 2026.
-3. Add a refusal step to the agent, so a declined answer reports no source.
-4. Keep the note embeddings between searches.
-5. Read drawing images.
+- **No product features yet.** Stage 0 is the shell: there is no upload, extraction or estimate.
+- **Engine, small tests.** Real-model results come from a few questions on four notes. They show the parts work, not how often.
+- **Engine, refusal gap.** The search always returns the nearest note, even when no note fits.
+- **Engine, number check.** It reads digits only ("three" is not checked), ignores signs and misreads `.5`, `3rd` and `2,85`. It shows a number exists in the evidence, not that it is used correctly.
+- **Notebook copies.** `%%writefile` cells are copies of the engine files and can drift from them.
+- **Old paths in saved outputs.** Saved outputs in notebooks 01 and 02 predate the move to `ai_engine/` and stay that way until the notebooks are re-run. In notebook 02, the outputs of cells 30 to 40 still show the old `src/` paths. Notebook 01's saved outputs show no paths.

@@ -1,0 +1,27 @@
+{#- Shared template macros. -#}
+
+{#- Inline an icon from the sprite. Decorative by default; pass a label to
+    make it meaningful to screen readers. -#}
+{% macro icon(name, size="", label=None) -%}
+<svg class="icon{% if size %} icon--{{ size }}{% endif %}"
+     {%- if label %} role="img" aria-label="{{ label }}"{% else %} aria-hidden="true" focusable="false"{% endif %}>
+  <use href="{{ url_for('static', path='icons/icons.svg') }}#i-{{ name }}"></use>
+</svg>
+{%- endmacro %}
+
+{#- Review status badge. status is one of: extracted, review, conflict, approved. -#}
+{% macro badge(status) -%}
+{%- set labels = {
+  "extracted": ("Extracted", "document"),
+  "review": ("Needs review", "warning"),
+  "conflict": ("Conflict", "warning"),
+  "approved": ("Approved", "check"),
+} -%}
+{%- set label, glyph = labels[status] -%}
+<span class="badge badge--{{ status }}">{{ icon(glyph) }}{{ label }}</span>
+{%- endmacro %}
+
+{#- Confidence chip. level is one of: high, medium, low, conflict. -#}
+{% macro confidence(level) -%}
+<span class="conf conf--{{ level }}">Confidence: {{ level | capitalize }}</span>
+{%- endmacro %}
