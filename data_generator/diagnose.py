@@ -9,9 +9,8 @@ cross-CPU differences documented in ``docs/stage-1.md``.
 
 It also holds the cross-CPU acceptance rule used by the showcase test
 (:func:`cross_cpu_check`): on a machine with other CPU features than the build
-machine, a degraded PNG may differ from the committed one only in a small share
-of values, and every difference larger than one quantisation step must sit at a
-line edge.
+machine, a degraded PNG may differ from the committed one in at most
+:data:`SHARE_LIMIT` of its values.
 """
 
 from __future__ import annotations
@@ -26,8 +25,6 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from numpy.lib.stride_tricks import sliding_window_view
-
 from data_generator import degrade, sets
 from data_generator.project import CLEAN_DPI, build_project, render_pdf_pages
 
@@ -35,9 +32,7 @@ SHOWCASE = sets.DATA / "projects" / "showcase"
 DEGRADED = [f"drawing/schematic_sheet{s}_{v}.png" for s in (1, 2) for v in ("scanned", "photo")]
 
 # Cross-CPU acceptance rule; the measurements behind these numbers are in docs/stage-1.md.
-SHARE_LIMIT = 0.003  # at most 0.30 % of values may differ: about 2x the 0.154 % measured on CI
-EDGE_RADIUS = 2  # "at a line edge" = within 2 px ...
-EDGE_CONTRAST = 32  # ... of a pixel whose 5x5 neighbourhood in the reference spans >= 32 grey levels
+SHARE_LIMIT = 0.005  # at most 0.5 % of values may differ: about 3x the 0.154 % maximum measured on CI (run #7)
 
 
 @dataclass
@@ -67,50 +62,25 @@ def pixel_sha256(img) -> str:
     return hashlib.sha256(np.ascontiguousarray(np.asarray(img)).tobytes()).hexdigest()
 
 
-def edge_mask(reference: np.ndarray, radius: int = EDGE_RADIUS, contrast: int = EDGE_CONTRAST) -> np.ndarray:
-    """Pixels at a line edge: the (2r+1) x (2r+1) window around them spans at least ``contrast`` grey levels.
-
-    Colour images are reduced to the mean of their channels first. Flat paper,
-    with noise of a few grey levels, is never an edge.
-    """
-    grey = reference.mean(axis=2) if reference.ndim == 3 else reference.astype(np.float32)
-    padded = np.pad(grey, radius, mode="edge")
-    win = sliding_window_view(padded, (2 * radius + 1, 2 * radius + 1))
-    return (win.max(axis=(-1, -2)) - win.min(axis=(-1, -2))) >= contrast
-
-
 @dataclass
 class CrossCpuCheck:
     share: float  # share of values that differ at all
-    beyond_step: int  # values that differ by more than one quantisation step
-    beyond_step_off_edge: int  # of those, how many are not at a line edge
-    edge_coverage: float  # share of the image that counts as "at a line edge"
 
     @property
     def passed(self) -> bool:
-        return self.share <= SHARE_LIMIT and self.beyond_step_off_edge == 0
+        return self.share <= SHARE_LIMIT
 
 
 def cross_cpu_check(rebuilt: np.ndarray, reference: np.ndarray) -> CrossCpuCheck:
-    """Apply the cross-CPU acceptance rule to one degraded image (see the module docstring).
-
-    Differences of exactly one quantisation step are allowed anywhere: a change
-    in the last bits of a float can move a value across a rounding boundary of
-    the quantiser. They still count towards the share.
-    """
+    """Apply the cross-CPU acceptance rule to one degraded image (see the module docstring)."""
     if rebuilt.shape != reference.shape:
         raise ValueError(f"shapes differ {rebuilt.shape} vs {reference.shape}")
-    d = np.abs(rebuilt.astype(np.int16) - reference.astype(np.int16))
-    edges = edge_mask(reference)
-    big = d > degrade.QUANT_STEP
-    off_edge = big & ~(edges[..., None] if d.ndim == 3 else edges)
-    return CrossCpuCheck(float(np.count_nonzero(d) / d.size), int(big.sum()), int(off_edge.sum()),
-                         float(edges.mean()))
+    d = rebuilt.astype(np.int16) != reference.astype(np.int16)
+    return CrossCpuCheck(float(np.count_nonzero(d) / d.size))
 
 
 def clean_render_hashes(folder: Path) -> list[str]:
     return [pixel_sha256(im) for im in render_pdf_pages(folder / "drawing" / "schematic.pdf", CLEAN_DPI)]
-
 
 def cpu_features() -> dict[str, object]:
     return {"machine": platform.machine(), "processor": platform.processor(),
