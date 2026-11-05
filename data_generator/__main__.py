@@ -28,6 +28,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("catalogue", help="write the parts catalogue CSV")
     sub.add_parser("planted", help="write PLANTED.md for the test set")
+    sub.add_parser("diagnose-showcase", help="rebuild the showcase in a temp folder and report pixel differences")
     build = sub.add_parser("build", help="build a data set")
     build.add_argument("--set", required=True, choices=["showcase", "test", "training", "all"])
     build.add_argument("--count", type=int, default=None, help="build only the first N items of the set")
@@ -46,6 +47,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"wrote {target.relative_to(sets.REPO)}")
         return 0
 
+    if args.command == "diagnose-showcase":
+        from data_generator import diagnose
+
+        return diagnose.main()
+
     root: Path = args.root
     chosen = ["showcase", "test", "training"] if args.set == "all" else [args.set]
     for name in chosen:
@@ -57,7 +63,16 @@ def main(argv: list[str] | None = None) -> int:
             jobs, folder = sets.training_jobs(root, args.count or sets.TRAINING_COUNT), root / "training"
         start = time.perf_counter()
         sets.run_jobs(jobs, workers=args.workers)
-        sets.write_build_info(folder)
+        extra = None
+        if name == "showcase":
+            from PIL import Image
+
+            from data_generator.diagnose import DEGRADED, clean_render_hashes, pixel_sha256
+
+            # Pixel fingerprints of this build, so a build on another CPU can tell which step differs.
+            extra = {"clean_render_sha256": clean_render_hashes(folder),
+                     "degraded_pixel_sha256": {n: pixel_sha256(Image.open(folder / n)) for n in DEGRADED}}
+        sets.write_build_info(folder, extra)
         took = time.perf_counter() - start
         print(f"{name}: {len(jobs)} item(s) in {took:.1f} s, {_size_mb(folder):.1f} MB in "
               f"{folder.relative_to(root.parent) if root == sets.DATA else folder}")

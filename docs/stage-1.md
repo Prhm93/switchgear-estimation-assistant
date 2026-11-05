@@ -141,6 +141,21 @@ Per test project: specification 7 to 14 pages; 5 to 14 outgoing ways; 3,105 trut
 2. **PDF, DOCX and PNG:** the content is identical on both platforms (same decompressed PDF streams, rendered pixels, DOCX entries and PNG pixels). The compressed bytes differ, because Python 3.14 on Windows and its Pillow wheel use zlib-ng 2.2.4, while Python 3.12 on Linux uses zlib 1.3.1.
 3. **Answer keys:** they are identical apart from the document hashes, which follow from point 2.
 
+**CI finding: degraded PNGs differ on the GitHub runner** (reported after the first push).
+- **What failed.** CI on GitHub (`ubuntu-latest`, Python 3.12) failed 4 tests: `test_png_pixels_are_identical` for the scanned and photo PNGs of both sheets. The shapes matched; some pixel values differed from the committed showcase built on the laptop. The clean renders, `answers.json` and the boxes passed.
+- **Measured on the laptop CPU** (Intel, numpy runtime dispatch `X86_V3`, that is AVX2), with `python -m data_generator diagnose-showcase`:
+
+  | Rebuild | Differing values in the 4 degraded PNGs | Clean 150 dpi render |
+  |---|---|---|
+  | Windows, Python 3.14, normal | 0 of 25,404,660 | identical |
+  | Windows, numpy SIMD switched off (`NPY_DISABLE_CPU_FEATURES=X86_V3`) | 0 of 25,404,660 | identical |
+  | Linux container, Python 3.12, same CPU (earlier run) | 0 (pixel test passed) | identical |
+
+- **So far.** Neither the operating system, nor the Python version, nor numpy's AVX2 paths change a single pixel on this CPU. The difference therefore depends on the runner's CPU. GitHub's runners have AVX-512, and the Linux numpy wheel can dispatch AVX-512 (`X86_V4`) code, which this laptop cannot run. The cause has not been confirmed yet: CI now runs `diagnose-showcase` and uploads `showcase-diagnostics.json` (share of differing values, maximum difference, histogram, CPU features, and whether the clean render matches the laptop's pixel hash). The tolerance for degraded PNGs will be set from those numbers, not guessed.
+- **Exact comparisons kept.** `answers.json` (apart from document hashes, which follow from compression), all boxes and regions, the DXF bytes, the PDF text and pixels, and now also the clean 150 dpi render against the pixel hash recorded on the build machine (`build-info.json`, `clean_render_sha256`).
+
+**Recorded-mode hashes must use the laptop-built files.** A recorded model output (Stage 3) stores the SHA-256 of the input file, and the app refuses it when the hash does not match. The degraded PNGs can differ by a few pixel values between CPUs, and PDF, DOCX and PNG bytes differ between zlib builds. So the files that Colab runs on must be byte copies of the laptop-built files (for example an uploaded zip of `data/projects/test/`), never a fresh rebuild on Colab or in CI. The hashes in the laptop-built `answers.json` files are the reference.
+
 **Screenshots** (showcase, sheet 1):
 
 Clean vector PDF (rendered at 100 dpi for this page):

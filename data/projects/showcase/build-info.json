@@ -1,4 +1,14 @@
 {
+  "clean_render_sha256": [
+    "053cf2488c3b9d5a1c21fda9853c80dcb95b65990eb3fc61b6d8d2f17a8c66ac",
+    "27065594e94630e14edabc7aabd19d9f77e0ce1493ae58f42b1c0e35065a083b"
+  ],
+  "degraded_pixel_sha256": {
+    "drawing/schematic_sheet1_photo.png": "fb4b18dbda4f977f19383ffe28f8566ee226a7396dabcd730bfa65f233a9b370",
+    "drawing/schematic_sheet1_scanned.png": "a47c2e79a5360488028d9dd025d720770ff6b783c2fca9a6e042a8057460ce51",
+    "drawing/schematic_sheet2_photo.png": "bf482b99e88597b78184f7d84c79e4ceaf417bca9bb1da739f2ed5af0f28a428",
+    "drawing/schematic_sheet2_scanned.png": "23fd31cf347cffdecc5c9ebe4aae8972841a87b4e6b0c04becba6990c55510c0"
+  },
   "ezdxf": "1.4.5",
   "matplotlib": "3.11.2",
   "numpy": "2.5.4",

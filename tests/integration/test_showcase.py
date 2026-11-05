@@ -22,6 +22,7 @@ import pytest
 from PIL import Image, features
 
 from data_generator import sets
+from data_generator.diagnose import clean_render_hashes, pixel_diff
 from data_generator.project import build_project, load_answers, sha256_file
 from data_generator.schemas import ProblemKind
 
@@ -92,11 +93,21 @@ def test_docx_entries_are_identical(rebuilt):
     assert [i.date_time for i in za.infolist()] == [i.date_time for i in zb.infolist()]
 
 
+def test_clean_render_matches_the_build_machine_exactly(rebuilt):
+    """The committed vector PDF, rendered here at 150 dpi, has exactly the pixels it had on the build machine."""
+    info = json.loads((SHOWCASE / "build-info.json").read_text(encoding="utf-8"))
+    assert clean_render_hashes(SHOWCASE) == info["clean_render_sha256"]
+    assert clean_render_hashes(rebuilt) == info["clean_render_sha256"]
+
+
 @pytest.mark.parametrize("name", PNGS)
 def test_png_pixels_are_identical(rebuilt, name):
     a = np.asarray(Image.open(rebuilt / name))
     b = np.asarray(Image.open(SHOWCASE / name))
-    assert a.shape == b.shape and np.array_equal(a, b), name
+    assert a.shape == b.shape
+    d = pixel_diff(name, a, b)
+    assert d.differing == 0, (f"{name}: {d.differing} of {d.values} values differ ({d.share:.6%}), "
+                              f"max difference {d.max_abs}, histogram {d.histogram}")
 
 
 def test_answer_key_is_identical_apart_from_hashes(rebuilt):

@@ -17,7 +17,7 @@ Rebuild everything (PowerShell, from the repo folder):
 .venv\Scripts\python.exe -m data_generator build --set all
 ```
 
-Or one set at a time: `--set showcase`, `--set test`, `--set training`. `--workers 2` (the default) builds two items at a time; the output does not depend on it. The same seed always gives byte-identical files.
+Or one set at a time: `--set showcase`, `--set test`, `--set training`. `--workers 2` (the default) builds two items at a time; the output does not depend on it. The same seed gives byte-identical files on the same machine. Other platforms and CPUs give the same content, except a few pixel values in the scanned and photo PNGs on some CPUs, but not always the same bytes (see `docs/stage-1.md`). **Recorded model outputs (Stage 3) must therefore be made from byte copies of the laptop-built files, not from a rebuild on Colab or in CI:** their SHA-256 hashes are checked against the uploaded file.
 
 The engine's earlier demo data still lives in code: part prices in `PRICES` (`ai_engine/estimation_assistant/tools.py`) and notes in `NOTES` (`ai_engine/estimation_assistant/retrieval.py`).
 

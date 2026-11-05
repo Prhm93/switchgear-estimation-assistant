@@ -127,7 +127,7 @@ def build_info() -> dict[str, str]:
     return info
 
 
-def write_build_info(folder: Path) -> None:
+def write_build_info(folder: Path, extra: dict | None = None) -> None:
     folder.mkdir(parents=True, exist_ok=True)
-    text = json.dumps(build_info(), indent=2, sort_keys=True) + "\n"
+    text = json.dumps({**build_info(), **(extra or {})}, indent=2, sort_keys=True) + "\n"
     (folder / "build-info.json").write_bytes(text.encode("utf-8"))

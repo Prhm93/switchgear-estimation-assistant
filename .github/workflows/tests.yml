@@ -17,9 +17,23 @@ jobs:
           cache-dependency-path: |
             requirements.txt
             requirements-dev.txt
+            requirements-data.txt
 
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
+
+      # Rebuilds the showcase on this runner and records pixel differences from the committed
+      # build (made on the developer laptop). Informational: it never fails the job.
+      - name: Showcase rebuild diagnostics
+        continue-on-error: true
+        run: python -m data_generator diagnose-showcase | tee showcase-diagnostics.json
+
+      - name: Upload showcase diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: showcase-diagnostics
+          path: showcase-diagnostics.json
 
       # DATABASE_URL is not set here, so tests marked "database" skip.
       - name: Run tests
