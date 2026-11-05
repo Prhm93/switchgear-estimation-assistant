@@ -5,3 +5,13 @@ __pycache__/
 *.log
 .env
 .env.*
+
+# Generated data sets: rebuilt from fixed seeds with `python -m data_generator build`.
+# The test-set list of planted problems is committed; the projects are not.
+data/projects/test/*
+!data/projects/test/PLANTED.md
+data/training/
+
+# Real drawings and the local real-name denylist: never committed.
+data/external/*
+!data/external/SOURCES.template.md

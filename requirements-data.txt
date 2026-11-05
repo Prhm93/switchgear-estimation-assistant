@@ -1,0 +1,9 @@
+# Synthetic data generator (data_generator/). Lower bounds are the versions tested in
+# Stage 1 on Python 3.14 locally and Python 3.12 on Linux. All permissive licences.
+ezdxf>=1.4.5            # MIT. DXF writing; rendered with its matplotlib backend (not the PyMuPDF one)
+matplotlib>=3.11        # PSF-based matplotlib licence (BSD-style). Vector PDF of the drawing
+reportlab>=5.1          # BSD-3-Clause. Specification PDF
+python-docx>=1.2        # MIT. Requirements letter
+pypdfium2>=5.14         # Apache-2.0 / BSD-3-Clause (PDFium: BSD-3-Clause). PDF to image, PDF text
+pillow>=13.0            # MIT-CMU. Scan and photo effects
+numpy>=2.5              # BSD-3-Clause. Scan and photo effects, homographies
