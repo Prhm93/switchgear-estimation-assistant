@@ -1,0 +1,4749 @@
+{
+  "documents": [
+    {
+      "file": "specification.pdf",
+      "kind": "specification",
+      "pages": 8,
+      "sha256": "f9c989c5914f8c96a884b09b2f7d46fd5729b2ff64bc38007e685a0406e8126a"
+    },
+    {
+      "file": "drawing/schematic.pdf",
+      "kind": "schematic",
+      "pages": 2,
+      "sha256": "1e617a8e8bc2a7f3152083c56b8d439e70ad88d47e0dde346e35221c52430918"
+    },
+    {
+      "file": "requirements.docx",
+      "kind": "requirements",
+      "pages": 1,
+      "sha256": "b7cfb2b996d8a6d0e4b0b8a0e809ae8757553c5c0e8ae07bfb97ed1079309715"
+    }
+  ],
+  "drawings": [
+    {
+      "dpi": 150.0,
+      "file": "drawing/schematic.pdf",
+      "height_px": 1754,
+      "page": 1,
+      "sheet": 1,
+      "symbols": [
+        {
+          "bbox": [
+            171.88,
+            159.45,
+            214.33,
+            287.13
+          ],
+          "cls": "acb",
+          "id": "S01",
+          "way": null
+        },
+        {
+          "bbox": [
+            179.85,
+            310.75,
+            243.05,
+            349.05
+          ],
+          "cls": "ct",
+          "id": "S02",
+          "way": null
+        },
+        {
+          "bbox": [
+            278.49,
+            301.17,
+            335.94,
+            358.63
+          ],
+          "cls": "meter",
+          "id": "S03",
+          "way": null
+        },
+        {
+          "bbox": [
+            118.11,
+            515.64,
+            2386.51,
+            522.73
+          ],
+          "cls": "busbar",
+          "id": "S04",
+          "way": null
+        },
+        {
+          "bbox": [
+            117.22,
+            578.24,
+            166.25,
+            637.23
+          ],
+          "cls": "earth",
+          "id": "S05",
+          "way": null
+        },
+        {
+          "bbox": [
+            397.74,
+            560.53,
+            451.88,
+            662.67
+          ],
+          "cls": "mcb",
+          "id": "S06",
+          "way": "Q1"
+        },
+        {
+          "bbox": [
+            598.53,
+            560.53,
+            640.41,
+            662.67
+          ],
+          "cls": "mccb",
+          "id": "S07",
+          "way": "Q2"
+        },
+        {
+          "bbox": [
+            799.32,
+            560.53,
+            841.2,
+            662.67
+          ],
+          "cls": "mccb",
+          "id": "S08",
+          "way": "Q3"
+        },
+        {
+          "bbox": [
+            1000.11,
+            560.53,
+            1054.24,
+            662.67
+          ],
+          "cls": "mcb",
+          "id": "S09",
+          "way": "Q4"
+        },
+        {
+          "bbox": [
+            1200.89,
+            560.53,
+            1254.01,
+            662.67
+          ],
+          "cls": "switch_disconnector",
+          "id": "S10",
+          "way": "Q5"
+        },
+        {
+          "bbox": [
+            1401.68,
+            560.53,
+            1455.82,
+            662.67
+          ],
+          "cls": "mcb",
+          "id": "S11",
+          "way": "Q6"
+        },
+        {
+          "bbox": [
+            1602.47,
+            560.53,
+            1644.35,
+            662.67
+          ],
+          "cls": "mccb",
+          "id": "S12",
+          "way": "Q7"
+        },
+        {
+          "bbox": [
+            1803.26,
+            560.53,
+            1845.13,
+            662.67
+          ],
+          "cls": "mccb",
+          "id": "S13",
+          "way": "Q8"
+        }
+      ],
+      "transform_from_clean": null,
+      "version": "clean",
+      "width_px": 2481
+    },
+    {
+      "dpi": null,
+      "file": "drawing/schematic_sheet1_scanned.png",
+      "height_px": 1754,
+      "page": null,
+      "sheet": 1,
+      "symbols": [
+        {
+          "bbox": [
+            188.51,
+            122.85,
+            234.8,
+            251.75
+          ],
+          "cls": "acb",
+          "id": "S01",
+          "way": null
+        },
+        {
+          "bbox": [
+            194.61,
+            274.32,
+            258.94,
+            314.52
+          ],
+          "cls": "ct",
+          "id": "S02",
+          "way": null
+        },
+        {
+          "bbox": [
+            292.9,
+            267.73,
+            352.07,
+            326.9
+          ],
+          "cls": "meter",
+          "id": "S03",
+          "way": null
+        },
+        {
+          "bbox": [
+            127.64,
+            477.25,
+            2395.21,
+            552.97
+          ],
+          "cls": "busbar",
+          "id": "S04",
+          "way": null
+        },
+        {
+          "bbox": [
+            123.28,
+            539.8,
+            174.07,
+            600.24
+          ],
+          "cls": "earth",
+          "id": "S05",
+          "way": null
+        },
+        {
+          "bbox": [
+            402.91,
+            530.57,
+            460.11,
+            634.31
+          ],
+          "cls": "mcb",
+          "id": "S06",
+          "way": "Q1"
+        },
+        {
+          "bbox": [
+            603.6,
+            536.65,
+            648.55,
+            640.01
+          ],
+          "cls": "mccb",
+          "id": "S07",
+          "way": "Q2"
+        },
+        {
+          "bbox": [
+            804.3,
+            542.72,
+            849.25,
+            646.09
+          ],
+          "cls": "mccb",
+          "id": "S08",
+          "way": "Q3"
+        },
+        {
+          "bbox": [
+            1005.0,
+            548.8,
+            1062.2,
+            652.53
+          ],
+          "cls": "mcb",
+          "id": "S09",
+          "way": "Q4"
+        },
+        {
+          "bbox": [
+            1205.69,
+            554.87,
+            1261.87,
+            658.58
+          ],
+          "cls": "switch_disconnector",
+          "id": "S10",
+          "way": "Q5"
+        },
+        {
+          "bbox": [
+            1406.39,
+            560.95,
+            1463.59,
+            664.68
+          ],
+          "cls": "mcb",
+          "id": "S11",
+          "way": "Q6"
+        },
+        {
+          "bbox": [
+            1607.08,
+            567.02,
+            1652.03,
+            670.39
+          ],
+          "cls": "mccb",
+          "id": "S12",
+          "way": "Q7"
+        },
+        {
+          "bbox": [
+            1807.78,
+            573.1,
+            1852.73,
+            676.46
+          ],
+          "cls": "mccb",
+          "id": "S13",
+          "way": "Q8"
+        }
+      ],
+      "transform_from_clean": [
+        [
+          0.9995422188,
+          -0.0302548001,
+          25.3948348853
+        ],
+        [
+          0.0302548001,
+          0.9995422188,
+          -41.7280539582
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "version": "scanned",
+      "width_px": 2481
+    },
+    {
+      "dpi": null,
+      "file": "drawing/schematic_sheet1_photo.png",
+      "height_px": 1403,
+      "page": null,
+      "sheet": 1,
+      "symbols": [
+        {
+          "bbox": [
+            185.45,
+            236.34,
+            217.02,
+            320.3
+          ],
+          "cls": "acb",
+          "id": "S01",
+          "way": null
+        },
+        {
+          "bbox": [
+            192.66,
+            335.4,
+            238.11,
+            360.72
+          ],
+          "cls": "ct",
+          "id": "S02",
+          "way": null
+        },
+        {
+          "bbox": [
+            262.99,
+            328.67,
+            304.59,
+            366.54
+          ],
+          "cls": "meter",
+          "id": "S03",
+          "way": null
+        },
+        {
+          "bbox": [
+            150.9,
+            463.34,
+            1823.99,
+            473.89
+          ],
+          "cls": "busbar",
+          "id": "S04",
+          "way": null
+        },
+        {
+          "bbox": [
+            150.93,
+            509.74,
+            186.26,
+            547.95
+          ],
+          "cls": "earth",
+          "id": "S05",
+          "way": null
+        },
+        {
+          "bbox": [
+            350.35,
+            497.69,
+            389.77,
+            564.11
+          ],
+          "cls": "mcb",
+          "id": "S06",
+          "way": "Q1"
+        },
+        {
+          "bbox": [
+            494.42,
+            497.3,
+            525.03,
+            563.93
+          ],
+          "cls": "mccb",
+          "id": "S07",
+          "way": "Q2"
+        },
+        {
+          "bbox": [
+            639.5,
+            496.89,
+            670.06,
+            563.75
+          ],
+          "cls": "mccb",
+          "id": "S08",
+          "way": "Q3"
+        },
+        {
+          "bbox": [
+            785.57,
+            496.44,
+            825.16,
+            563.57
+          ],
+          "cls": "mcb",
+          "id": "S09",
+          "way": "Q4"
+        },
+        {
+          "bbox": [
+            932.43,
+            496.03,
+            971.82,
+            563.39
+          ],
+          "cls": "switch_disconnector",
+          "id": "S10",
+          "way": "Q5"
+        },
+        {
+          "bbox": [
+            1080.34,
+            495.6,
+            1121.03,
+            563.21
+          ],
+          "cls": "mcb",
+          "id": "S11",
+          "way": "Q6"
+        },
+        {
+          "bbox": [
+            1229.3,
+            495.2,
+            1261.38,
+            563.02
+          ],
+          "cls": "mccb",
+          "id": "S12",
+          "way": "Q7"
+        },
+        {
+          "bbox": [
+            1379.32,
+            494.77,
+            1411.9,
+            562.84
+          ],
+          "cls": "mccb",
+          "id": "S13",
+          "way": "Q8"
+        }
+      ],
+      "transform_from_clean": [
+        [
+          0.7109072012,
+          0.0133361571,
+          61.0952095907
+        ],
+        [
+          -0.0107045734,
+          0.6608260733,
+          133.0353355755
+        ],
+        [
+          -1.73981e-05,
+          1.73265e-05,
+          1.0
+        ]
+      ],
+      "version": "photo",
+      "width_px": 1984
+    },
+    {
+      "dpi": 150.0,
+      "file": "drawing/schematic.pdf",
+      "height_px": 1754,
+      "page": 2,
+      "sheet": 2,
+      "symbols": [],
+      "transform_from_clean": null,
+      "version": "clean",
+      "width_px": 2481
+    },
+    {
+      "dpi": null,
+      "file": "drawing/schematic_sheet2_scanned.png",
+      "height_px": 1754,
+      "page": null,
+      "sheet": 2,
+      "symbols": [],
+      "transform_from_clean": [
+        [
+          0.9998953171,
+          0.0144690982,
+          -4.7680311044
+        ],
+        [
+          -0.0144690982,
+          0.9998953171,
+          17.9185089693
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "version": "scanned",
+      "width_px": 2481
+    },
+    {
+      "dpi": null,
+      "file": "drawing/schematic_sheet2_photo.png",
+      "height_px": 1403,
+      "page": null,
+      "sheet": 2,
+      "symbols": [],
+      "transform_from_clean": [
+        [
+          0.7995551091,
+          0.0052420179,
+          75.3970490277
+        ],
+        [
+          0.0419262743,
+          0.7595058898,
+          60.7251414819
+        ],
+        [
+          4.08035e-05,
+          3.36249e-05,
+          1.0
+        ]
+      ],
+      "version": "photo",
+      "width_px": 1984
+    }
+  ],
+  "estimate": [
+    {
+      "basis": [
+        "incomer.rating",
+        "incomer.poles",
+        "system.fault_level"
+      ],
+      "blocked_by": [],
+      "code": "PRT-0103",
+      "description": "Air circuit breaker 1250 A 4P 50 kA withdrawable",
+      "quantity": 1.0,
+      "unit": "each"
+    },
+    {
+      "basis": [
+        "incomer.rating",
+        "metering.ct_ratio"
+      ],
+      "blocked_by": [],
+      "code": "PRT-0503",
+      "description": "Current transformer 1250/5 A class 1",
+      "quantity": 3.0,
+      "unit": "each"
+    },
+    {
+      "basis": [
+        "metering.meter"
+      ],
+      "blocked_by": [],
+      "code": "PRT-0602",
+      "description": "kWh energy meter, panel mounted",
+      "quantity": 1.0,
+      "unit": "each"
+    },
+    {
+      "basis": [
+        "way.Q1.device",
+        "way.Q1.rating",
+        "way.Q1.poles",
+        "ways.count",
+        "way.Q1.breaking_capacity",
+        "system.fault_level",
+        "way.Q6.device",
+        "way.Q6.rating",
+        "way.Q6.poles",
+        "way.Q6.breaking_capacity"
+      ],
+      "blocked_by": [],
+      "code": "PRT-0302",
+      "description": "Miniature circuit breaker 20 A 3P 10 kA type C",
+      "quantity": 2.0,
+      "unit": "each"
+    },
+    {
+      "basis": [
+        "way.Q2.device",
+        "way.Q2.rating",
+        "way.Q2.poles",
+        "ways.count",
+        "way.Q2.breaking_capacity",
+        "system.fault_level"
+      ],
+      "blocked_by": [
+        "SHOWCASE-P1"
+      ],
+      "code": "PRT-0212",
+      "description": "Moulded-case circuit breaker 250 A 4P 36 kA",
+      "quantity": 1.0,
+      "unit": "each"
+    },
+    {
+      "basis": [
+        "way.Q3.device",
+        "way.Q3.rating",
+        "way.Q3.poles",
+        "ways.count",
+        "way.Q3.breaking_capacity",
+        "system.fault_level"
+      ],
+      "blocked_by": [],
+      "code": "PRT-0208",
+      "description": "Moulded-case circuit breaker 100 A 4P 36 kA",
+      "quantity": 1.0,
+      "unit": "each"
+    },
+    {
+      "basis": [
+        "way.Q4.device",
+        "way.Q4.rating",
+        "way.Q4.poles",
+        "ways.count",
+        "way.Q4.breaking_capacity",
+        "system.fault_level"
+      ],
+      "blocked_by": [],
+      "code": "PRT-0305",
+      "description": "Miniature circuit breaker 63 A 3P 10 kA type C",
+      "quantity": 1.0,
+      "unit": "each"
+    },
+    {
+      "basis": [
+        "way.Q5.device",
+        "way.Q5.rating",
+        "way.Q5.poles",
+        "ways.count"
+      ],
+      "blocked_by": [],
+      "code": "PRT-0402",
+      "description": "Switch-disconnector 250 A 4P",
+      "quantity": 1.0,
+      "unit": "each"
+    },
+    {
+      "basis": [
+        "way.Q7.device",
+        "way.Q7.rating",
+        "way.Q7.poles",
+        "ways.count",
+        "way.Q7.breaking_capacity",
+        "system.fault_level",
+        "way.Q8.device",
+        "way.Q8.rating",
+        "way.Q8.poles",
+        "way.Q8.breaking_capacity"
+      ],
+      "blocked_by": [],
+      "code": "PRT-0202",
+      "description": "Moulded-case circuit breaker 125 A 3P 36 kA",
+      "quantity": 2.0,
+      "unit": "each"
+    },
+    {
+      "basis": [
+        "busbar.rating",
+        "enclosure.sections",
+        "ways.count"
+      ],
+      "blocked_by": [],
+      "code": "PRT-0703",
+      "description": "Busbar system 1250 A TP&N, per metre",
+      "quantity": 2.0,
+      "unit": "m"
+    },
+    {
+      "basis": [
+        "enclosure.ip_rating"
+      ],
+      "blocked_by": [],
+      "code": "PRT-0805",
+      "description": "Incomer section W800 H2200 IP54",
+      "quantity": 1.0,
+      "unit": "each"
+    },
+    {
+      "basis": [
+        "enclosure.ip_rating",
+        "enclosure.sections",
+        "ways.count"
+      ],
+      "blocked_by": [],
+      "code": "PRT-0806",
+      "description": "Outgoing section W600 H2200 IP54",
+      "quantity": 2.0,
+      "unit": "each"
+    },
+    {
+      "basis": [
+        "enclosure.form",
+        "enclosure.sections",
+        "ways.count"
+      ],
+      "blocked_by": [],
+      "code": "PRT-0902",
+      "description": "Form 4a separation kit, per section",
+      "quantity": 3.0,
+      "unit": "each"
+    },
+    {
+      "basis": [
+        "way.Q1.cable",
+        "enclosure.cable_entry",
+        "ways.count",
+        "way.Q6.cable"
+      ],
+      "blocked_by": [],
+      "code": "PRT-1001",
+      "description": "Cable gland M20 brass, armoured cable",
+      "quantity": 2.0,
+      "unit": "each"
+    },
+    {
+      "basis": [
+        "way.Q2.cable",
+        "enclosure.cable_entry",
+        "ways.count",
+        "way.Q5.cable"
+      ],
+      "blocked_by": [],
+      "code": "PRT-1004",
+      "description": "Cable gland M40 brass, armoured cable",
+      "quantity": 2.0,
+      "unit": "each"
+    },
+    {
+      "basis": [
+        "way.Q3.cable",
+        "enclosure.cable_entry",
+        "ways.count",
+        "way.Q7.cable",
+        "way.Q8.cable"
+      ],
+      "blocked_by": [],
+      "code": "PRT-1003",
+      "description": "Cable gland M32 brass, armoured cable",
+      "quantity": 3.0,
+      "unit": "each"
+    },
+    {
+      "basis": [
+        "way.Q4.cable",
+        "enclosure.cable_entry",
+        "ways.count"
+      ],
+      "blocked_by": [],
+      "code": "PRT-1002",
+      "description": "Cable gland M25 brass, armoured cable",
+      "quantity": 1.0,
+      "unit": "each"
+    }
+  ],
+  "origin": "synthetic",
+  "planted": [
+    {
+      "description": "Way Q2 is 250 A in the specification but 200 A on the drawing.",
+      "expected": "Flag a conflict showing both sources; do not price the affected line until the engineer resolves it.",
+      "field": "way.Q2.rating",
+      "id": "SHOWCASE-P1",
+      "kind": "rating_conflict",
+      "sources": [
+        {
+          "document": "specification",
+          "file": "specification.pdf",
+          "page": 5,
+          "regions": [],
+          "source_text": "250"
+        },
+        {
+          "document": "schematic",
+          "file": "drawing/schematic.pdf",
+          "page": 1,
+          "regions": [
+            {
+              "bbox": [
+                622.12,
+                727.63,
+                641.61,
+                917.48
+              ],
+              "sheet": 1,
+              "version": "clean"
+            },
+            {
+              "bbox": [
+                619.47,
+                704.39,
+                644.7,
+                894.75
+              ],
+              "sheet": 1,
+              "version": "scanned"
+            },
+            {
+              "bbox": [
+                512.16,
+                606.13,
+                526.96,
+                729.01
+              ],
+              "sheet": 1,
+              "version": "photo"
+            }
+          ],
+          "source_text": "MCCB 200A 4P 36kA"
+        }
+      ]
+    }
+  ],
+  "project_id": "SHOWCASE",
+  "purpose": "showcase",
+  "schema_version": "1.0",
+  "seed": 63,
+  "values": [
+    {
+      "field": "system.voltage",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 4,
+        "regions": [],
+        "source_text": "Rated operational voltage: 400 V"
+      },
+      "unit": "V",
+      "value": 400
+    },
+    {
+      "field": "system.frequency",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 4,
+        "regions": [],
+        "source_text": "Rated frequency: 50 Hz"
+      },
+      "unit": "Hz",
+      "value": 50
+    },
+    {
+      "field": "system.earthing",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 4,
+        "regions": [],
+        "source_text": "System earthing: TN-C-S"
+      },
+      "unit": null,
+      "value": "TN-C-S"
+    },
+    {
+      "field": "system.fault_level",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 4,
+        "regions": [],
+        "source_text": "Prospective fault level: 36 kA for 1 s"
+      },
+      "unit": "kA",
+      "value": 36
+    },
+    {
+      "field": "enclosure.form",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 4,
+        "regions": [],
+        "source_text": "Form of separation: Form 4a"
+      },
+      "unit": null,
+      "value": "4a"
+    },
+    {
+      "field": "enclosure.ip_rating",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 4,
+        "regions": [],
+        "source_text": "Degree of protection: IP54"
+      },
+      "unit": null,
+      "value": "IP54"
+    },
+    {
+      "field": "enclosure.cable_entry",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 4,
+        "regions": [],
+        "source_text": "Cable entry: bottom entry"
+      },
+      "unit": null,
+      "value": "bottom"
+    },
+    {
+      "field": "incomer.device",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "Incomer: one air circuit breaker, 1250 A, 4 pole, withdrawable"
+      },
+      "unit": null,
+      "value": "acb"
+    },
+    {
+      "field": "incomer.rating",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "Incomer: one air circuit breaker, 1250 A, 4 pole, withdrawable"
+      },
+      "unit": "A",
+      "value": 1250
+    },
+    {
+      "field": "incomer.poles",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "Incomer: one air circuit breaker, 1250 A, 4 pole, withdrawable"
+      },
+      "unit": null,
+      "value": 4
+    },
+    {
+      "field": "busbar.rating",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "Main busbars: rated 1250 A, TP&N, copper"
+      },
+      "unit": "A",
+      "value": 1250
+    },
+    {
+      "field": "ways.count",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "The board shall have 8 outgoing ways"
+      },
+      "unit": null,
+      "value": 8
+    },
+    {
+      "field": "way.Q1.description",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "Small power DB-L2"
+      },
+      "unit": null,
+      "value": "Small power DB-L2"
+    },
+    {
+      "field": "way.Q1.device",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "MCB"
+      },
+      "unit": null,
+      "value": "mcb"
+    },
+    {
+      "field": "way.Q1.rating",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "20"
+      },
+      "unit": "A",
+      "value": 20
+    },
+    {
+      "field": "way.Q1.poles",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "3"
+      },
+      "unit": null,
+      "value": 3
+    },
+    {
+      "field": "way.Q1.cable",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "4C 4 mm2 SWA"
+      },
+      "unit": null,
+      "value": "4C 4 mm2 SWA"
+    },
+    {
+      "field": "way.Q1.breaking_capacity",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "10"
+      },
+      "unit": "kA",
+      "value": 10
+    },
+    {
+      "field": "way.Q2.description",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "Workshop DB"
+      },
+      "unit": null,
+      "value": "Workshop DB"
+    },
+    {
+      "field": "way.Q2.device",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "MCCB"
+      },
+      "unit": null,
+      "value": "mccb"
+    },
+    {
+      "field": "way.Q2.rating",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "250"
+      },
+      "unit": "A",
+      "value": 250
+    },
+    {
+      "field": "way.Q2.poles",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "4"
+      },
+      "unit": null,
+      "value": 4
+    },
+    {
+      "field": "way.Q2.cable",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "4C 120 mm2 SWA"
+      },
+      "unit": null,
+      "value": "4C 120 mm2 SWA"
+    },
+    {
+      "field": "way.Q2.breaking_capacity",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "36"
+      },
+      "unit": "kA",
+      "value": 36
+    },
+    {
+      "field": "way.Q3.description",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "Sprinkler pump"
+      },
+      "unit": null,
+      "value": "Sprinkler pump"
+    },
+    {
+      "field": "way.Q3.device",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "MCCB"
+      },
+      "unit": null,
+      "value": "mccb"
+    },
+    {
+      "field": "way.Q3.rating",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "100"
+      },
+      "unit": "A",
+      "value": 100
+    },
+    {
+      "field": "way.Q3.poles",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "4"
+      },
+      "unit": null,
+      "value": 4
+    },
+    {
+      "field": "way.Q3.cable",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "4C 35 mm2 SWA"
+      },
+      "unit": null,
+      "value": "4C 35 mm2 SWA"
+    },
+    {
+      "field": "way.Q3.breaking_capacity",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "36"
+      },
+      "unit": "kA",
+      "value": 36
+    },
+    {
+      "field": "way.Q4.description",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "Spare"
+      },
+      "unit": null,
+      "value": "Spare"
+    },
+    {
+      "field": "way.Q4.device",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "MCB"
+      },
+      "unit": null,
+      "value": "mcb"
+    },
+    {
+      "field": "way.Q4.rating",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "63"
+      },
+      "unit": "A",
+      "value": 63
+    },
+    {
+      "field": "way.Q4.poles",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "3"
+      },
+      "unit": null,
+      "value": 3
+    },
+    {
+      "field": "way.Q4.cable",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "4C 16 mm2 SWA"
+      },
+      "unit": null,
+      "value": "4C 16 mm2 SWA"
+    },
+    {
+      "field": "way.Q4.breaking_capacity",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "10"
+      },
+      "unit": "kA",
+      "value": 10
+    },
+    {
+      "field": "way.Q5.description",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "Small power DB-L1"
+      },
+      "unit": null,
+      "value": "Small power DB-L1"
+    },
+    {
+      "field": "way.Q5.device",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "Switch-disconnector"
+      },
+      "unit": null,
+      "value": "switch_disconnector"
+    },
+    {
+      "field": "way.Q5.rating",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "250"
+      },
+      "unit": "A",
+      "value": 250
+    },
+    {
+      "field": "way.Q5.poles",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "4"
+      },
+      "unit": null,
+      "value": 4
+    },
+    {
+      "field": "way.Q5.cable",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "4C 120 mm2 SWA"
+      },
+      "unit": null,
+      "value": "4C 120 mm2 SWA"
+    },
+    {
+      "field": "way.Q6.description",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "Server room UPS"
+      },
+      "unit": null,
+      "value": "Server room UPS"
+    },
+    {
+      "field": "way.Q6.device",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "MCB"
+      },
+      "unit": null,
+      "value": "mcb"
+    },
+    {
+      "field": "way.Q6.rating",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "20"
+      },
+      "unit": "A",
+      "value": 20
+    },
+    {
+      "field": "way.Q6.poles",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "3"
+      },
+      "unit": null,
+      "value": 3
+    },
+    {
+      "field": "way.Q6.cable",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "4C 4 mm2 SWA"
+      },
+      "unit": null,
+      "value": "4C 4 mm2 SWA"
+    },
+    {
+      "field": "way.Q6.breaking_capacity",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "10"
+      },
+      "unit": "kA",
+      "value": 10
+    },
+    {
+      "field": "way.Q7.description",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "Lighting DB-L2"
+      },
+      "unit": null,
+      "value": "Lighting DB-L2"
+    },
+    {
+      "field": "way.Q7.device",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "MCCB"
+      },
+      "unit": null,
+      "value": "mccb"
+    },
+    {
+      "field": "way.Q7.rating",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "125"
+      },
+      "unit": "A",
+      "value": 125
+    },
+    {
+      "field": "way.Q7.poles",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "3"
+      },
+      "unit": null,
+      "value": 3
+    },
+    {
+      "field": "way.Q7.cable",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "4C 50 mm2 SWA"
+      },
+      "unit": null,
+      "value": "4C 50 mm2 SWA"
+    },
+    {
+      "field": "way.Q7.breaking_capacity",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "36"
+      },
+      "unit": "kA",
+      "value": 36
+    },
+    {
+      "field": "way.Q8.description",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "External lighting"
+      },
+      "unit": null,
+      "value": "External lighting"
+    },
+    {
+      "field": "way.Q8.device",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "MCCB"
+      },
+      "unit": null,
+      "value": "mccb"
+    },
+    {
+      "field": "way.Q8.rating",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "125"
+      },
+      "unit": "A",
+      "value": 125
+    },
+    {
+      "field": "way.Q8.poles",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "3"
+      },
+      "unit": null,
+      "value": 3
+    },
+    {
+      "field": "way.Q8.cable",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "4C 50 mm2 SWA"
+      },
+      "unit": null,
+      "value": "4C 50 mm2 SWA"
+    },
+    {
+      "field": "way.Q8.breaking_capacity",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "36"
+      },
+      "unit": "kA",
+      "value": 36
+    },
+    {
+      "field": "metering.ct_ratio",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "three current transformers, ratio 1250/5 A"
+      },
+      "unit": "A",
+      "value": "1250/5"
+    },
+    {
+      "field": "metering.meter",
+      "source": {
+        "document": "specification",
+        "file": "specification.pdf",
+        "page": 5,
+        "regions": [],
+        "source_text": "feeding a kWh energy meter"
+      },
+      "unit": null,
+      "value": "kWh"
+    },
+    {
+      "field": "system.voltage",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              216.72,
+              103.17,
+              562.93,
+              122.66
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              238.31,
+              67.95,
+              584.95,
+              97.9
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              216.97,
+              196.76,
+              466.5,
+              212.12
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "INCOMING SUPPLY 400V 3PH+N 50Hz"
+      },
+      "unit": "V",
+      "value": 400
+    },
+    {
+      "field": "system.frequency",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              216.72,
+              103.17,
+              562.93,
+              122.66
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              238.31,
+              67.95,
+              584.95,
+              97.9
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              216.97,
+              196.76,
+              466.5,
+              212.12
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "INCOMING SUPPLY 400V 3PH+N 50Hz"
+      },
+      "unit": "Hz",
+      "value": 50
+    },
+    {
+      "field": "incomer.device",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              222.63,
+              214.84,
+              412.48,
+              234.33
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              240.83,
+              179.75,
+              431.19,
+              204.97
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              222.26,
+              271.53,
+              358.58,
+              285.45
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "ACB 1250A 4P 50kA"
+      },
+      "unit": null,
+      "value": "acb"
+    },
+    {
+      "field": "incomer.rating",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              222.63,
+              214.84,
+              412.48,
+              234.33
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              240.83,
+              179.75,
+              431.19,
+              204.97
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              222.26,
+              271.53,
+              358.58,
+              285.45
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "ACB 1250A 4P 50kA"
+      },
+      "unit": "A",
+      "value": 1250
+    },
+    {
+      "field": "incomer.poles",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              222.63,
+              214.84,
+              412.48,
+              234.33
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              240.83,
+              179.75,
+              431.19,
+              204.97
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              222.26,
+              271.53,
+              358.58,
+              285.45
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "ACB 1250A 4P 50kA"
+      },
+      "unit": null,
+      "value": 4
+    },
+    {
+      "field": "metering.ct_ratio",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              248.8,
+              290.21,
+              349.31,
+              307.75
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              264.77,
+              255.88,
+              365.77,
+              276.45
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              241.67,
+              321.41,
+              313.76,
+              333.41
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "CT 1250/5A"
+      },
+      "unit": "A",
+      "value": "1250/5"
+    },
+    {
+      "field": "metering.meter",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              293.81,
+              323.14,
+              320.62,
+              338.73
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              308.82,
+              290.16,
+              336.09,
+              306.55
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              274.14,
+              343.14,
+              293.46,
+              353.47
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "kWh"
+      },
+      "unit": null,
+      "value": "kWh"
+    },
+    {
+      "field": "busbar.rating",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              2107.31,
+              491.25,
+              2386.51,
+              510.74
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              2116.28,
+              513.06,
+              2395.95,
+              540.98
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1610.81,
+              446.87,
+              1824.45,
+              460.81
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "BUSBAR 1250A TP&N 36kA 1s"
+      },
+      "unit": "A",
+      "value": 1250
+    },
+    {
+      "field": "system.fault_level",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              2107.31,
+              491.25,
+              2386.51,
+              510.74
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              2116.28,
+              513.06,
+              2395.95,
+              540.98
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1610.81,
+              446.87,
+              1824.45,
+              460.81
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "BUSBAR 1250A TP&N 36kA 1s"
+      },
+      "unit": "kA",
+      "value": 36
+    },
+    {
+      "field": "way.Q1.device",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              421.34,
+              727.63,
+              440.82,
+              895.15
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              419.46,
+              698.31,
+              444.0,
+              866.35
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              368.39,
+              606.16,
+              383.41,
+              714.25
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCB 20A 3P 10kA"
+      },
+      "unit": null,
+      "value": "mcb"
+    },
+    {
+      "field": "way.Q1.rating",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              421.34,
+              727.63,
+              440.82,
+              895.15
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              419.46,
+              698.31,
+              444.0,
+              866.35
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              368.39,
+              606.16,
+              383.41,
+              714.25
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCB 20A 3P 10kA"
+      },
+      "unit": "A",
+      "value": 20
+    },
+    {
+      "field": "way.Q1.poles",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              421.34,
+              727.63,
+              440.82,
+              895.15
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              419.46,
+              698.31,
+              444.0,
+              866.35
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              368.39,
+              606.16,
+              383.41,
+              714.25
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCB 20A 3P 10kA"
+      },
+      "unit": null,
+      "value": 3
+    },
+    {
+      "field": "way.Q1.breaking_capacity",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              421.34,
+              727.63,
+              440.82,
+              895.15
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              419.46,
+              698.31,
+              444.0,
+              866.35
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              368.39,
+              606.16,
+              383.41,
+              714.25
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCB 20A 3P 10kA"
+      },
+      "unit": "kA",
+      "value": 10
+    },
+    {
+      "field": "way.Q1.description",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              444.27,
+              727.63,
+              461.81,
+              898.5
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              442.27,
+              699.01,
+              464.98,
+              870.33
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              384.75,
+              606.16,
+              398.38,
+              716.45
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "SMALL POWER DB-L2"
+      },
+      "unit": null,
+      "value": "Small power DB-L2"
+    },
+    {
+      "field": "way.Q2.device",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              622.12,
+              727.63,
+              641.61,
+              917.48
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              619.47,
+              704.39,
+              644.7,
+              894.75
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              512.16,
+              606.13,
+              526.96,
+              729.01
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCCB 200A 4P 36kA"
+      },
+      "unit": null,
+      "value": "mccb"
+    },
+    {
+      "field": "way.Q2.rating",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              622.12,
+              727.63,
+              641.61,
+              917.48
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              619.47,
+              704.39,
+              644.7,
+              894.75
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              512.16,
+              606.13,
+              526.96,
+              729.01
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCCB 200A 4P 36kA"
+      },
+      "unit": "A",
+      "value": 200
+    },
+    {
+      "field": "way.Q2.poles",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              622.12,
+              727.63,
+              641.61,
+              917.48
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              619.47,
+              704.39,
+              644.7,
+              894.75
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              512.16,
+              606.13,
+              526.96,
+              729.01
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCCB 200A 4P 36kA"
+      },
+      "unit": null,
+      "value": 4
+    },
+    {
+      "field": "way.Q2.breaking_capacity",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              622.12,
+              727.63,
+              641.61,
+              917.48
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              619.47,
+              704.39,
+              644.7,
+              894.75
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              512.16,
+              606.13,
+              526.96,
+              729.01
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCCB 200A 4P 36kA"
+      },
+      "unit": "kA",
+      "value": 36
+    },
+    {
+      "field": "way.Q2.description",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              645.05,
+              727.63,
+              662.59,
+              838.19
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              644.79,
+              705.08,
+              665.67,
+              816.13
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              528.64,
+              606.12,
+              541.69,
+              677.81
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "WORKSHOP DB"
+      },
+      "unit": null,
+      "value": "Workshop DB"
+    },
+    {
+      "field": "way.Q3.device",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              822.91,
+              727.63,
+              842.4,
+              917.48
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              820.17,
+              710.46,
+              845.39,
+              900.82
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              656.94,
+              606.1,
+              671.37,
+              729.41
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCCB 100A 4P 36kA"
+      },
+      "unit": null,
+      "value": "mccb"
+    },
+    {
+      "field": "way.Q3.rating",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              822.91,
+              727.63,
+              842.4,
+              917.48
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              820.17,
+              710.46,
+              845.39,
+              900.82
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              656.94,
+              606.1,
+              671.37,
+              729.41
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCCB 100A 4P 36kA"
+      },
+      "unit": "A",
+      "value": 100
+    },
+    {
+      "field": "way.Q3.poles",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              822.91,
+              727.63,
+              842.4,
+              917.48
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              820.17,
+              710.46,
+              845.39,
+              900.82
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              656.94,
+              606.1,
+              671.37,
+              729.41
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCCB 100A 4P 36kA"
+      },
+      "unit": null,
+      "value": 4
+    },
+    {
+      "field": "way.Q3.breaking_capacity",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              822.91,
+              727.63,
+              842.4,
+              917.48
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              820.17,
+              710.46,
+              845.39,
+              900.82
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              656.94,
+              606.1,
+              671.37,
+              729.41
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCCB 100A 4P 36kA"
+      },
+      "unit": "kA",
+      "value": 36
+    },
+    {
+      "field": "way.Q3.description",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              845.84,
+              727.63,
+              863.38,
+              868.35
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              844.58,
+              711.16,
+              866.37,
+              852.34
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              673.53,
+              606.09,
+              686.44,
+              697.6
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "SPRINKLER PUMP"
+      },
+      "unit": null,
+      "value": "Sprinkler pump"
+    },
+    {
+      "field": "way.Q4.device",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1023.7,
+              727.63,
+              1043.19,
+              895.15
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1021.54,
+              716.54,
+              1046.09,
+              884.57
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              802.63,
+              606.06,
+              816.94,
+              715.29
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCB 63A 3P 10kA"
+      },
+      "unit": null,
+      "value": "mcb"
+    },
+    {
+      "field": "way.Q4.rating",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1023.7,
+              727.63,
+              1043.19,
+              895.15
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1021.54,
+              716.54,
+              1046.09,
+              884.57
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              802.63,
+              606.06,
+              816.94,
+              715.29
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCB 63A 3P 10kA"
+      },
+      "unit": "A",
+      "value": 63
+    },
+    {
+      "field": "way.Q4.poles",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1023.7,
+              727.63,
+              1043.19,
+              895.15
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1021.54,
+              716.54,
+              1046.09,
+              884.57
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              802.63,
+              606.06,
+              816.94,
+              715.29
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCB 63A 3P 10kA"
+      },
+      "unit": null,
+      "value": 3
+    },
+    {
+      "field": "way.Q4.breaking_capacity",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1023.7,
+              727.63,
+              1043.19,
+              895.15
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1021.54,
+              716.54,
+              1046.09,
+              884.57
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              802.63,
+              606.06,
+              816.94,
+              715.29
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCB 63A 3P 10kA"
+      },
+      "unit": "kA",
+      "value": 10
+    },
+    {
+      "field": "way.Q4.description",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1046.63,
+              727.63,
+              1064.17,
+              777.88
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1048.01,
+              717.23,
+              1067.06,
+              768.0
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              819.4,
+              606.06,
+              832.24,
+              638.91
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "SPARE"
+      },
+      "unit": null,
+      "value": "Spare"
+    },
+    {
+      "field": "way.Q5.device",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1224.49,
+              727.63,
+              1243.97,
+              895.15
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1222.24,
+              722.61,
+              1246.78,
+              890.65
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              949.03,
+              606.03,
+              963.86,
+              715.65
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "SW-DISC 250A 4P"
+      },
+      "unit": null,
+      "value": "switch_disconnector"
+    },
+    {
+      "field": "way.Q5.rating",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1224.49,
+              727.63,
+              1243.97,
+              895.15
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1222.24,
+              722.61,
+              1246.78,
+              890.65
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              949.03,
+              606.03,
+              963.86,
+              715.65
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "SW-DISC 250A 4P"
+      },
+      "unit": "A",
+      "value": 250
+    },
+    {
+      "field": "way.Q5.poles",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1224.49,
+              727.63,
+              1243.97,
+              895.15
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1222.24,
+              722.61,
+              1246.78,
+              890.65
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              949.03,
+              606.03,
+              963.86,
+              715.65
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "SW-DISC 250A 4P"
+      },
+      "unit": null,
+      "value": 4
+    },
+    {
+      "field": "way.Q5.description",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1247.42,
+              727.63,
+              1264.96,
+              898.5
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1245.06,
+              723.31,
+              1267.76,
+              894.63
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              965.8,
+              606.03,
+              979.27,
+              717.87
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "SMALL POWER DB-L1"
+      },
+      "unit": null,
+      "value": "Small power DB-L1"
+    },
+    {
+      "field": "way.Q6.device",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1425.27,
+              727.63,
+              1444.76,
+              895.15
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1422.93,
+              728.69,
+              1447.48,
+              896.72
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1096.45,
+              606.0,
+              1111.82,
+              716.0
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCB 20A 3P 10kA"
+      },
+      "unit": null,
+      "value": "mcb"
+    },
+    {
+      "field": "way.Q6.rating",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1425.27,
+              727.63,
+              1444.76,
+              895.15
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1422.93,
+              728.69,
+              1447.48,
+              896.72
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1096.45,
+              606.0,
+              1111.82,
+              716.0
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCB 20A 3P 10kA"
+      },
+      "unit": "A",
+      "value": 20
+    },
+    {
+      "field": "way.Q6.poles",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1425.27,
+              727.63,
+              1444.76,
+              895.15
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1422.93,
+              728.69,
+              1447.48,
+              896.72
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1096.45,
+              606.0,
+              1111.82,
+              716.0
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCB 20A 3P 10kA"
+      },
+      "unit": null,
+      "value": 3
+    },
+    {
+      "field": "way.Q6.breaking_capacity",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1425.27,
+              727.63,
+              1444.76,
+              895.15
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1422.93,
+              728.69,
+              1447.48,
+              896.72
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1096.45,
+              606.0,
+              1111.82,
+              716.0
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCB 20A 3P 10kA"
+      },
+      "unit": "kA",
+      "value": 10
+    },
+    {
+      "field": "way.Q6.description",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1448.2,
+              727.63,
+              1465.74,
+              878.4
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1446.36,
+              729.38,
+              1468.45,
+              880.61
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1113.46,
+              605.99,
+              1127.34,
+              705.06
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "SERVER ROOM UPS"
+      },
+      "unit": null,
+      "value": "Server room UPS"
+    },
+    {
+      "field": "way.Q7.device",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1626.06,
+              727.63,
+              1645.55,
+              917.48
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1622.95,
+              734.76,
+              1648.18,
+              925.12
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1244.74,
+              605.97,
+              1260.83,
+              731.03
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCCB 125A 3P 36kA"
+      },
+      "unit": null,
+      "value": "mccb"
+    },
+    {
+      "field": "way.Q7.rating",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1626.06,
+              727.63,
+              1645.55,
+              917.48
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1622.95,
+              734.76,
+              1648.18,
+              925.12
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1244.74,
+              605.97,
+              1260.83,
+              731.03
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCCB 125A 3P 36kA"
+      },
+      "unit": "A",
+      "value": 125
+    },
+    {
+      "field": "way.Q7.poles",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1626.06,
+              727.63,
+              1645.55,
+              917.48
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1622.95,
+              734.76,
+              1648.18,
+              925.12
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1244.74,
+              605.97,
+              1260.83,
+              731.03
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCCB 125A 3P 36kA"
+      },
+      "unit": null,
+      "value": 3
+    },
+    {
+      "field": "way.Q7.breaking_capacity",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1626.06,
+              727.63,
+              1645.55,
+              917.48
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1622.95,
+              734.76,
+              1648.18,
+              925.12
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1244.74,
+              605.97,
+              1260.83,
+              731.03
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCCB 125A 3P 36kA"
+      },
+      "unit": "kA",
+      "value": 36
+    },
+    {
+      "field": "way.Q7.description",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1648.99,
+              727.63,
+              1666.53,
+              868.35
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1647.36,
+              735.46,
+              1669.15,
+              876.64
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1262.18,
+              605.96,
+              1276.47,
+              698.77
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "LIGHTING DB-L2"
+      },
+      "unit": null,
+      "value": "Lighting DB-L2"
+    },
+    {
+      "field": "way.Q8.device",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1826.85,
+              727.63,
+              1846.34,
+              917.48
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1823.65,
+              740.84,
+              1848.87,
+              931.2
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1394.2,
+              605.93,
+              1410.91,
+              731.44
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCCB 125A 3P 36kA"
+      },
+      "unit": null,
+      "value": "mccb"
+    },
+    {
+      "field": "way.Q8.rating",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1826.85,
+              727.63,
+              1846.34,
+              917.48
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1823.65,
+              740.84,
+              1848.87,
+              931.2
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1394.2,
+              605.93,
+              1410.91,
+              731.44
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCCB 125A 3P 36kA"
+      },
+      "unit": "A",
+      "value": 125
+    },
+    {
+      "field": "way.Q8.poles",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1826.85,
+              727.63,
+              1846.34,
+              917.48
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1823.65,
+              740.84,
+              1848.87,
+              931.2
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1394.2,
+              605.93,
+              1410.91,
+              731.44
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCCB 125A 3P 36kA"
+      },
+      "unit": null,
+      "value": 3
+    },
+    {
+      "field": "way.Q8.breaking_capacity",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1826.85,
+              727.63,
+              1846.34,
+              917.48
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1823.65,
+              740.84,
+              1848.87,
+              931.2
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1394.2,
+              605.93,
+              1410.91,
+              731.44
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "MCCB 125A 3P 36kA"
+      },
+      "unit": "kA",
+      "value": 36
+    },
+    {
+      "field": "way.Q8.description",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1849.78,
+              727.63,
+              1867.32,
+              898.5
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1847.14,
+              741.53,
+              1869.84,
+              912.85
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1411.55,
+              605.93,
+              1426.65,
+              718.96
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "EXTERNAL LIGHTING"
+      },
+      "unit": null,
+      "value": "External lighting"
+    },
+    {
+      "field": "ways.count",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              397.74,
+              560.53,
+              1845.13,
+              662.67
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              402.91,
+              530.57,
+              1852.73,
+              676.46
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              350.35,
+              494.77,
+              1411.9,
+              564.11
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": null
+      },
+      "unit": null,
+      "value": 8
+    },
+    {
+      "field": "enclosure.form",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              88.58,
+              1270.41,
+              390.12,
+              1287.95
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              74.97,
+              1230.78,
+              376.9,
+              1257.44
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              138.18,
+              952.12,
+              350.17,
+              964.99
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "1. FORM OF SEPARATION: FORM 4a"
+      },
+      "unit": null,
+      "value": "4a"
+    },
+    {
+      "field": "enclosure.ip_rating",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              88.58,
+              1296.4,
+              380.07,
+              1313.94
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              74.18,
+              1256.75,
+              366.07,
+              1283.1
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              138.46,
+              968.52,
+              343.27,
+              981.4
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "2. DEGREE OF PROTECTION: IP54"
+      },
+      "unit": null,
+      "value": "IP54"
+    },
+    {
+      "field": "enclosure.cable_entry",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              88.58,
+              1322.38,
+              309.71,
+              1339.92
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              73.4,
+              1282.73,
+              294.95,
+              1306.95
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              138.74,
+              984.9,
+              293.9,
+              997.39
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "3. CABLE ENTRY: BOTTOM"
+      },
+      "unit": null,
+      "value": "bottom"
+    },
+    {
+      "field": "system.earthing",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              88.58,
+              1348.36,
+              349.91,
+              1365.9
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              72.61,
+              1308.7,
+              334.35,
+              1334.14
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              139.02,
+              1001.27,
+              322.4,
+              1014.09
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "4. EARTHING SYSTEM: TN-C-S"
+      },
+      "unit": null,
+      "value": "TN-C-S"
+    },
+    {
+      "field": "way.Q1.cable",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1151.57,
+              1452.17,
+              1273.41,
+              1469.88
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1131.97,
+              1444.61,
+              1254.28,
+              1466.01
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              894.5,
+              1074.83,
+              982.78,
+              1087.14
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "4C 4 mm2 SWA"
+      },
+      "unit": null,
+      "value": "4C 4 mm2 SWA"
+    },
+    {
+      "field": "way.Q1.cable_length",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1364.17,
+              1452.17,
+              1384.48,
+              1469.88
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1344.47,
+              1451.05,
+              1365.3,
+              1469.37
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1048.68,
+              1076.53,
+              1063.56,
+              1088.05
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "23"
+      },
+      "unit": "m",
+      "value": 23
+    },
+    {
+      "field": "way.Q2.cable",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1151.57,
+              1476.97,
+              1293.71,
+              1494.69
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1131.22,
+              1469.4,
+              1273.83,
+              1491.41
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              894.45,
+              1090.67,
+              997.43,
+              1103.17
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "4C 120 mm2 SWA"
+      },
+      "unit": null,
+      "value": "4C 120 mm2 SWA"
+    },
+    {
+      "field": "way.Q2.cable_length",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1364.17,
+              1476.97,
+              1384.48,
+              1494.69
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1343.72,
+              1475.84,
+              1364.55,
+              1494.16
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1048.56,
+              1092.42,
+              1063.43,
+              1103.94
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "89"
+      },
+      "unit": "m",
+      "value": 89
+    },
+    {
+      "field": "way.Q3.cable",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1151.57,
+              1501.77,
+              1283.56,
+              1519.49
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1130.47,
+              1494.2,
+              1262.93,
+              1515.9
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              894.39,
+              1106.5,
+              989.96,
+              1118.94
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "4C 35 mm2 SWA"
+      },
+      "unit": null,
+      "value": "4C 35 mm2 SWA"
+    },
+    {
+      "field": "way.Q3.cable_length",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1364.17,
+              1501.77,
+              1384.48,
+              1519.49
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1342.97,
+              1500.63,
+              1363.8,
+              1518.95
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1048.44,
+              1108.31,
+              1063.3,
+              1119.82
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "17"
+      },
+      "unit": "m",
+      "value": 17
+    },
+    {
+      "field": "way.Q4.cable",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1151.57,
+              1526.57,
+              1283.56,
+              1544.29
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1129.72,
+              1518.99,
+              1262.18,
+              1540.69
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              894.34,
+              1122.31,
+              989.87,
+              1134.78
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "4C 16 mm2 SWA"
+      },
+      "unit": null,
+      "value": "4C 16 mm2 SWA"
+    },
+    {
+      "field": "way.Q4.cable_length",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1364.17,
+              1526.57,
+              1384.48,
+              1544.29
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1342.22,
+              1525.42,
+              1363.05,
+              1543.74
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1048.32,
+              1124.18,
+              1063.18,
+              1135.69
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "11"
+      },
+      "unit": "m",
+      "value": 11
+    },
+    {
+      "field": "way.Q5.cable",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1151.57,
+              1551.38,
+              1293.71,
+              1569.09
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1128.97,
+              1543.78,
+              1271.58,
+              1565.79
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              894.29,
+              1138.11,
+              997.14,
+              1150.7
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "4C 120 mm2 SWA"
+      },
+      "unit": null,
+      "value": "4C 120 mm2 SWA"
+    },
+    {
+      "field": "way.Q5.cable_length",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1364.17,
+              1551.38,
+              1384.48,
+              1569.09
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1341.47,
+              1550.21,
+              1362.3,
+              1568.54
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1048.2,
+              1140.04,
+              1063.05,
+              1151.54
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "41"
+      },
+      "unit": "m",
+      "value": 41
+    },
+    {
+      "field": "way.Q6.cable",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1151.57,
+              1576.18,
+              1273.41,
+              1593.9
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1128.22,
+              1568.57,
+              1250.53,
+              1589.97
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              894.23,
+              1153.9,
+              982.33,
+              1166.32
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "4C 4 mm2 SWA"
+      },
+      "unit": null,
+      "value": "4C 4 mm2 SWA"
+    },
+    {
+      "field": "way.Q6.cable_length",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1364.17,
+              1576.18,
+              1384.48,
+              1593.9
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1340.72,
+              1575.0,
+              1361.55,
+              1593.33
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1048.08,
+              1155.88,
+              1062.93,
+              1167.38
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "59"
+      },
+      "unit": "m",
+      "value": 59
+    },
+    {
+      "field": "way.Q7.cable",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1151.57,
+              1600.98,
+              1283.56,
+              1618.7
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1127.47,
+              1593.36,
+              1259.93,
+              1615.07
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              894.18,
+              1169.67,
+              989.59,
+              1182.22
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "4C 50 mm2 SWA"
+      },
+      "unit": null,
+      "value": "4C 50 mm2 SWA"
+    },
+    {
+      "field": "way.Q7.cable_length",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1364.17,
+              1600.98,
+              1384.48,
+              1618.7
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1339.97,
+              1599.8,
+              1360.8,
+              1618.12
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1047.96,
+              1171.71,
+              1062.8,
+              1183.21
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "32"
+      },
+      "unit": "m",
+      "value": 32
+    },
+    {
+      "field": "way.Q8.cable",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1151.57,
+              1625.79,
+              1283.56,
+              1643.5
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1126.72,
+              1618.16,
+              1259.18,
+              1639.86
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              894.13,
+              1185.43,
+              989.49,
+              1198.0
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "4C 50 mm2 SWA"
+      },
+      "unit": null,
+      "value": "4C 50 mm2 SWA"
+    },
+    {
+      "field": "way.Q8.cable_length",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 1,
+        "regions": [
+          {
+            "bbox": [
+              1364.17,
+              1625.79,
+              1384.48,
+              1643.5
+            ],
+            "sheet": 1,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              1339.22,
+              1624.59,
+              1360.05,
+              1642.91
+            ],
+            "sheet": 1,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              1047.84,
+              1187.53,
+              1062.68,
+              1199.02
+            ],
+            "sheet": 1,
+            "version": "photo"
+          }
+        ],
+        "source_text": "28"
+      },
+      "unit": "m",
+      "value": 28
+    },
+    {
+      "field": "enclosure.width",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 2,
+        "regions": [
+          {
+            "bbox": [
+              118.11,
+              1158.22,
+              549.6,
+              1180.36
+            ],
+            "sheet": 2,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              130.09,
+              1168.06,
+              561.86,
+              1196.45
+            ],
+            "sheet": 2,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              168.52,
+              905.71,
+              490.79,
+              922.93
+            ],
+            "sheet": 2,
+            "version": "photo"
+          }
+        ],
+        "source_text": "OVERALL WIDTH 2000 mm - 3 SECTIONS"
+      },
+      "unit": "mm",
+      "value": 2000
+    },
+    {
+      "field": "enclosure.sections",
+      "source": {
+        "document": "schematic",
+        "file": "drawing/schematic.pdf",
+        "page": 2,
+        "regions": [
+          {
+            "bbox": [
+              118.11,
+              1158.22,
+              549.6,
+              1180.36
+            ],
+            "sheet": 2,
+            "version": "clean"
+          },
+          {
+            "bbox": [
+              130.09,
+              1168.06,
+              561.86,
+              1196.45
+            ],
+            "sheet": 2,
+            "version": "scanned"
+          },
+          {
+            "bbox": [
+              168.52,
+              905.71,
+              490.79,
+              922.93
+            ],
+            "sheet": 2,
+            "version": "photo"
+          }
+        ],
+        "source_text": "OVERALL WIDTH 2000 mm - 3 SECTIONS"
+      },
+      "unit": null,
+      "value": 3
+    },
+    {
+      "field": "system.voltage",
+      "source": {
+        "document": "requirements",
+        "file": "requirements.docx",
+        "page": 1,
+        "regions": [],
+        "source_text": "The board will be fed at 400 V, three phase and neutral."
+      },
+      "unit": "V",
+      "value": 400
+    },
+    {
+      "field": "incomer.rating",
+      "source": {
+        "document": "requirements",
+        "file": "requirements.docx",
+        "page": 1,
+        "regions": [],
+        "source_text": "The incomer should be a 1250 A air circuit breaker."
+      },
+      "unit": "A",
+      "value": 1250
+    },
+    {
+      "field": "ways.count",
+      "source": {
+        "document": "requirements",
+        "file": "requirements.docx",
+        "page": 1,
+        "regions": [],
+        "source_text": "We need 8 outgoing ways, as listed in the specification."
+      },
+      "unit": null,
+      "value": 8
+    },
+    {
+      "field": "enclosure.ip_rating",
+      "source": {
+        "document": "requirements",
+        "file": "requirements.docx",
+        "page": 1,
+        "regions": [],
+        "source_text": "The board will stand in a plant room, so it must be at least IP54."
+      },
+      "unit": null,
+      "value": "IP54"
+    },
+    {
+      "field": "enclosure.form",
+      "source": {
+        "document": "requirements",
+        "file": "requirements.docx",
+        "page": 1,
+        "regions": [],
+        "source_text": "Our consultant has asked for Form 4a separation."
+      },
+      "unit": null,
+      "value": "4a"
+    },
+    {
+      "field": "enclosure.cable_entry",
+      "source": {
+        "document": "requirements",
+        "file": "requirements.docx",
+        "page": 1,
+        "regions": [],
+        "source_text": "All cables will come in from the bottom."
+      },
+      "unit": null,
+      "value": "bottom"
+    },
+    {
+      "field": "metering.meter",
+      "source": {
+        "document": "requirements",
+        "file": "requirements.docx",
+        "page": 1,
+        "regions": [],
+        "source_text": "We would like a kWh meter on the incomer so we can track energy use."
+      },
+      "unit": null,
+      "value": "kWh"
+    }
+  ]
+}

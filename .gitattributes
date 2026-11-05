@@ -1,3 +1,11 @@
 # Keep binary assets byte-exact on every platform.
 *.woff2 binary
 *.png binary
+*.ttf binary
+*.pdf binary
+*.docx binary
+# Generated text files must keep LF so their bytes (and hashes) match on every platform.
+*.dxf -text
+data/**/*.json -text
+data/**/*.csv text eol=lf
+data/**/*.md text eol=lf

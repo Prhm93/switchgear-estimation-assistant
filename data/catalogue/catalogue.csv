@@ -1,0 +1,65 @@
+code,category,description,rating_a,poles,breaking_ka,ip_rating,width_mm,size,unit,unit_price_gbp,labour_hours
+PRT-0101,acb,Air circuit breaker 800 A 4P 50 kA withdrawable,800,4,50,,,,each,4310.91,3.80
+PRT-0102,acb,Air circuit breaker 1000 A 4P 50 kA withdrawable,1000,4,50,,,,each,4929.36,4.00
+PRT-0103,acb,Air circuit breaker 1250 A 4P 50 kA withdrawable,1250,4,50,,,,each,5350.60,4.20
+PRT-0104,acb,Air circuit breaker 1600 A 4P 50 kA withdrawable,1600,4,50,,,,each,6655.23,4.60
+PRT-0105,acb,Air circuit breaker 2000 A 4P 50 kA withdrawable,2000,4,50,,,,each,7576.83,5.00
+PRT-0106,acb,Air circuit breaker 2500 A 4P 50 kA withdrawable,2500,4,50,,,,each,9083.35,5.50
+PRT-0107,acb,Air circuit breaker 1250 A 3P 50 kA withdrawable,1250,3,50,,,,each,5095.40,4.20
+PRT-0108,acb,Air circuit breaker 1600 A 3P 50 kA withdrawable,1600,3,50,,,,each,6029.86,4.60
+PRT-0201,mccb,Moulded-case circuit breaker 100 A 3P 36 kA,100,3,36,,,,each,376.69,1.00
+PRT-0202,mccb,Moulded-case circuit breaker 125 A 3P 36 kA,125,3,36,,,,each,414.22,1.10
+PRT-0203,mccb,Moulded-case circuit breaker 160 A 3P 36 kA,160,3,36,,,,each,490.84,1.10
+PRT-0204,mccb,Moulded-case circuit breaker 200 A 3P 36 kA,200,3,36,,,,each,543.80,1.20
+PRT-0205,mccb,Moulded-case circuit breaker 250 A 3P 36 kA,250,3,36,,,,each,661.83,1.30
+PRT-0206,mccb,Moulded-case circuit breaker 400 A 3P 36 kA,400,3,36,,,,each,993.57,1.60
+PRT-0207,mccb,Moulded-case circuit breaker 630 A 3P 36 kA,630,3,36,,,,each,1321.98,2.10
+PRT-0208,mccb,Moulded-case circuit breaker 100 A 4P 36 kA,100,4,36,,,,each,438.64,1.00
+PRT-0209,mccb,Moulded-case circuit breaker 125 A 4P 36 kA,125,4,36,,,,each,514.78,1.10
+PRT-0210,mccb,Moulded-case circuit breaker 160 A 4P 36 kA,160,4,36,,,,each,611.01,1.10
+PRT-0211,mccb,Moulded-case circuit breaker 200 A 4P 36 kA,200,4,36,,,,each,721.17,1.20
+PRT-0212,mccb,Moulded-case circuit breaker 250 A 4P 36 kA,250,4,36,,,,each,830.83,1.30
+PRT-0213,mccb,Moulded-case circuit breaker 400 A 4P 36 kA,400,4,36,,,,each,1242.78,1.60
+PRT-0214,mccb,Moulded-case circuit breaker 630 A 4P 36 kA,630,4,36,,,,each,1619.12,2.10
+PRT-0215,mccb,Moulded-case circuit breaker 250 A 4P 50 kA,250,4,50,,,,each,1060.63,1.40
+PRT-0216,mccb,Moulded-case circuit breaker 400 A 4P 50 kA,400,4,50,,,,each,1468.88,1.70
+PRT-0217,mccb,Moulded-case circuit breaker 630 A 4P 50 kA,630,4,50,,,,each,2243.39,2.20
+PRT-0301,mcb,Miniature circuit breaker 16 A 3P 10 kA type C,16,3,10,,,,each,53.44,0.40
+PRT-0302,mcb,Miniature circuit breaker 20 A 3P 10 kA type C,20,3,10,,,,each,53.92,0.40
+PRT-0303,mcb,Miniature circuit breaker 32 A 3P 10 kA type C,32,3,10,,,,each,69.59,0.40
+PRT-0304,mcb,Miniature circuit breaker 40 A 3P 10 kA type C,40,3,10,,,,each,72.09,0.40
+PRT-0305,mcb,Miniature circuit breaker 63 A 3P 10 kA type C,63,3,10,,,,each,98.51,0.40
+PRT-0401,switch_disconnector,Switch-disconnector 125 A 4P,125,4,,,,,each,286.58,0.90
+PRT-0402,switch_disconnector,Switch-disconnector 250 A 4P,250,4,,,,,each,435.94,1.00
+PRT-0403,switch_disconnector,Switch-disconnector 400 A 4P,400,4,,,,,each,560.33,1.20
+PRT-0404,switch_disconnector,Switch-disconnector 630 A 4P,630,4,,,,,each,874.56,1.50
+PRT-0405,switch_disconnector,Switch-disconnector 800 A 4P,800,4,,,,,each,1078.30,1.70
+PRT-0501,current_transformer,Current transformer 800/5 A class 1,800,,,,,800/5,each,87.37,0.30
+PRT-0502,current_transformer,Current transformer 1000/5 A class 1,1000,,,,,1000/5,each,96.86,0.30
+PRT-0503,current_transformer,Current transformer 1250/5 A class 1,1250,,,,,1250/5,each,97.40,0.30
+PRT-0504,current_transformer,Current transformer 1600/5 A class 1,1600,,,,,1600/5,each,105.16,0.30
+PRT-0505,current_transformer,Current transformer 2000/5 A class 1,2000,,,,,2000/5,each,121.32,0.30
+PRT-0506,current_transformer,Current transformer 2500/5 A class 1,2500,,,,,2500/5,each,132.30,0.30
+PRT-0601,meter,"Multifunction power meter, panel mounted",,,,,,MFM,each,295.28,1.00
+PRT-0602,meter,"kWh energy meter, panel mounted",,,,,,kWh,each,144.62,0.80
+PRT-0701,busbar,"Busbar system 800 A TP&N, per metre",800,4,,,,,m,540.45,2.30
+PRT-0702,busbar,"Busbar system 1000 A TP&N, per metre",1000,4,,,,,m,614.42,2.50
+PRT-0703,busbar,"Busbar system 1250 A TP&N, per metre",1250,4,,,,,m,688.67,2.80
+PRT-0704,busbar,"Busbar system 1600 A TP&N, per metre",1600,4,,,,,m,807.45,3.10
+PRT-0705,busbar,"Busbar system 2000 A TP&N, per metre",2000,4,,,,,m,977.21,3.50
+PRT-0706,busbar,"Busbar system 2500 A TP&N, per metre",2500,4,,,,,m,1190.09,4.00
+PRT-0801,enclosure_section,Incomer section W800 H2200 IP31,,,,IP31,800,,each,1684.85,6.00
+PRT-0802,enclosure_section,Outgoing section W600 H2200 IP31,,,,IP31,600,,each,1228.10,4.50
+PRT-0803,enclosure_section,Incomer section W800 H2200 IP42,,,,IP42,800,,each,1758.69,6.00
+PRT-0804,enclosure_section,Outgoing section W600 H2200 IP42,,,,IP42,600,,each,1247.66,4.50
+PRT-0805,enclosure_section,Incomer section W800 H2200 IP54,,,,IP54,800,,each,1924.77,6.00
+PRT-0806,enclosure_section,Outgoing section W600 H2200 IP54,,,,IP54,600,,each,1388.91,4.50
+PRT-0901,form_kit,"Form 3b separation kit, per section",,,,,,3b,each,261.07,2.00
+PRT-0902,form_kit,"Form 4a separation kit, per section",,,,,,4a,each,381.26,2.00
+PRT-0903,form_kit,"Form 4b separation kit, per section",,,,,,4b,each,447.80,2.00
+PRT-1001,cable_gland,"Cable gland M20 brass, armoured cable",,,,,,M20,each,4.09,0.20
+PRT-1002,cable_gland,"Cable gland M25 brass, armoured cable",,,,,,M25,each,5.49,0.20
+PRT-1003,cable_gland,"Cable gland M32 brass, armoured cable",,,,,,M32,each,9.18,0.20
+PRT-1004,cable_gland,"Cable gland M40 brass, armoured cable",,,,,,M40,each,13.83,0.20
+PRT-1005,cable_gland,"Cable gland M50 brass, armoured cable",,,,,,M50,each,21.18,0.20
+PRT-1006,cable_gland,"Cable gland M63 brass, armoured cable",,,,,,M63,each,33.24,0.20
