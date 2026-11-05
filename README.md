@@ -148,8 +148,8 @@ Only permissive licences are used. AGPL libraries (for example PyMuPDF and Ultra
 | pgvector | 0.8.7 | PostgreSQL Licence | Vector search extension |
 | IBM Plex Sans, IBM Plex Mono | 1.1.0 | SIL OFL 1.1 | Fonts, self-hosted (`frontend/static/fonts/OFL.txt`) |
 | Icons | n/a | This repo | Drawn for this project |
-| Gemma 4 E2B (`gemma4:e2b`) | n/a | Apache-2.0 | Chat and vision model, on Colab only |
-| mxbai-embed-large | v1 | Apache-2.0 | Embedding model, on Colab only |
+| Gemma 4 E2B (`gemma4:e2b`) | n/a | Apache-2.0 ([model card](https://huggingface.co/google/gemma-4-E2B-it)) | Chat and vision model, on Colab only |
+| mxbai-embed-large | v1 | Apache-2.0 ([model card](https://huggingface.co/mixedbread-ai/mxbai-embed-large-v1)) | Embedding model, on Colab only |
 
 Transitive dependencies (for example AnyIO, Click, MarkupSafe, Mako, scramp, typing-extensions) are MIT, BSD, MIT-0 or PSF-2.0. Model licences are from the Hugging Face model cards (checked 5 Nov 2026).
 
@@ -159,4 +159,5 @@ Transitive dependencies (for example AnyIO, Click, MarkupSafe, Mako, scramp, typ
 - **Engine, small tests.** Real-model results come from a few questions on four notes. They show the parts work, not how often.
 - **Engine, refusal gap.** The search always returns the nearest note, even when no note fits.
 - **Engine, number check.** It reads digits only ("three" is not checked), ignores signs and misreads `.5`, `3rd` and `2,85`. It shows a number exists in the evidence, not that it is used correctly.
-- **Notebook copies.** `%%writefile` cells are copies of the engine files and can drift from them. Saved notebook outputs predate the move to `ai_engine/`.
+- **Notebook copies.** `%%writefile` cells are copies of the engine files and can drift from them.
+- **Old paths in saved outputs.** Saved outputs in notebooks 01 and 02 predate the move to `ai_engine/` and stay that way until the notebooks are re-run. In notebook 02, the outputs of cells 30 to 40 still show the old `src/` paths. Notebook 01's saved outputs show no paths.
