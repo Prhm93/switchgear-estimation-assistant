@@ -4,7 +4,7 @@ A web application that helps an engineer turn a customer enquiry for low-voltage
 
 > **Disclaimer:** this is an independent personal project. It uses synthetic data only: every document, drawing, part code and price is invented. It is not affiliated with or endorsed by any company.
 
-The product is being built in stages. Stage 0 (this version) sets up the structure, the Docker stack and the design system. The estimation workflow itself is not built yet; see [Status](#status).
+The product is being built in stages. Stage 0 set up the structure, the Docker stack and the design system. Stage 1 (this version) adds the synthetic data: an invented parts catalogue and a generator of customer enquiries with exact answer keys. The estimation workflow itself is not built yet; see [Status](#status).
 
 ![Design system health-check page](docs/images/stage-0-health-check.png)
 
@@ -54,9 +54,10 @@ Remove-Item Env:DATABASE_URL
 | `ai_engine/estimation_assistant/` | The AI engine: tools, safe tool runner, agent loop, retrieval, number check |
 | `frontend/templates/` | Jinja2 templates |
 | `frontend/static/` | The one stylesheet (`css/app.css`), self-hosted fonts, line icons, small scripts |
-| `tests/unit/`, `tests/integration/`, `tests/accuracy/` | pytest suites; accuracy tests arrive with the synthetic data |
+| `tests/unit/`, `tests/integration/`, `tests/accuracy/` | pytest suites; accuracy tests arrive with Stage 2 |
 | `deployment/` | Dockerfile and docker compose file (the root `compose.yaml` includes it) |
-| `data/` | Synthetic data (Stage 1) |
+| `data_generator/` | Synthetic enquiry generator: catalogue, specification PDF, DXF schematic, scanned and photo versions, letter, answer keys |
+| `data/` | Catalogue, showcase project, planted-problem list; test and training sets are rebuilt from seeds ([data/README.md](data/README.md)) |
 | `docs/` | Stage reports (`stage-N.md`) and the earlier engine reports |
 | `notebooks/` | Colab notebooks that run the engine on a T4 GPU |
 | `tutorials/` | Learning notebooks, kept separate from the product |
@@ -66,7 +67,7 @@ Remove-Item Env:DATABASE_URL
 | Stage | Scope | State |
 |---|---|---|
 | 0 Setup | Repo structure, Docker stack (Postgres + pgvector, app), design system health-check page, CI | Done: [report](docs/stage-0.md) |
-| 1 Synthetic data | Enquiry generator, showcase project, 20 test projects, parts catalogue | Not started |
+| 1 Synthetic data | Enquiry generator, showcase project, 20 test projects, 300 training drawings, parts catalogue, real-drawing format | Done: [report](docs/stage-1.md) |
 | 2 Thin slice (rules mode) | Upload to DOCX report with audit log | Not started |
 | 3 LLM extraction | Ollama and recorded modes, quote check, rules vs LLM scores | Not started |
 | 4 Drawing understanding | OCR, vision reading, symbol detector | Not started |
@@ -127,9 +128,21 @@ Colab forgets everything when a session ends, so repeat these steps each session
 
 Download models with `ollama.pull(...).status`, not `!ollama pull`, which saves thousands of spinner characters into the notebook. When you change an engine file, update its `%%writefile` cell too.
 
+## Synthetic data
+
+Rebuild the data sets from their fixed seeds (PowerShell, from the repo folder):
+
+```powershell
+.venv\Scripts\python.exe -m data_generator build --set showcase   # committed, data/projects/showcase
+.venv\Scripts\python.exe -m data_generator build --set test       # 20 enquiries, data/projects/test (git-ignored)
+.venv\Scripts\python.exe -m data_generator build --set training   # 300 drawings, data/training (git-ignored)
+```
+
+Each enquiry has a specification PDF, a requirements letter (DOCX), a two-sheet schematic (DXF rendered to a vector PDF, plus a scanned and a phone-photo version of each sheet) and an `answers.json` answer key. The planted problems of the test set are listed in [data/projects/test/PLANTED.md](data/projects/test/PLANTED.md). Real drawings go in the git-ignored `data/external/`, with the same answer-key format: see [docs/real-drawings.md](docs/real-drawings.md).
+
 ## Licences
 
-Only permissive licences are used. AGPL libraries (for example PyMuPDF and Ultralytics YOLO) are excluded. Versions are those tested in Stage 0.
+Only permissive licences are used. AGPL libraries (for example PyMuPDF and Ultralytics YOLO) are excluded, and so are fpdf2 (LGPL), pdf2image and Poppler (GPL). Versions are those tested (Stage 0 for the web stack, Stage 1 for the data generator).
 
 | Component | Version | Licence | Used for |
 |---|---|---|---|
@@ -143,19 +156,29 @@ Only permissive licences are used. AGPL libraries (for example PyMuPDF and Ultra
 | pg8000 | 1.31.6 | BSD-3-Clause | PostgreSQL driver (chosen over psycopg, which is LGPL) |
 | ollama (Python client) | 0.6.3 | MIT | Model calls in live mode |
 | pytest | 9.2.0 | MIT | Tests (development only) |
-| httpx | 0.28.1 | BSD-3-Clause | Test client (development only) |
+| httpx2, httpcore2 | 2.16.0 | BSD-3-Clause | Test client (development only); replaces httpx for Starlette's TestClient |
+| ezdxf | 1.4.5 | MIT | Writes the schematic DXF and renders it through its matplotlib backend (the PyMuPDF backend is not used) |
+| matplotlib | 3.11.2 | Matplotlib licence (PSF-based, BSD-style) | Vector PDF of the schematic |
+| reportlab | 5.1.0 | BSD-3-Clause | Specification PDF |
+| python-docx | 1.2.0 | MIT | Requirements letter (DOCX) |
+| pypdfium2 (PDFium) | 5.14.0 | Apache-2.0 or BSD-3-Clause (PDFium: BSD-3-Clause) | PDF to image, PDF text in tests |
+| Pillow | 13.0.0 | MIT-CMU | Scan and photo effects |
+| numpy | 2.5.4 | BSD-3-Clause | Scan and photo effects, homographies |
 | PostgreSQL | 16 | PostgreSQL Licence | Database (Docker image) |
 | pgvector | 0.8.7 | PostgreSQL Licence | Vector search extension |
 | IBM Plex Sans, IBM Plex Mono | 1.1.0 | SIL OFL 1.1 | Fonts, self-hosted (`frontend/static/fonts/OFL.txt`) |
+| IBM Plex Sans Condensed, IBM Plex Serif, IBM Plex Mono (TTF) | from the Google Fonts repository | SIL OFL 1.1 | Drawing and specification text in generated documents (`data_generator/fonts/OFL-IBMPlex.txt`) |
+| Caveat | variable font, Google Fonts repository | SIL OFL 1.1 | Handwritten-style note on scanned and photo drawings (`data_generator/fonts/OFL-Caveat.txt`) |
 | Icons | n/a | This repo | Drawn for this project |
 | Gemma 4 E2B (`gemma4:e2b`) | n/a | Apache-2.0 ([model card](https://huggingface.co/google/gemma-4-E2B-it)) | Chat and vision model, on Colab only |
 | mxbai-embed-large | v1 | Apache-2.0 ([model card](https://huggingface.co/mixedbread-ai/mxbai-embed-large-v1)) | Embedding model, on Colab only |
 
-Transitive dependencies (for example AnyIO, Click, MarkupSafe, Mako, scramp, typing-extensions) are MIT, BSD, MIT-0 or PSF-2.0. Model licences are from the Hugging Face model cards (checked 5 Nov 2026).
+Transitive dependencies (for example AnyIO, Click, MarkupSafe, Mako, scramp, typing-extensions, fontTools, lxml, contourpy, kiwisolver, cycler, pyparsing, python-dateutil, truststore) are MIT, BSD, Apache-2.0, MIT-0 or PSF-2.0. Drawings for `data/external/` may be made in QElectroTech or LibreCAD (both GPL-2.0); those tools are not dependencies and none of their code is in the repo. Model licences are from the Hugging Face model cards (checked 5 Nov 2026).
 
 ## Limits
 
-- **No product features yet.** Stage 0 is the shell: there is no upload, extraction or estimate.
+- **No product features yet.** There is no upload, extraction or estimate in the app; Stage 1 adds the data the later stages are built and scored on.
+- **Synthetic data is cleaner than real data.** See [docs/stage-1.md](docs/stage-1.md#limits) for how it differs.
 - **Engine, small tests.** Real-model results come from a few questions on four notes. They show the parts work, not how often.
 - **Engine, refusal gap.** The search always returns the nearest note, even when no note fits.
 - **Engine, number check.** It reads digits only ("three" is not checked), ignores signs and misreads `.5`, `3rd` and `2,85`. It shows a number exists in the evidence, not that it is used correctly.
