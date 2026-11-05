@@ -4,5 +4,5 @@ All data in this project is synthetic. The prices are invented and the notes wer
 
 The data currently lives in the code:
 
-- Part prices: `PRICES` in `src/estimation_assistant/tools.py`
-- Technical notes: `NOTES` in `src/estimation_assistant/retrieval.py`
+- Part prices: `PRICES` in `ai_engine/estimation_assistant/tools.py`
+- Technical notes: `NOTES` in `ai_engine/estimation_assistant/retrieval.py`
