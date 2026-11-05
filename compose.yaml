@@ -1,0 +1,6 @@
+# Entry point so that `docker compose up` works from the repo root.
+# The stack itself is defined in deployment/docker-compose.yml.
+name: switchgear-estimation-assistant
+
+include:
+  - deployment/docker-compose.yml
