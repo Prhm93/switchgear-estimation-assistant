@@ -1,0 +1,208 @@
+{%- extends "base.html" -%}
+{%- from "macros.html" import icon, badge, confidence with context -%}
+
+{%- block title %}System check · {{ app_name }}{% endblock -%}
+
+{%- block topbar_actions %}
+<div class="row">
+  <span class="small muted">Environment <span class="mono">{{ health.environment }}</span></span>
+  <span class="small muted">Version <span class="mono">{{ health.version }}</span></span>
+</div>
+{% endblock -%}
+
+{%- block content %}
+<div class="page-header">
+  <div>
+    <p class="eyebrow">Stage 0 · System check</p>
+    <h1>Design system and service health</h1>
+    <p class="lede">
+      One sample of each interface component, the colour tokens and the live
+      service status. The values shown in the samples are placeholders for the
+      design review, not project data.
+    </p>
+  </div>
+  <a class="btn btn--secondary" href="/healthz">{{ icon("document", "sm") }}Health JSON</a>
+</div>
+
+<div class="grid">
+
+  {#- Service status -#}
+  <section class="panel span-4" aria-labelledby="status-title">
+    <div class="panel__title">
+      <h2 id="status-title">Service status</h2>
+      <span class="eyebrow">Live</span>
+    </div>
+    {%- set db = health.database %}
+    <dl class="status-list">
+      <div><dt>Application</dt><dd><span class="dot dot--ok"></span>Running</dd></div>
+      <div>
+        <dt>Database</dt>
+        <dd>
+          {%- if db.state == "ok" %}<span class="dot dot--ok"></span>Connected
+          {%- elif db.state == "unavailable" %}<span class="dot dot--error"></span>Unavailable
+          {%- else %}<span class="dot"></span>Not configured{% endif -%}
+        </dd>
+      </div>
+      <div>
+        <dt>pgvector</dt>
+        <dd class="mono">{{ db.pgvector or "n/a" }}</dd>
+      </div>
+      <div><dt>Model mode</dt><dd>Rules (no model)</dd></div>
+    </dl>
+    {%- if db.detail %}<p class="small muted" style="margin-top: var(--space-4)">Error: <span class="mono">{{ db.detail }}</span></p>{% endif %}
+  </section>
+
+  {#- Typography -#}
+  <section class="panel span-8" aria-labelledby="type-title">
+    <div class="panel__title">
+      <h2 id="type-title">Typography</h2>
+      <span class="eyebrow">IBM Plex Sans · IBM Plex Mono</span>
+    </div>
+    <div class="stack">
+      <p style="font-size: var(--fs-xl)">Main switchboard, form 4b, 400&nbsp;V three phase</p>
+      <p class="muted">Body text in IBM Plex Sans. Numbers, part codes and quantities use IBM Plex Mono with tabular figures so columns line up.</p>
+      <div class="row" style="gap: var(--space-6)">
+        <span class="mono specimen-number">1600 A</span>
+        <span class="mono specimen-number">50 kA</span>
+        <span class="mono specimen-number">× 12</span>
+        <span class="mono specimen-number">PRT-0042</span>
+      </div>
+    </div>
+  </section>
+
+  {#- Buttons -#}
+  <section class="panel span-6" aria-labelledby="buttons-title">
+    <div class="panel__title"><h2 id="buttons-title">Buttons</h2></div>
+    <div class="stack">
+      <div class="row">
+        <button class="btn btn--primary" type="button">{{ icon("check", "sm") }}Approve value</button>
+        <button class="btn btn--secondary" type="button">Edit</button>
+        <button class="btn btn--ghost" type="button">Reject</button>
+        <button class="btn btn--secondary" type="button" disabled>Export</button>
+      </div>
+      <div class="row">
+        <button class="icon-btn" type="button" aria-label="View">{{ icon("view", "sm") }}</button>
+        <button class="icon-btn" type="button" aria-label="Download">{{ icon("download", "sm") }}</button>
+        <button class="icon-btn" type="button" aria-label="Upload">{{ icon("upload", "sm") }}</button>
+        <button class="icon-btn icon-btn--accent" type="button" aria-label="Next step">{{ icon("arrow-right", "sm") }}</button>
+      </div>
+    </div>
+  </section>
+
+  {#- Segmented toggle -#}
+  <section class="panel span-6" aria-labelledby="toggle-title">
+    <div class="panel__title"><h2 id="toggle-title">Segmented toggle</h2></div>
+    <div class="stack">
+      <fieldset class="segmented" style="margin: 0">
+        <legend class="visually-hidden">Model mode</legend>
+        <input type="radio" id="mode-rules" name="mode" value="rules" checked>
+        <label for="mode-rules">Rules</label>
+        <input type="radio" id="mode-recorded" name="mode" value="recorded">
+        <label for="mode-recorded">Recorded</label>
+        <input type="radio" id="mode-live" name="mode" value="ollama">
+        <label for="mode-live">Live model</label>
+      </fieldset>
+      <p class="small muted">Native radio buttons: Tab to focus, arrow keys to change.</p>
+    </div>
+  </section>
+
+  {#- Tabs -#}
+  <section class="panel span-12" aria-labelledby="tabs-title">
+    <div class="panel__title"><h2 id="tabs-title">Tabs</h2></div>
+    <div class="tabs" role="tablist" aria-label="Project sections">
+      <button class="tab" type="button" role="tab" id="tab-docs" aria-controls="panel-docs" aria-selected="true">Documents</button>
+      <button class="tab" type="button" role="tab" id="tab-values" aria-controls="panel-values" aria-selected="false">Extracted values</button>
+      <button class="tab" type="button" role="tab" id="tab-review" aria-controls="panel-review" aria-selected="false">Review</button>
+      <button class="tab" type="button" role="tab" id="tab-estimate" aria-controls="panel-estimate" aria-selected="false">Estimate</button>
+    </div>
+    <div class="tab-panel" role="tabpanel" id="panel-docs" aria-labelledby="tab-docs" tabindex="0">Uploaded documents and their processing status.</div>
+    <div class="tab-panel" role="tabpanel" id="panel-values" aria-labelledby="tab-values" tabindex="0">Values found in the documents, each with its source and confidence.</div>
+    <div class="tab-panel" role="tabpanel" id="panel-review" aria-labelledby="tab-review" tabindex="0">Approve, edit or reject each value. Conflicts show both sources.</div>
+    <div class="tab-panel" role="tabpanel" id="panel-estimate" aria-labelledby="tab-estimate" tabindex="0">Line items built from approved values and catalogue prices only.</div>
+  </section>
+
+  {#- Document card -#}
+  <section class="panel span-6" aria-labelledby="card-title">
+    <div class="panel__title"><h2 id="card-title">Document card</h2></div>
+    <div class="stack">
+      <article class="doc-card">
+        <div class="doc-card__icon">{{ icon("document") }}</div>
+        <div>
+          <h3 class="doc-card__name">specification.pdf</h3>
+          <div class="doc-card__meta"><span>Specification</span><span class="mono">PDF</span><span class="mono">1.2 MB</span><span class="mono">14 pages</span></div>
+          <div class="doc-card__status">{{ badge("extracted") }}</div>
+        </div>
+        <div class="doc-card__actions">
+          <button class="icon-btn" type="button" aria-label="View specification.pdf">{{ icon("view", "sm") }}</button>
+          <button class="icon-btn" type="button" aria-label="Remove specification.pdf">{{ icon("close", "sm") }}</button>
+        </div>
+      </article>
+      <article class="doc-card">
+        <div class="doc-card__icon">{{ icon("drawing") }}</div>
+        <div>
+          <h3 class="doc-card__name">single-line-diagram.png</h3>
+          <div class="doc-card__meta"><span>Schematic</span><span class="mono">PNG</span><span class="mono">840 KB</span></div>
+          <div class="doc-card__status">{{ badge("review") }}</div>
+        </div>
+        <div class="doc-card__actions">
+          <button class="icon-btn" type="button" aria-label="View single-line-diagram.png">{{ icon("view", "sm") }}</button>
+          <button class="icon-btn" type="button" aria-label="Remove single-line-diagram.png">{{ icon("close", "sm") }}</button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  {#- Badges, confidence and an extracted value -#}
+  <section class="panel span-6" aria-labelledby="badge-title">
+    <div class="panel__title"><h2 id="badge-title">Badges and confidence</h2></div>
+    <div class="stack">
+      <div class="row">{{ badge("extracted") }}{{ badge("review") }}{{ badge("conflict") }}{{ badge("approved") }}</div>
+      <div class="row" style="column-gap: var(--space-5)">{{ confidence("high") }}{{ confidence("medium") }}{{ confidence("low") }}{{ confidence("conflict") }}</div>
+      <div>
+        <div class="value-row">
+          <div>
+            <div class="value-row__label">Main incomer rating</div>
+            <div class="value-row__value mono">1600 A</div>
+            <div class="value-row__source">specification.pdf · page 4 · method: rules</div>
+          </div>
+          <div class="stack" style="justify-items: end; gap: var(--space-2)">{{ badge("approved") }}{{ confidence("high") }}</div>
+        </div>
+        <div class="value-row">
+          <div>
+            <div class="value-row__label">Outgoing feeders</div>
+            <div class="conflict-pair" style="margin-top: var(--space-2)">
+              <div><div class="value-row__source">specification.pdf · page 5</div><div class="mono">6</div></div>
+              <div><div class="value-row__source">single-line-diagram.png · region 2</div><div class="mono">7</div></div>
+            </div>
+          </div>
+          <div class="stack" style="justify-items: end; gap: var(--space-2)">{{ badge("conflict") }}{{ confidence("conflict") }}</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {#- Icons -#}
+  <section class="panel span-12" aria-labelledby="icons-title">
+    <div class="panel__title"><h2 id="icons-title">Icons</h2><span class="eyebrow">Line art · 24 px grid</span></div>
+    <div class="icon-grid">
+      {%- for name in ["switchboard", "breaker", "document", "drawing", "check", "warning"] %}
+      <div class="icon-tile">{{ icon(name, "lg") }}<span>{{ name }}</span></div>
+      {%- endfor %}
+    </div>
+  </section>
+
+  {#- Colour tokens -#}
+  <section class="panel span-12" aria-labelledby="colour-title">
+    <div class="panel__title"><h2 id="colour-title">Colour tokens</h2><span class="eyebrow">Checked against WCAG 2.2 AA</span></div>
+    <div class="swatches">
+      {%- for token in ["bg", "surface", "surface-2", "border", "border-strong", "text", "text-muted", "accent", "accent-fill", "steel", "success", "warning"] %}
+      <div class="swatch">
+        <div class="swatch__chip" style="background: var(--{{ token }})"></div>
+        <div class="swatch__label"><span class="mono">--{{ token }}</span></div>
+      </div>
+      {%- endfor %}
+    </div>
+  </section>
+
+</div>
+{% endblock -%}
