@@ -31,7 +31,7 @@ def test_short_hex_is_rejected() -> None:
 
 def test_tokens_are_read_from_the_stylesheet() -> None:
     tokens = load_tokens()
-    for name in ("bg", "surface", "surface-2", "border", "text", "text-muted", "accent", "steel"):
+    for name in ("bg", "surface", "surface-2", "text", "text-muted", "red", "blue", "focus"):
         assert name in tokens, f"--{name} missing from :root"
 
 

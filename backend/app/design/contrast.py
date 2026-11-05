@@ -39,36 +39,45 @@ class ContrastPair(BaseModel):
 REQUIRED_PAIRS: tuple[ContrastPair, ...] = tuple(
     ContrastPair(foreground=fg, background=bg, minimum=minimum, usage=usage)
     for fg, bg, minimum, usage in (
-        # Body text and secondary text on each surface level.
+        # Body and secondary text on every surface, including the header.
         ("text", "bg", TEXT_AA, "body text"),
         ("text", "surface", TEXT_AA, "text in panels and cards"),
-        ("text", "surface-2", TEXT_AA, "text in raised controls"),
+        ("text", "surface-2", TEXT_AA, "text in raised cards"),
+        ("text", "surface-row", TEXT_AA, "text in alternate table rows"),
+        ("text", "header-end", TEXT_AA, "header text over the gradient"),
         ("text-muted", "bg", TEXT_AA, "secondary text"),
         ("text-muted", "surface", TEXT_AA, "secondary text in cards"),
-        ("text-muted", "surface-2", TEXT_AA, "secondary text in raised controls"),
-        # Filled primary button: label on the accent fill.
-        ("on-accent", "accent-fill", TEXT_AA, "primary button label"),
-        ("on-accent", "accent-fill-hover", TEXT_AA, "primary button label, hover"),
-        # Coloured text (links, badge labels) on dark surfaces.
-        ("steel-text", "bg", TEXT_AA, "links"),
-        ("steel-text", "surface", TEXT_AA, "links and Low badge in cards"),
-        ("success-text", "surface", TEXT_AA, "Approved and High badge"),
-        ("warning-text", "surface", TEXT_AA, "Needs review and Medium badge"),
-        ("accent-text", "surface", TEXT_AA, "Conflict badge"),
-        # The same badges inside document cards, which sit on surface-2.
-        ("steel-text", "surface-2", TEXT_AA, "Extracted badge in a card"),
-        ("success-text", "surface-2", TEXT_AA, "Approved badge in a card"),
-        ("warning-text", "surface-2", TEXT_AA, "Needs review badge in a card"),
-        ("accent-text", "surface-2", TEXT_AA, "Conflict badge in a card"),
-        # Non-text indicators: active tab underline, focus ring, badge borders.
-        ("accent", "bg", NON_TEXT_AA, "active tab underline, focus ring"),
-        ("accent", "surface", NON_TEXT_AA, "active state in cards"),
-        ("steel", "surface", NON_TEXT_AA, "Low confidence outline"),
-        ("success", "surface", NON_TEXT_AA, "status dot"),
-        ("warning", "surface", NON_TEXT_AA, "status dot"),
-        ("border-strong", "bg", NON_TEXT_AA, "input and toggle outlines"),
-        ("border-strong", "surface", NON_TEXT_AA, "input and toggle outlines in panels"),
-        ("border-strong", "surface-2", NON_TEXT_AA, "circular action buttons in a card"),
+        ("text-muted", "surface-2", TEXT_AA, "secondary text in raised cards"),
+        ("text-muted", "surface-row", TEXT_AA, "secondary text in alternate rows"),
+        ("text-muted", "header-end", TEXT_AA, "header metadata over the gradient"),
+        # Solid buttons.
+        ("on-red", "red", TEXT_AA, "primary button label"),
+        ("on-red", "red-hover", TEXT_AA, "primary button label, hover"),
+        ("on-blue", "blue", TEXT_AA, "secondary button and selected toggle label"),
+        ("on-blue", "blue-hover", TEXT_AA, "secondary button label, hover"),
+        # Tonal fills: tonal button, icon buttons.
+        ("text", "tonal", TEXT_AA, "tonal button label, icon button glyph"),
+        ("text", "tonal-hover", TEXT_AA, "tonal button label, hover"),
+        # Links and coloured text on navy.
+        ("blue-text", "bg", TEXT_AA, "links"),
+        ("blue-text", "surface", TEXT_AA, "links in cards"),
+        # Tonal badges: coloured text on its own tint.
+        ("red-text", "red-tint", TEXT_AA, "Conflict badge"),
+        ("blue-text", "blue-tint", TEXT_AA, "Extracted badge"),
+        ("success-text", "success-tint", TEXT_AA, "Approved badge"),
+        ("warning-text", "warning-tint", TEXT_AA, "Needs review badge"),
+        # Conflict pair panel: values and sources on the red tint.
+        ("text", "red-tint", TEXT_AA, "values in a conflict pair"),
+        ("text-muted", "red-tint", TEXT_AA, "sources in a conflict pair"),
+        # Non-text indicators (WCAG 1.4.11).
+        ("red", "surface", NON_TEXT_AA, "active tab underline, conflict dot"),
+        ("blue", "bg", NON_TEXT_AA, "selected toggle segment against its track"),
+        ("blue-text", "surface", NON_TEXT_AA, "Low confidence outline"),
+        ("success", "surface", NON_TEXT_AA, "High confidence and status dot"),
+        ("warning", "surface", NON_TEXT_AA, "Medium confidence dot"),
+        ("focus", "bg", NON_TEXT_AA, "keyboard focus ring"),
+        ("focus", "surface", NON_TEXT_AA, "keyboard focus ring in cards"),
+        ("focus", "surface-2", NON_TEXT_AA, "keyboard focus ring in raised cards"),
     )
 )
 

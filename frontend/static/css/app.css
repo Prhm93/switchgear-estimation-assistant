@@ -1,10 +1,16 @@
 /*
  * Switchgear Estimation Assistant - design system.
  *
- * One hand-written stylesheet. All colours, type sizes, spacing and radii are
- * tokens in :root; components use tokens only. Colour pairs are checked
- * against WCAG 2.2 AA by backend/app/design/contrast.py (and its unit test),
- * so a token change that breaks contrast fails the test suite.
+ * One hand-written stylesheet. All colours, type sizes, spacing, radii and
+ * shadows are tokens in :root; components use tokens only.
+ *
+ * Rules (checked by tests/unit/test_design_rules.py):
+ *   - no 1px borders: surfaces are separated by tone and soft, wide shadows;
+ *   - no outlined buttons or badges: solid or tonal fills only;
+ *   - one gradient in the whole app, on the header;
+ *   - 150 ms transitions and a clearly visible keyboard focus ring.
+ * Colour pairs are checked against WCAG 2.2 AA by
+ * backend/app/design/contrast.py (tests/unit/test_contrast.py).
  *
  * Sections: 1 fonts, 2 tokens, 3 base, 4 layout, 5 components, 6 utilities.
  */
@@ -50,40 +56,52 @@
 /* 2. Tokens */
 
 :root {
-  /* Surfaces, from the page background up to raised controls. */
-  --bg: #121417;
-  --surface: #1C1F24;
-  --surface-2: #262A31;
-  --border: #33383F;          /* decorative 1px separators */
-  --border-strong: #737A84;   /* outlines of controls, 3:1 on every surface */
+  /* Navy surfaces, from the page up to raised cards. */
+  --bg: #0A1630;
+  --surface: #10224A;
+  --surface-2: #16305F;
+  --surface-row: #13295A;     /* alternate table rows */
+  --header-end: #12306E;      /* royal-blue end of the header gradient */
 
   /* Text. */
-  --text: #F2F1EC;
-  --text-muted: #A3A8B0;
+  --text: #F4F7FB;
+  --text-muted: #A9B8D3;
 
-  /* Signal red. --accent is for non-text indicators (underline, focus,
-     outline). Button fills use a slightly deeper red so the off-white label
-     reaches 4.5:1; red text on dark uses a lighter tint. */
-  --accent: #E3262E;
-  --accent-fill: #C81F27;
-  --accent-fill-hover: #B01B22;
-  --accent-text: #FF7075;
-  --on-accent: #F2F1EC;
+  /* Red: primary actions and active states. Labels on solid red are pure
+     white, because off-white reaches only 4.37:1 on #E31E24. */
+  --red: #E31E24;
+  --red-hover: #C8181E;
+  --on-red: #FFFFFF;
+  --red-text: #FF8A8E;        /* red text on navy */
+  --red-tint: #3E2142;        /* tonal fill: Conflict badge, conflict pair */
 
-  /* Secondary and status colours, each with a text tint for dark surfaces. */
-  --steel: #2F6FB5;
-  --steel-text: #7EB0EA;
+  /* Royal blue: secondary actions. Solid blue is under 3:1 on the navy
+     surfaces, so thin indicators and text use --blue-text instead. */
+  --blue: #1C5FD1;
+  --blue-hover: #1852B8;
+  --on-blue: #FFFFFF;
+  --blue-text: #9CC0FF;
+  --blue-tint: #132F68;       /* tonal fill: Extracted badge */
+  --tonal: #21427F;           /* tonal blue button and icon buttons */
+  --tonal-hover: #2A4F94;
+
+  /* Status. */
   --success: #3FA46A;
-  --success-text: #5CC487;
+  --success-text: #6FD69A;
+  --success-tint: #1A3F51;
   --warning: #E0A126;
-  --warning-text: #F0B84A;
-  --danger: #E3262E;
+  --warning-text: #F5C463;
+  --warning-tint: #3E3E42;
+  --danger: var(--red);
+
+  /* Keyboard focus ring: light blue, at least 6:1 on every surface. */
+  --focus: #8DB8FF;
 
   /* Confidence levels map onto the status colours. */
   --conf-high: var(--success);
   --conf-medium: var(--warning);
-  --conf-low: var(--steel);
-  --conf-conflict: var(--accent);
+  --conf-low: var(--blue-text);
+  --conf-conflict: var(--red);
 
   /* Type. */
   --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -95,7 +113,7 @@
   --fs-xl: 1.75rem;
   --fs-2xl: 2.5rem;
   --lh-tight: 1.2;
-  --lh-body: 1.55;
+  --lh-body: 1.6;
 
   /* Spacing on a 4px grid. */
   --space-1: 0.25rem;
@@ -107,18 +125,22 @@
   --space-7: 3rem;
   --space-8: 4rem;
 
-  /* Shape. */
-  --radius-sm: 6px;
+  /* Shape and depth. */
+  --radius-sm: 10px;
   --radius-md: 12px;
-  --radius-lg: 20px;
+  --radius-card: 16px;
   --radius-pill: 999px;
-  --hairline: 1px solid var(--border);
+  --shadow-card: 0 1px 2px rgb(2 8 23 / 0.35), 0 20px 48px -20px rgb(2 8 23 / 0.75);
+  --shadow-raised: 0 1px 2px rgb(2 8 23 / 0.3), 0 10px 24px -12px rgb(2 8 23 / 0.6);
+  --shadow-btn: 0 1px 2px rgb(2 8 23 / 0.35), 0 8px 18px -8px rgb(2 8 23 / 0.8);
 
-  /* Motion: short and subtle; disabled for reduced-motion users below. */
+  /* Motion: 150 ms, disabled for reduced-motion users below. */
   --ease: cubic-bezier(0.2, 0, 0, 1);
-  --dur: 140ms;
+  --dur: 150ms;
+  --transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease), outline-offset var(--dur) var(--ease);
 
-  --content-max: 1200px;
+  --content-max: 1240px;
   color-scheme: dark;
 }
 
@@ -152,20 +174,22 @@ h3 {
   font-weight: 500;
   letter-spacing: -0.01em;
 }
-h1 { font-size: var(--fs-2xl); font-weight: 400; }
+h1 { font-size: var(--fs-2xl); font-weight: 400; letter-spacing: -0.02em; }
 h2 { font-size: var(--fs-lg); }
 h3 { font-size: var(--fs-md); }
 
 p { margin: 0; }
 
 a {
-  color: var(--steel-text);
+  color: var(--blue-text);
   text-underline-offset: 3px;
+  transition: var(--transition);
 }
 
+/* Keyboard focus only; mouse clicks do not show the ring. */
 :focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
 }
 
 .skip-link {
@@ -173,8 +197,8 @@ a {
   left: var(--space-4);
   top: -100px;
   padding: var(--space-2) var(--space-4);
-  background: var(--surface-2);
-  color: var(--text);
+  background: var(--blue);
+  color: var(--on-blue);
   border-radius: var(--radius-pill);
   z-index: 10;
 }
@@ -186,13 +210,15 @@ a {
 
 /* 4. Layout */
 
+/* Header: the only gradient in the app, with a thin red line under it. */
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-5);
-  padding: var(--space-4) var(--space-6);
-  border-bottom: var(--hairline);
+  padding: var(--space-4) var(--space-7);
+  background: linear-gradient(100deg, var(--bg) 0%, var(--bg) 40%, var(--header-end) 100%);
+  border-bottom: 2px solid var(--red);
 }
 
 .brand {
@@ -204,12 +230,12 @@ a {
   font-weight: 500;
   letter-spacing: 0.01em;
 }
-.brand .icon { color: var(--accent); }
+.brand .icon { color: var(--red-text); }
 
 .page {
   max-width: var(--content-max);
   margin: 0 auto;
-  padding: var(--space-7) var(--space-6) var(--space-8);
+  padding: var(--space-8) var(--space-7);
 }
 
 .page-header {
@@ -219,6 +245,14 @@ a {
   gap: var(--space-6);
   margin-bottom: var(--space-7);
 }
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: var(--space-7) 0 var(--space-5);
+}
+.section-heading:first-child { margin-top: 0; }
 
 .eyebrow {
   font-family: var(--font-mono);
@@ -231,39 +265,41 @@ a {
 
 .lede {
   color: var(--text-muted);
-  max-width: 60ch;
+  max-width: 62ch;
   margin-top: var(--space-4);
 }
 
 .grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: var(--space-5);
+  gap: var(--space-6);
 }
+.span-3 { grid-column: span 3; }
 .span-4 { grid-column: span 4; }
 .span-6 { grid-column: span 6; }
 .span-8 { grid-column: span 8; }
 .span-12 { grid-column: span 12; }
 
 @media (max-width: 1100px) {
+  .span-3 { grid-column: span 6; }
   .span-4, .span-6, .span-8 { grid-column: span 12; }
 }
 
 /* 5. Components */
 
-/* Panel: the base surface for every section. */
+/* Panel: the base card for every section. Tone and shadow, no border. */
 .panel {
   background: var(--surface);
-  border: var(--hairline);
-  border-radius: var(--radius-lg);
-  padding: var(--space-5) var(--space-6) var(--space-6);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-6) var(--space-6) var(--space-7);
 }
 .panel__title {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-4);
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-6);
 }
 .panel__title .eyebrow { margin: 0; }
 
@@ -273,7 +309,7 @@ a {
   align-items: center;
   gap: var(--space-3);
 }
-.stack { display: grid; gap: var(--space-4); align-content: start; }
+.stack { display: grid; gap: var(--space-5); align-content: start; }
 
 /* Icons: currentColor line art from icons.svg. */
 .icon {
@@ -289,66 +325,78 @@ a {
 .icon--sm { width: 18px; height: 18px; }
 .icon--lg { width: 40px; height: 40px; stroke-width: 1.25; }
 
-/* Buttons: pill shaped. Primary is the one strong red action on a screen. */
+/* Buttons: pill shaped, filled, never outlined.
+   Primary: solid red. Secondary: solid royal blue. Tonal: soft blue fill.
+   Tertiary (ghost): text only, soft background on hover. */
 .btn {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: 40px;
+  min-height: 42px;
   padding: 0 var(--space-5);
-  border: 1px solid transparent;
+  border: 0;
   border-radius: var(--radius-pill);
   font: 500 var(--fs-sm) / 1 var(--font-sans);
   letter-spacing: 0.01em;
   cursor: pointer;
   text-decoration: none;
-  transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  transition: var(--transition);
 }
 .btn--primary {
-  background: var(--accent-fill);
-  color: var(--on-accent);
+  background: var(--red);
+  color: var(--on-red);
+  box-shadow: var(--shadow-btn);
 }
-.btn--primary:hover { background: var(--accent-fill-hover); }
+.btn--primary:hover { background: var(--red-hover); }
 .btn--secondary {
-  background: transparent;
-  color: var(--text);
-  border-color: var(--border-strong);
+  background: var(--blue);
+  color: var(--on-blue);
+  box-shadow: var(--shadow-btn);
 }
-.btn--secondary:hover { background: var(--surface-2); }
+.btn--secondary:hover { background: var(--blue-hover); }
+.btn--tonal {
+  background: var(--tonal);
+  color: var(--text);
+}
+.btn--tonal:hover { background: var(--tonal-hover); }
 .btn--ghost {
   background: transparent;
   color: var(--text-muted);
 }
-.btn--ghost:hover { color: var(--text); background: var(--surface-2); }
+.btn--ghost:hover { background: var(--surface-2); color: var(--text); }
 .btn:disabled,
 .btn[aria-disabled="true"] {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
-/* Circular icon button, used for card actions. */
+/* Circular icon button: a filled tonal circle, no border. */
 .icon-btn {
   display: inline-grid;
   place-items: center;
   width: 40px;
   height: 40px;
   padding: 0;
-  border: 1px solid var(--border-strong);
+  border: 0;
   border-radius: 50%;
-  background: transparent;
+  background: var(--tonal);
   color: var(--text);
   cursor: pointer;
-  transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  transition: var(--transition);
 }
-.icon-btn:hover { background: var(--surface-2); }
-.icon-btn--accent { border-color: var(--accent); color: var(--accent-text); }
+.icon-btn:hover { background: var(--tonal-hover); }
+.icon-btn--red { background: var(--red); color: var(--on-red); box-shadow: var(--shadow-btn); }
+.icon-btn--red:hover { background: var(--red-hover); }
 
-/* Segmented toggle: native radio inputs, so arrow keys work without script. */
+/* Segmented toggle: native radio inputs, so arrow keys work without script.
+   The track is the page navy; the selected segment is solid royal blue. */
 .segmented {
   display: inline-flex;
   justify-self: start;
-  padding: 3px;
-  border: 1px solid var(--border-strong);
+  margin: 0;
+  padding: var(--space-1);
+  border: 0;
   border-radius: var(--radius-pill);
   background: var(--bg);
 }
@@ -358,36 +406,38 @@ a {
   pointer-events: none;
 }
 .segmented label {
-  padding: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-5);
   border-radius: var(--radius-pill);
   font-size: var(--fs-sm);
   color: var(--text-muted);
   cursor: pointer;
-  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease);
+  transition: var(--transition);
 }
+.segmented label:hover { color: var(--text); }
 .segmented input:checked + label {
-  background: var(--surface-2);
-  color: var(--text);
+  background: var(--blue);
+  color: var(--on-blue);
+  box-shadow: var(--shadow-btn);
 }
 .segmented input:focus-visible + label {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
-/* Tabs: underline in accent on the active tab. */
+/* Tabs: no baseline rule; the active tab gets a red underline. */
 .tabs {
   display: flex;
-  gap: var(--space-5);
-  border-bottom: var(--hairline);
+  gap: var(--space-6);
 }
 .tab {
   position: relative;
-  padding: var(--space-3) 0;
+  padding: var(--space-2) 0 var(--space-3);
   border: 0;
   background: none;
   color: var(--text-muted);
   font: 500 var(--fs-sm) / 1.2 var(--font-sans);
   cursor: pointer;
+  transition: var(--transition);
 }
 .tab:hover { color: var(--text); }
 .tab[aria-selected="true"] { color: var(--text); }
@@ -396,32 +446,34 @@ a {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -1px;
+  bottom: 0;
   height: 2px;
-  background: var(--accent);
+  border-radius: 2px;
+  background: var(--red);
 }
 .tab-panel { padding-top: var(--space-5); color: var(--text-muted); }
 .tab-panel[hidden] { display: none; }
 
-/* Document card: file icon, name, metadata, status, circular actions. */
+/* Document card: raised tone, no border. */
 .doc-card {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4) var(--space-5);
+  gap: var(--space-5);
+  padding: var(--space-5);
   background: var(--surface-2);
-  border: var(--hairline);
-  border-radius: var(--radius-md);
+  border: 0;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-raised);
 }
 .doc-card__icon {
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
-  border: var(--hairline);
-  border-radius: var(--radius-sm);
-  color: var(--text-muted);
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  background: var(--tonal);
+  color: var(--text);
 }
 .doc-card__name { font-weight: 500; }
 .doc-card__meta {
@@ -436,26 +488,26 @@ a {
 .doc-card__status { margin-top: var(--space-3); }
 .doc-card__actions { display: flex; align-items: center; gap: var(--space-2); }
 
-/* Badges: review status. Outlined, coloured label, never colour alone. */
+/* Badges: tonal filled pills, coloured text on its own tint. */
 .badge {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 3px var(--space-3);
-  border: 1px solid currentColor;
+  padding: var(--space-1) var(--space-3);
+  border: 0;
   border-radius: var(--radius-pill);
   font: 500 var(--fs-xs) / 1.4 var(--font-sans);
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
 .badge .icon { width: 14px; height: 14px; stroke-width: 2; }
-.badge--extracted { color: var(--steel-text); }
-.badge--review { color: var(--warning-text); }
-.badge--conflict { color: var(--accent-text); }
-.badge--approved { color: var(--success-text); }
-.badge--neutral { color: var(--text-muted); }
+.badge--extracted { background: var(--blue-tint); color: var(--blue-text); }
+.badge--review { background: var(--warning-tint); color: var(--warning-text); }
+.badge--conflict { background: var(--red-tint); color: var(--red-text); }
+.badge--approved { background: var(--success-tint); color: var(--success-text); }
+.badge--sample { background: var(--surface-2); color: var(--text-muted); }
 
-/* Confidence chip: a dot plus the level as text. Low is an outline only. */
+/* Confidence chip: a dot plus the level as text. Low is a ring only. */
 .conf {
   display: inline-flex;
   align-items: center;
@@ -468,49 +520,43 @@ a {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  border: 1.5px solid var(--conf-color);
   background: var(--conf-color);
 }
 .conf--high { --conf-color: var(--conf-high); }
 .conf--medium { --conf-color: var(--conf-medium); }
 .conf--low { --conf-color: var(--conf-low); }
-.conf--low::before { background: transparent; }
+.conf--low::before { background: transparent; box-shadow: inset 0 0 0 2px var(--conf-color); }
 .conf--conflict { --conf-color: var(--conf-conflict); }
 
-/* Extracted value row: value, unit, source and method. */
+/* Extracted value: a tonal block with value, unit, source and method. */
+.value-list { display: grid; gap: var(--space-3); }
 .value-row {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: var(--space-2) var(--space-4);
-  padding: var(--space-4) 0;
-  border-top: var(--hairline);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
 }
-.value-row:first-child { border-top: 0; padding-top: 0; }
 .value-row__label { color: var(--text-muted); font-size: var(--fs-sm); }
 .value-row__value { font-size: var(--fs-lg); }
 .value-row__source { color: var(--text-muted); font-size: var(--fs-xs); }
 
-/* Conflict pair: both sources side by side. */
+/* Conflict pair: both sources side by side on a red tint. */
 .conflict-pair {
+  grid-column: 1 / -1;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-.conflict-pair > div { padding: var(--space-3) var(--space-4); }
-.conflict-pair > div + div { border-left: var(--hairline); }
-
-/* Status list for the health check. */
-.status-list { display: grid; gap: var(--space-3); margin: 0; }
-.status-list div {
-  display: flex;
-  justify-content: space-between;
   gap: var(--space-4);
-  padding-bottom: var(--space-3);
-  border-bottom: var(--hairline);
+  margin-top: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--red-tint);
 }
-.status-list div:last-child { border-bottom: 0; padding-bottom: 0; }
+
+/* Status list for the health check: spacing, not rules. */
+.status-list { display: grid; gap: var(--space-4); margin: 0; }
+.status-list div { display: flex; justify-content: space-between; gap: var(--space-4); }
 .status-list dt { color: var(--text-muted); }
 .status-list dd { margin: 0; }
 
@@ -525,37 +571,89 @@ a {
 }
 .dot--ok { background: var(--success); }
 .dot--warn { background: var(--warning); }
-.dot--error { background: var(--danger); }
+.dot--error { background: var(--red); }
+
+/* KPI tile. */
+.kpi {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-5) var(--space-6) var(--space-6);
+  background: var(--surface);
+  border: 0;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+.kpi__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.kpi__label .icon { color: var(--blue-text); }
+.kpi__value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 2.25rem;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.kpi__note { color: var(--text-muted); font-size: var(--fs-xs); }
+
+/* Data table: rows separated by tone, not lines. */
+.data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--fs-sm);
+}
+.data-table th {
+  padding: 0 var(--space-4) var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+}
+.data-table td {
+  padding: var(--space-4);
+  vertical-align: middle;
+}
+.data-table tbody tr:nth-child(odd) td { background: var(--surface-row); }
+.data-table tbody tr td:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.data-table tbody tr td:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.data-table th.num { text-align: right; }
+.data-table__sub { display: block; color: var(--text-muted); font-size: var(--fs-xs); }
 
 /* Colour swatches. */
 .swatches {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: var(--space-4);
 }
 .swatch {
-  border: var(--hairline);
   border-radius: var(--radius-md);
   overflow: hidden;
+  background: var(--surface-2);
   font-size: var(--fs-xs);
 }
-.swatch__chip { height: 56px; border-bottom: var(--hairline); }
+.swatch__chip { height: 56px; }
 .swatch__label { padding: var(--space-2) var(--space-3); }
-.swatch__label span { display: block; color: var(--text-muted); }
 
 /* Icon gallery. */
 .icon-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: var(--space-3);
+  gap: var(--space-4);
 }
 .icon-tile {
   display: grid;
   justify-items: center;
   gap: var(--space-3);
-  padding: var(--space-5) var(--space-2) var(--space-4);
-  border: var(--hairline);
-  border-radius: var(--radius-md);
+  padding: var(--space-6) var(--space-2) var(--space-5);
+  border-radius: var(--radius-card);
+  background: var(--surface-2);
   color: var(--text);
   font-size: var(--fs-xs);
 }

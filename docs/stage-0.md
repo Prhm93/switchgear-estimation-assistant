@@ -12,8 +12,8 @@ Branch: `stage-0-setup`. Date: 5 November 2026.
    - `design/contrast.py`: a WCAG 2.2 contrast checker that reads the colour tokens directly from `app.css`.
 3. **Alembic** (`backend/alembic.ini`, `backend/migrations/`): migration `0001` enables the `vector` extension. The app container applies migrations on start.
 4. **Docker stack** (`deployment/docker-compose.yml`, included by the root `compose.yaml`): `pgvector/pgvector:pg16` and the app image (`python:3.12-slim`, non-root user, one uvicorn worker, a health check). Both services have memory limits, Postgres uses small-memory settings, and both ports bind to `127.0.0.1` only.
-5. **Design system**: one stylesheet (`frontend/static/css/app.css`) with all tokens in `:root`, IBM Plex Sans and Mono self-hosted as woff2 with the OFL licence file, a line SVG icon sprite drawn for this project, and a small accessible tabs script.
-6. **Health-check page**: service status, a type specimen, buttons (primary, secondary, ghost, disabled), circular icon buttons, a segmented toggle, tabs, document cards, the four review badges, the four confidence levels, an extracted value with its source and method, a conflict shown with both sources, the six icons, and colour swatches.
+5. **Design system** (revised once; see Design revision): one stylesheet (`frontend/static/css/app.css`) with all tokens in `:root`, IBM Plex Sans and Mono self-hosted as woff2 with the OFL licence file, a line SVG icon sprite drawn for this project, and a small accessible tabs script.
+6. **Health-check page**: a sample dashboard strip (four KPI tiles and a table, labelled Sample data), service status, a type specimen, buttons (primary, secondary, tonal, tertiary, disabled), circular icon buttons, a segmented toggle, tabs, document cards, the four review badges, the four confidence levels, an extracted value with its source and method, a conflict shown with both sources, the six icons, and colour swatches.
 7. **CI**: `.github/workflows/tests.yml` runs pytest on Python 3.12 on every push and pull request. `DATABASE_URL` is not set in CI, so the two database tests skip.
 
 ## Why
@@ -24,18 +24,42 @@ Branch: `stage-0-setup`. Date: 5 November 2026.
 - **Native radio inputs for the toggle** give keyboard support without any script. Tabs follow the WAI-ARIA tabs pattern (arrow keys, Home, End).
 - **Python 3.12 in Docker and CI**, because every planned library (including PyTorch, torchvision and OpenCV in later stages) ships wheels for it. The laptop venv runs Python 3.14.4, and every Stage 0 dependency installed and passed there too (see Results).
 
-## Changes to the brief's palette
+## Design revision (navy, red and royal blue)
 
-Four pairs built from the original values fail WCAG AA. I kept the brief's tokens and added separate tokens for these uses:
+After the first review the design was found too plain and was revised on this branch. The palette now follows a red, royal blue and deep navy brand. Only the colours are used; there is no logo or company name.
 
-| Problem with the original value | Ratio | Fix |
+- **Palette:** `--bg` #0A1630, `--surface` #10224A, `--surface-2` #16305F, `--text` #F4F7FB, `--text-muted` #A9B8D3, `--red` #E31E24 for primary actions, `--blue` #1C5FD1 for secondary actions. There are tonal tints of red and blue for badges and hovers. Success and warning are unchanged.
+- **Buttons:** none are outlined.
+  - Primary is solid red with a soft shadow.
+  - Secondary is solid royal blue; a tonal blue fill is also available.
+  - Tertiary is text only, with a soft background on hover.
+  - Icon buttons are filled tonal circles with no border.
+- **Surfaces:** cards have no 1px borders. Surfaces are separated by tone and a soft, wide shadow, with a 16px radius and more padding. Table rows are separated by tone, not lines.
+- **Badges:** tonal filled pills (a tinted background with coloured text), no outlines.
+- **Header:** deep navy with one subtle royal-blue gradient, the only gradient in the app, and a 2px red line under it.
+- **Motion and focus:** 150 ms transitions on hover and focus, turned off for reduced-motion users. Keyboard users get a light-blue 2px focus ring (#8DB8FF, 6.43:1 or more on every surface).
+- **Sample dashboard strip:** four KPI tiles and a recent-enquiries table, labelled "Sample data".
+
+These rules are now tests (`tests/unit/test_design_rules.py`, 15 tests). They check:
+- the brand tokens;
+- no `border: 1px` anywhere, and no border on panels, cards, KPI tiles, buttons, icon buttons, badges or the toggle;
+- exactly one gradient, on `.topbar`, with the red line under it;
+- the 16px card radius and card shadow;
+- solid red primary buttons with a shadow;
+- 150 ms transitions;
+- the focus ring.
+
+### Shade adjustments needed for WCAG AA
+
+The brand shades themselves are unchanged. Three of their uses fail AA, so I added separate tokens for those uses rather than changing the brand colours:
+
+| Use | With the brand shade | Fix |
 |---|---|---|
-| Off-white label on `--accent` #E3262E (primary button) | 4.05 (needs 4.5) | Button fill uses `--accent-fill` #C81F27 (5.04). `--accent` stays #E3262E for underlines, focus rings and outlines |
-| `--accent` #E3262E as text on `--surface` | 3.61 (needs 4.5) | Red text uses `--accent-text` #FF7075 (6.16) |
-| `--steel` #2F6FB5 as link text on `--bg` | 3.57 (needs 4.5) | Links use `--steel-text` #7EB0EA (8.16). `--steel` stays for the Low confidence outline (3.20, needs 3.0) |
-| My first control-outline colour #656C76 on `--surface-2` | 2.72 (needs 3.0) | `--border-strong` #737A84 (3.32). This one was caught by the test |
+| Off-white `--text` #F4F7FB as the label on red #E31E24 | 4.37 (needs 4.5) | Labels on red are pure white `--on-red` #FFFFFF: 4.69. Red itself is unchanged |
+| Royal blue #1C5FD1 as a thin indicator (Low confidence ring) on `--surface` | 2.67 (needs 3.0) | The ring uses the light tint `--blue-text` #9CC0FF: 8.44 |
+| Royal blue #1C5FD1 as link text on `--bg` | 3.08 (needs 4.5) | Links use `--blue-text` #9CC0FF |
 
-`--border` #33383F is kept for decorative 1px separators only. Controls use `--border-strong`.
+Royal blue still works as a fill: white on blue is 5.82, and the selected toggle segment against its navy track is 3.08 (needs 3.0).
 
 ## How to run it
 
@@ -68,24 +92,25 @@ python -m backend.app.design.contrast
 | `tests/unit/test_tools.py`, `test_checks.py`, `test_agent.py` | 37 | The engine tests, unchanged apart from moving to `tests/unit/` |
 | `tests/unit/test_settings.py` | 3 | Defaults, environment overrides, empty `DATABASE_URL` |
 | `tests/unit/test_db.py` | 3 | Not-configured state, pg8000 driver (licence rule), no password in error details |
-| `tests/unit/test_contrast.py` | 30 | Luminance maths, token parsing, and the 25 colour pairs used by the components |
+| `tests/unit/test_contrast.py` | 37 | Luminance maths, token parsing, and the 32 colour pairs used by the components |
+| `tests/unit/test_design_rules.py` | 15 | The design rules listed under Design revision |
 | `tests/unit/test_icons.py` | 2 | All six required icons exist; no gradients, filters or images |
 | `tests/integration/test_health_page.py` | 6 | `/healthz` with no database and with an unreachable one, every component on the page, banned wording, fonts, CSS and icons served |
 | `tests/integration/test_database.py` | 2 | pgvector installed and `/healthz` reports `ok` against a real database (skipped without `DATABASE_URL`) |
 
-I also checked the page visually with a headless Edge screenshot at 1280 px wide (`docs/images/stage-0-health-check.png`). That screenshot exposed three layout defects (wrapped card metadata, a full-width toggle, a stretched badge), which were fixed before the final capture.
+I also checked the page visually with headless Edge screenshots at 1280 px wide: the full page (`docs/images/stage-0-health-check.png`) and the first 800 px (`docs/images/stage-0-first-screen.png`). The screenshots exposed layout defects in both rounds, which were fixed before the final capture: wrapped card metadata, a full-width toggle and a stretched badge in the first; a cramped conflict pair and a wrapped button row in the second.
 
-## Results (all run on 5 November 2026)
+## Results (all run on 5 November 2026, after the design revision)
 
 | Run | Result |
 |---|---|
-| `python -m pytest`, laptop, Python 3.14.4, no database | 81 passed, 2 skipped |
-| `python -m pytest`, laptop, Python 3.14.4, `DATABASE_URL` set to the Docker database | 83 passed |
-| `python -m pytest` in a clean `python:3.12-slim` container, no database | 81 passed, 2 skipped |
+| `python -m pytest`, laptop, Python 3.14.4, no database | 103 passed, 2 skipped |
+| `python -m pytest`, laptop, Python 3.14.4, `DATABASE_URL` set to the Docker database | 105 passed |
+| `python -m pytest` in a clean `python:3.12-slim` container, no database | 103 passed, 2 skipped |
 | `docker compose up --build` | Both containers healthy; migration `0001` applied (`alembic_version` = `0001`) |
 | `GET /healthz` on the stack | `{"app":"ok", ..., "database":{"state":"ok","pgvector":"0.8.7"}}` |
-| `GET /` on the stack | 200, 16.4 KB HTML, 36 ms |
-| Contrast check | 25 of 25 pairs pass (table below) |
+| `GET /` on the stack | 200, 21.4 KB HTML, 11 ms |
+| Contrast check | 32 of 32 pairs pass (table below) |
 
 The CI workflow has not run on GitHub yet; it runs on the first push of this branch.
 
@@ -97,6 +122,8 @@ The CI workflow has not run on GitHub yet; it runs on the first push of this bra
 | db | 35.4 MiB | 32.2 MiB | 256 MiB |
 | **Total** | **90.2 MiB** | **87.4 MiB** | 640 MiB |
 
+A spot check after the design revision, which changed only CSS and templates, gave app 55.4 MiB and db 32.3 MiB.
+
 Other measurements:
 
 - `vmmemWSL`, the WSL virtual machine that runs Docker, including its kernel, the Docker engine and its file cache: 703 MB working set after the image builds.
@@ -107,33 +134,42 @@ Other measurements:
 
 ### Contrast table (`python -m backend.app.design.contrast`)
 
+All 32 pairs pass.
+
 | Foreground | Background | Ratio | Minimum | Result | Used for |
 |---|---|---|---|---|---|
-| `--text` #F2F1EC | `--bg` #121417 | 16.31 | 4.5 | pass | body text |
-| `--text` #F2F1EC | `--surface` #1C1F24 | 14.61 | 4.5 | pass | text in panels and cards |
-| `--text` #F2F1EC | `--surface-2` #262A31 | 12.74 | 4.5 | pass | text in raised controls |
-| `--text-muted` #A3A8B0 | `--bg` #121417 | 7.72 | 4.5 | pass | secondary text |
-| `--text-muted` #A3A8B0 | `--surface` #1C1F24 | 6.91 | 4.5 | pass | secondary text in cards |
-| `--text-muted` #A3A8B0 | `--surface-2` #262A31 | 6.03 | 4.5 | pass | secondary text in raised controls |
-| `--on-accent` #F2F1EC | `--accent-fill` #C81F27 | 5.04 | 4.5 | pass | primary button label |
-| `--on-accent` #F2F1EC | `--accent-fill-hover` #B01B22 | 6.14 | 4.5 | pass | primary button label, hover |
-| `--steel-text` #7EB0EA | `--bg` #121417 | 8.16 | 4.5 | pass | links |
-| `--steel-text` #7EB0EA | `--surface` #1C1F24 | 7.31 | 4.5 | pass | links and Low badge in cards |
-| `--success-text` #5CC487 | `--surface` #1C1F24 | 7.63 | 4.5 | pass | Approved and High badge |
-| `--warning-text` #F0B84A | `--surface` #1C1F24 | 9.18 | 4.5 | pass | Needs review and Medium badge |
-| `--accent-text` #FF7075 | `--surface` #1C1F24 | 6.16 | 4.5 | pass | Conflict badge |
-| `--steel-text` #7EB0EA | `--surface-2` #262A31 | 6.37 | 4.5 | pass | Extracted badge in a card |
-| `--success-text` #5CC487 | `--surface-2` #262A31 | 6.65 | 4.5 | pass | Approved badge in a card |
-| `--warning-text` #F0B84A | `--surface-2` #262A31 | 8.00 | 4.5 | pass | Needs review badge in a card |
-| `--accent-text` #FF7075 | `--surface-2` #262A31 | 5.37 | 4.5 | pass | Conflict badge in a card |
-| `--accent` #E3262E | `--bg` #121417 | 4.03 | 3.0 | pass | active tab underline, focus ring |
-| `--accent` #E3262E | `--surface` #1C1F24 | 3.61 | 3.0 | pass | active state in cards |
-| `--steel` #2F6FB5 | `--surface` #1C1F24 | 3.20 | 3.0 | pass | Low confidence outline |
-| `--success` #3FA46A | `--surface` #1C1F24 | 5.30 | 3.0 | pass | status dot |
-| `--warning` #E0A126 | `--surface` #1C1F24 | 7.31 | 3.0 | pass | status dot |
-| `--border-strong` #737A84 | `--bg` #121417 | 4.26 | 3.0 | pass | input and toggle outlines |
-| `--border-strong` #737A84 | `--surface` #1C1F24 | 3.81 | 3.0 | pass | input and toggle outlines in panels |
-| `--border-strong` #737A84 | `--surface-2` #262A31 | 3.32 | 3.0 | pass | circular action buttons in a card |
+| `--text` #F4F7FB | `--bg` #0A1630 | 16.70 | 4.5 | pass | body text |
+| `--text` #F4F7FB | `--surface` #10224A | 14.48 | 4.5 | pass | text in panels and cards |
+| `--text` #F4F7FB | `--surface-2` #16305F | 12.05 | 4.5 | pass | text in raised cards |
+| `--text` #F4F7FB | `--surface-row` #13295A | 13.09 | 4.5 | pass | text in alternate table rows |
+| `--text` #F4F7FB | `--header-end` #12306E | 11.68 | 4.5 | pass | header text over the gradient |
+| `--text-muted` #A9B8D3 | `--bg` #0A1630 | 8.96 | 4.5 | pass | secondary text |
+| `--text-muted` #A9B8D3 | `--surface` #10224A | 7.77 | 4.5 | pass | secondary text in cards |
+| `--text-muted` #A9B8D3 | `--surface-2` #16305F | 6.46 | 4.5 | pass | secondary text in raised cards |
+| `--text-muted` #A9B8D3 | `--surface-row` #13295A | 7.02 | 4.5 | pass | secondary text in alternate rows |
+| `--text-muted` #A9B8D3 | `--header-end` #12306E | 6.26 | 4.5 | pass | header metadata over the gradient |
+| `--on-red` #FFFFFF | `--red` #E31E24 | 4.69 | 4.5 | pass | primary button label |
+| `--on-red` #FFFFFF | `--red-hover` #C8181E | 5.82 | 4.5 | pass | primary button label, hover |
+| `--on-blue` #FFFFFF | `--blue` #1C5FD1 | 5.82 | 4.5 | pass | secondary button and selected toggle label |
+| `--on-blue` #FFFFFF | `--blue-hover` #1852B8 | 7.15 | 4.5 | pass | secondary button label, hover |
+| `--text` #F4F7FB | `--tonal` #21427F | 9.09 | 4.5 | pass | tonal button label, icon button glyph |
+| `--text` #F4F7FB | `--tonal-hover` #2A4F94 | 7.39 | 4.5 | pass | tonal button label, hover |
+| `--blue-text` #9CC0FF | `--bg` #0A1630 | 9.74 | 4.5 | pass | links |
+| `--blue-text` #9CC0FF | `--surface` #10224A | 8.44 | 4.5 | pass | links in cards |
+| `--red-text` #FF8A8E | `--red-tint` #3E2142 | 6.18 | 4.5 | pass | Conflict badge |
+| `--blue-text` #9CC0FF | `--blue-tint` #132F68 | 6.97 | 4.5 | pass | Extracted badge |
+| `--success-text` #6FD69A | `--success-tint` #1A3F51 | 6.28 | 4.5 | pass | Approved badge |
+| `--warning-text` #F5C463 | `--warning-tint` #3E3E42 | 6.57 | 4.5 | pass | Needs review badge |
+| `--text` #F4F7FB | `--red-tint` #3E2142 | 13.02 | 4.5 | pass | values in a conflict pair |
+| `--text-muted` #A9B8D3 | `--red-tint` #3E2142 | 6.98 | 4.5 | pass | sources in a conflict pair |
+| `--red` #E31E24 | `--surface` #10224A | 3.32 | 3.0 | pass | active tab underline, conflict dot |
+| `--blue` #1C5FD1 | `--bg` #0A1630 | 3.08 | 3.0 | pass | selected toggle segment against its track |
+| `--blue-text` #9CC0FF | `--surface` #10224A | 8.44 | 3.0 | pass | Low confidence outline |
+| `--success` #3FA46A | `--surface` #10224A | 4.99 | 3.0 | pass | High confidence and status dot |
+| `--warning` #E0A126 | `--surface` #10224A | 6.89 | 3.0 | pass | Medium confidence dot |
+| `--focus` #8DB8FF | `--bg` #0A1630 | 8.91 | 3.0 | pass | keyboard focus ring |
+| `--focus` #8DB8FF | `--surface` #10224A | 7.73 | 3.0 | pass | keyboard focus ring in cards |
+| `--focus` #8DB8FF | `--surface-2` #16305F | 6.43 | 3.0 | pass | keyboard focus ring in raised cards |
 
 ## Path changes from the package move
 

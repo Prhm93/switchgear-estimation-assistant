@@ -48,6 +48,10 @@ def test_health_page_renders_every_component(client: TestClient) -> None:
         "conf--medium",
         "conf--low",
         "conf--conflict",
+        "kpi",
+        "data-table",
+        "Sample data",
+        "btn--tonal",
     ):
         assert marker in html, f"{marker} missing from the health page"
 
@@ -66,7 +70,7 @@ def test_health_page_uses_no_forbidden_wording(client: TestClient) -> None:
 def test_stylesheet_fonts_and_icons_are_served(client: TestClient) -> None:
     css = client.get("/static/css/app.css")
     assert css.status_code == 200
-    assert "--accent" in css.text
+    assert "--red" in css.text
     for font in ("IBMPlexSans-Regular.woff2", "IBMPlexMono-Regular.woff2"):
         response = client.get(f"/static/fonts/{font}")
         assert response.status_code == 200
