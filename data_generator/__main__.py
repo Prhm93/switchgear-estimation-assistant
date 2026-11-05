@@ -62,16 +62,20 @@ def main(argv: list[str] | None = None) -> int:
         else:
             jobs, folder = sets.training_jobs(root, args.count or sets.TRAINING_COUNT), root / "training"
         start = time.perf_counter()
-        sets.run_jobs(jobs, workers=args.workers)
         extra = None
         if name == "showcase":
             from PIL import Image
 
-            from data_generator.diagnose import DEGRADED, clean_render_hashes, pixel_sha256
+            from data_generator.diagnose import DEGRADED, clean_render_hashes, pixel_sha256, traced_showcase_build
 
-            # Pixel fingerprints of this build, so a build on another CPU can tell which step differs.
+            # Same build as run_jobs, plus pixel fingerprints after every step, so a
+            # build on another CPU can tell which step first gives different pixels.
+            steps = traced_showcase_build(folder)
             extra = {"clean_render_sha256": clean_render_hashes(folder),
-                     "degraded_pixel_sha256": {n: pixel_sha256(Image.open(folder / n)) for n in DEGRADED}}
+                     "degraded_pixel_sha256": {n: pixel_sha256(Image.open(folder / n)) for n in DEGRADED},
+                     "degraded_step_sha256": steps}
+        else:
+            sets.run_jobs(jobs, workers=args.workers)
         sets.write_build_info(folder, extra)
         took = time.perf_counter() - start
         print(f"{name}: {len(jobs)} item(s) in {took:.1f} s, {_size_mb(folder):.1f} MB in "

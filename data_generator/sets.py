@@ -108,13 +108,22 @@ def planted_markdown() -> str:
     return "\n".join(lines)
 
 
-def build_info() -> dict[str, str]:
+def numpy_cpu_dispatch() -> list[str]:
+    """The numpy SIMD dispatch targets this CPU supports, e.g. ``["X86_V3"]`` or ``["X86_V3", "X86_V4", ...]``."""
+    from numpy._core._multiarray_umath import __cpu_dispatch__, __cpu_features__
+
+    return [k for k in __cpu_dispatch__ if __cpu_features__.get(k)]
+
+
+def build_info() -> dict[str, object]:
     """The environment a set was built in.
 
     Same seed gives byte-identical files in the same environment. Across
     environments the content is identical but deflate-compressed bytes (PDF
     streams, DOCX, PNG) depend on the zlib build: Python 3.14 on Windows and
-    its Pillow wheel use zlib-ng, Python 3.12 on Linux uses zlib.
+    its Pillow wheel use zlib-ng, Python 3.12 on Linux uses zlib. A few pixel
+    values of the scanned and photo PNGs also depend on the platform and CPU
+    (see docs/stage-1.md), so the numpy CPU dispatch targets are recorded too.
     """
     from importlib.metadata import version
 
@@ -124,6 +133,7 @@ def build_info() -> dict[str, str]:
             "python_zlib": zlib.ZLIB_VERSION, "pillow_zlib": str(features.version("zlib"))}
     for lib in ("ezdxf", "matplotlib", "reportlab", "python-docx", "pypdfium2", "pillow", "numpy"):
         info[lib] = version(lib)
+    info["numpy_cpu_dispatch"] = numpy_cpu_dispatch()
     return info
 
 

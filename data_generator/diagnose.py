@@ -3,8 +3,15 @@
 ``python -m data_generator diagnose-showcase`` rebuilds the showcase into a
 temporary folder and prints, for every degraded PNG, how many pixels differ
 from the committed file and by how much, plus whether the clean 150 dpi
-renders match and which numpy SIMD features the CPU uses. It changes nothing.
-Used to measure the cross-CPU differences documented in ``docs/stage-1.md``.
+renders match, which degrade step first gives different pixels, and which
+numpy SIMD features the CPU uses. It changes nothing. Used to measure the
+cross-CPU differences documented in ``docs/stage-1.md``.
+
+It also holds the cross-CPU acceptance rule used by the showcase test
+(:func:`cross_cpu_check`): on a machine with other CPU features than the build
+machine, a degraded PNG may differ from the committed one only in a small share
+of values, and every difference larger than one quantisation step must sit at a
+line edge.
 """
 
 from __future__ import annotations
@@ -19,11 +26,18 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from data_generator import sets
+from numpy.lib.stride_tricks import sliding_window_view
+
+from data_generator import degrade, sets
 from data_generator.project import CLEAN_DPI, build_project, render_pdf_pages
 
 SHOWCASE = sets.DATA / "projects" / "showcase"
 DEGRADED = [f"drawing/schematic_sheet{s}_{v}.png" for s in (1, 2) for v in ("scanned", "photo")]
+
+# Cross-CPU acceptance rule; the measurements behind these numbers are in docs/stage-1.md.
+SHARE_LIMIT = 0.003  # at most 0.30 % of values may differ: about 2x the 0.154 % measured on CI
+EDGE_RADIUS = 2  # "at a line edge" = within 2 px ...
+EDGE_CONTRAST = 32  # ... of a pixel whose 5x5 neighbourhood in the reference spans >= 32 grey levels
 
 
 @dataclass
@@ -48,9 +62,50 @@ def pixel_diff(name: str, a: np.ndarray, b: np.ndarray) -> PixelDiff:
                      int(d.max()), hist)
 
 
-def pixel_sha256(img: Image.Image) -> str:
-    """Hash of the decoded pixels (independent of PNG compression)."""
-    return hashlib.sha256(np.asarray(img).tobytes()).hexdigest()
+def pixel_sha256(img) -> str:
+    """Hash of the decoded pixels (independent of PNG compression); takes an image or an array."""
+    return hashlib.sha256(np.ascontiguousarray(np.asarray(img)).tobytes()).hexdigest()
+
+
+def edge_mask(reference: np.ndarray, radius: int = EDGE_RADIUS, contrast: int = EDGE_CONTRAST) -> np.ndarray:
+    """Pixels at a line edge: the (2r+1) x (2r+1) window around them spans at least ``contrast`` grey levels.
+
+    Colour images are reduced to the mean of their channels first. Flat paper,
+    with noise of a few grey levels, is never an edge.
+    """
+    grey = reference.mean(axis=2) if reference.ndim == 3 else reference.astype(np.float32)
+    padded = np.pad(grey, radius, mode="edge")
+    win = sliding_window_view(padded, (2 * radius + 1, 2 * radius + 1))
+    return (win.max(axis=(-1, -2)) - win.min(axis=(-1, -2))) >= contrast
+
+
+@dataclass
+class CrossCpuCheck:
+    share: float  # share of values that differ at all
+    beyond_step: int  # values that differ by more than one quantisation step
+    beyond_step_off_edge: int  # of those, how many are not at a line edge
+    edge_coverage: float  # share of the image that counts as "at a line edge"
+
+    @property
+    def passed(self) -> bool:
+        return self.share <= SHARE_LIMIT and self.beyond_step_off_edge == 0
+
+
+def cross_cpu_check(rebuilt: np.ndarray, reference: np.ndarray) -> CrossCpuCheck:
+    """Apply the cross-CPU acceptance rule to one degraded image (see the module docstring).
+
+    Differences of exactly one quantisation step are allowed anywhere: a change
+    in the last bits of a float can move a value across a rounding boundary of
+    the quantiser. They still count towards the share.
+    """
+    if rebuilt.shape != reference.shape:
+        raise ValueError(f"shapes differ {rebuilt.shape} vs {reference.shape}")
+    d = np.abs(rebuilt.astype(np.int16) - reference.astype(np.int16))
+    edges = edge_mask(reference)
+    big = d > degrade.QUANT_STEP
+    off_edge = big & ~(edges[..., None] if d.ndim == 3 else edges)
+    return CrossCpuCheck(float(np.count_nonzero(d) / d.size), int(big.sum()), int(off_edge.sum()),
+                         float(edges.mean()))
 
 
 def clean_render_hashes(folder: Path) -> list[str]:
@@ -58,24 +113,53 @@ def clean_render_hashes(folder: Path) -> list[str]:
 
 
 def cpu_features() -> dict[str, object]:
-    from numpy._core._multiarray_umath import __cpu_dispatch__, __cpu_features__
-
     return {"machine": platform.machine(), "processor": platform.processor(),
-            "numpy_dispatch_available": [k for k in __cpu_dispatch__ if __cpu_features__.get(k)]}
+            "numpy_dispatch_available": sets.numpy_cpu_dispatch()}
+
+
+def traced_showcase_build(out: Path) -> dict[str, dict[str, str]]:
+    """Build the showcase into ``out``; return, per degraded PNG, the pixel hash after each degrade step.
+
+    The build order is fixed (sheet 1 scanned, sheet 1 photo, sheet 2 scanned,
+    sheet 2 photo) and every degrade call starts with the "marked" step.
+    """
+    calls: list[dict[str, str]] = []
+
+    def record(step: str, pixels: np.ndarray) -> None:
+        if step == "marked":
+            calls.append({})
+        calls[-1][step] = pixel_sha256(pixels)
+
+    job = sets.showcase_job()
+    degrade.TRACE = record
+    try:
+        build_project(job.item_id, job.seed, job.purpose, out, list(job.plan), n_ways=job.n_ways)
+    finally:
+        degrade.TRACE = None
+    if len(calls) != len(DEGRADED):
+        raise RuntimeError(f"expected {len(DEGRADED)} degrade calls, got {len(calls)}")
+    return dict(zip(DEGRADED, calls))
 
 
 def diagnose(reference: Path = SHOWCASE) -> dict[str, object]:
-    job = sets.showcase_job()
+    info = json.loads((reference / "build-info.json").read_text(encoding="utf-8"))
+    ref_steps = info.get("degraded_step_sha256", {})
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "showcase"
-        build_project(job.item_id, job.seed, job.purpose, out, list(job.plan), n_ways=job.n_ways)
-        diffs = [asdict(pixel_diff(n, np.asarray(Image.open(out / n)), np.asarray(Image.open(reference / n))))
-                 for n in DEGRADED]
+        steps = traced_showcase_build(out)
+        diffs = []
+        for n in DEGRADED:
+            a, b = np.asarray(Image.open(out / n)), np.asarray(Image.open(reference / n))
+            check = cross_cpu_check(a, b)
+            diffs.append({**asdict(pixel_diff(n, a, b)),
+                          "cross_cpu_check": {**asdict(check), "passed": check.passed},
+                          "steps_matching_reference": {k: v == ref_steps.get(n, {}).get(k)
+                                                       for k, v in steps[n].items()}})
         fresh_render = clean_render_hashes(out)
-    info = json.loads((reference / "build-info.json").read_text(encoding="utf-8"))
     return {
         "cpu": cpu_features(),
-        "reference_build": {k: info.get(k) for k in ("platform", "python", "numpy", "pillow", "pypdfium2")},
+        "reference_build": {k: info.get(k) for k in ("platform", "python", "numpy", "pillow", "pypdfium2",
+                                                     "numpy_cpu_dispatch")},
         "clean_render_150dpi_matches_reference": fresh_render == info.get("clean_render_sha256"),
         "degraded_png_diffs": diffs,
     }

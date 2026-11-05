@@ -6,6 +6,11 @@ differs between zlib builds (zlib-ng on Windows Python 3.14, zlib on Linux),
 so the rebuild must have identical *content*: the same DXF bytes, the same PDF
 text and rendered pixels, the same DOCX entries, the same PNG pixels, and the
 same answer key apart from the document hashes.
+
+The scanned and photo PNGs are compared exactly when the platform, Python,
+numpy, Pillow and numpy CPU dispatch targets match ``build-info.json``. On other
+CPUs a few pixel values differ (measured on CI, see ``docs/stage-1.md``); there
+the documented cross-CPU rule in ``data_generator/diagnose.py`` applies.
 """
 
 from __future__ import annotations
@@ -22,7 +27,7 @@ import pytest
 from PIL import Image, features
 
 from data_generator import sets
-from data_generator.diagnose import clean_render_hashes, pixel_diff
+from data_generator.diagnose import SHARE_LIMIT, clean_render_hashes, cross_cpu_check, pixel_diff
 from data_generator.project import build_project, load_answers, sha256_file
 from data_generator.schemas import ProblemKind
 
@@ -100,14 +105,47 @@ def test_clean_render_matches_the_build_machine_exactly(rebuilt):
     assert clean_render_hashes(rebuilt) == info["clean_render_sha256"]
 
 
+PIXEL_ENV_KEYS = ("platform", "python", "numpy", "pillow", "numpy_cpu_dispatch")
+
+
+def same_pixel_environment_as_build() -> bool:
+    """Same platform, Python, numpy, Pillow and numpy CPU dispatch targets as ``build-info.json``."""
+    info = json.loads((SHOWCASE / "build-info.json").read_text(encoding="utf-8"))
+    here = sets.build_info()
+    return all(info.get(k) == here[k] for k in PIXEL_ENV_KEYS)
+
+
 @pytest.mark.parametrize("name", PNGS)
-def test_png_pixels_are_identical(rebuilt, name):
+def test_png_pixels_are_identical_or_within_the_cross_cpu_rule(rebuilt, name):
+    """Exact in the build environment; elsewhere the documented cross-CPU rule (docs/stage-1.md)."""
     a = np.asarray(Image.open(rebuilt / name))
     b = np.asarray(Image.open(SHOWCASE / name))
     assert a.shape == b.shape
     d = pixel_diff(name, a, b)
-    assert d.differing == 0, (f"{name}: {d.differing} of {d.values} values differ ({d.share:.6%}), "
-                              f"max difference {d.max_abs}, histogram {d.histogram}")
+    stats = (f"{name}: {d.differing} of {d.values} values differ ({d.share:.6%}), "
+             f"max difference {d.max_abs}, histogram {d.histogram}")
+    if same_pixel_environment_as_build():
+        assert d.differing == 0, stats
+        return
+    c = cross_cpu_check(a, b)
+    assert c.share <= SHARE_LIMIT, f"share above the {SHARE_LIMIT:.2%} limit. {stats}"
+    assert c.beyond_step_off_edge == 0, (
+        f"{c.beyond_step_off_edge} of {c.beyond_step} values that differ by more than one step "
+        f"are not at a line edge. {stats}")
+
+
+def test_cross_cpu_rule_rejects_real_regressions():
+    """The rule passes an identical image and fails a 1 px shift and a change of noise."""
+    ref = np.asarray(Image.open(SHOWCASE / PNGS[0]))
+    assert cross_cpu_check(ref.copy(), ref).passed
+    shifted = np.roll(ref, 1, axis=1)
+    assert not cross_cpu_check(shifted, ref).passed
+    noisy = np.clip(ref.astype(np.int16) + np.random.default_rng(0).choice([-8, 0, 8], ref.shape), 0, 255)
+    assert not cross_cpu_check(noisy.astype(np.uint8), ref).passed
+    blot = ref.copy()
+    blot[5:8, 5:8] = 0  # a small dark mark on blank paper near the corner: few values, but off any edge
+    c = cross_cpu_check(blot, ref)
+    assert c.share <= SHARE_LIMIT and not c.passed
 
 
 def test_answer_key_is_identical_apart_from_hashes(rebuilt):

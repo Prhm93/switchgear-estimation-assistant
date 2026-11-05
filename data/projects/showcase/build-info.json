@@ -9,9 +9,40 @@
     "drawing/schematic_sheet2_photo.png": "bf482b99e88597b78184f7d84c79e4ceaf417bca9bb1da739f2ed5af0f28a428",
     "drawing/schematic_sheet2_scanned.png": "23fd31cf347cffdecc5c9ebe4aae8972841a87b4e6b0c04becba6990c55510c0"
   },
+  "degraded_step_sha256": {
+    "drawing/schematic_sheet1_photo.png": {
+      "blurred": "c1565a6e2e146c6028057c54c12c079f598c1e2545e4d4875997d6ce916fc0f4",
+      "final": "fb4b18dbda4f977f19383ffe28f8566ee226a7396dabcd730bfa65f233a9b370",
+      "lit": "b8da87948f621ca64d0ff71e673ddb9a740fcfa6450b9e2a564cd15611a2555b",
+      "marked": "d8bbab001de4754d16bfcabbeae413d4e3d8373993d55d6eac456c471ca30214",
+      "warped": "4b57862af67461503ba8e4526026564520734eccd032cca53217e3f7a67a203d"
+    },
+    "drawing/schematic_sheet1_scanned.png": {
+      "blurred": "24982398afd31c27430c37f31d39071b4e984f94813f54516b8cddf6c082b6ef",
+      "final": "a47c2e79a5360488028d9dd025d720770ff6b783c2fca9a6e042a8057460ce51",
+      "marked": "3f11b67c664f6f59edff17fa6bb6b3722bf91c9e96ce4df30e6a412f3d8e3e56",
+      "warped": "81265a36884002ba9837d2ebe613c25c6ef992f0ae3cadb7395977ae94fa37ef"
+    },
+    "drawing/schematic_sheet2_photo.png": {
+      "blurred": "23c200f5882d108b9355f0dd433dd9c873f98f864c1182011514b16976a38f12",
+      "final": "bf482b99e88597b78184f7d84c79e4ceaf417bca9bb1da739f2ed5af0f28a428",
+      "lit": "cad016d22769d8daf22831b52c3aea40dc46fe0b5d4c3aba6d1f03d223f2d248",
+      "marked": "f1dc924d47622d614dfa97a9b90deb895f50ccb4b540b362a0caf76c53a504ea",
+      "warped": "32858155a054ef1474af965c132b980a2276bd55d6a8766da6e5b58c176eeebd"
+    },
+    "drawing/schematic_sheet2_scanned.png": {
+      "blurred": "d4da5b39604a15188e140aace8b15502472d63e1b280af08cb2f816bce3f819a",
+      "final": "23fd31cf347cffdecc5c9ebe4aae8972841a87b4e6b0c04becba6990c55510c0",
+      "marked": "a995b03544be38f570f3e8bc035f6660c47712cef93d4d4e6efdba19527d4508",
+      "warped": "fc6eecbf501218f9ae17d3a2b8306f81547f0fb097110f9f4271cb2681fb7d5b"
+    }
+  },
   "ezdxf": "1.4.5",
   "matplotlib": "3.11.2",
   "numpy": "2.5.4",
+  "numpy_cpu_dispatch": [
+    "X86_V3"
+  ],
   "pillow": "13.0.0",
   "pillow_zlib": "1.3.1.zlib-ng",
   "platform": "Windows",

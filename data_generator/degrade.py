@@ -11,6 +11,7 @@ the geometric warp, then blur, light and noise, as in real life.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -94,6 +95,16 @@ def _marks(arr: np.ndarray, rng: np.random.Generator, dpi: float, date: str,
 
 QUANT_STEP = 4  # output levels are multiples of 4: invisible, and the PNGs are about 40 % smaller
 
+# Diagnostics only: when set, called with (step name, pixels) after each step of
+# scanned() and photo(), so a build on another machine can tell which step first
+# gives different pixels (see diagnose.py). Never set in normal builds.
+TRACE: Callable[[str, np.ndarray], None] | None = None
+
+
+def _trace(step: str, pixels) -> None:
+    if TRACE is not None:
+        TRACE(step, np.asarray(pixels))
+
 
 def _noise(arr: np.ndarray, rng: np.random.Generator, sigma: float) -> np.ndarray:
     """Add sensor noise, then quantise to steps of :data:`QUANT_STEP` grey levels."""
@@ -112,14 +123,18 @@ def scanned(clean: Image.Image, rng: np.random.Generator, dpi: float, date: str,
     arr = _paper(clean, paper, ink)
     if marks:
         _marks(arr, rng, dpi, date, stamp_at_mm, note_at_mm, ink)
+    _trace("marked", arr)
     w, h = clean.size
     hmat = g.rotation_about(w / 2, h / 2, float(rng.uniform(-1.8, 1.8)),
                             dx=float(rng.uniform(-10, 10)), dy=float(rng.uniform(-10, 10)))
     img = Image.fromarray(arr.round().astype(np.uint8), "L")
     img = img.transform((w, h), Image.Transform.PERSPECTIVE, g.pil_perspective_coeffs(hmat),
                         resample=Image.Resampling.BICUBIC, fillcolor=int(paper))
+    _trace("warped", img)
     img = img.filter(ImageFilter.GaussianBlur(float(rng.uniform(0.5, 1.0))))
+    _trace("blurred", img)
     out = _noise(np.asarray(img, dtype=np.float32), rng, float(rng.uniform(1.5, 3.0)))
+    _trace("final", out)
     return Degraded(Image.fromarray(out, "L"), hmat)
 
 
@@ -130,6 +145,7 @@ def photo(clean: Image.Image, rng: np.random.Generator, dpi: float, date: str, m
     arr = _paper(clean, paper, ink)
     if marks:
         _marks(arr, rng, dpi, date, stamp_at_mm, note_at_mm, ink)
+    _trace("marked", arr)
     w, h = clean.size
     ow, oh = int(w * out_scale), int(h * out_scale)
 
@@ -145,7 +161,9 @@ def photo(clean: Image.Image, rng: np.random.Generator, dpi: float, date: str, m
     rgb = Image.fromarray(arr.round().astype(np.uint8), "L").convert("RGB")
     img = rgb.transform((ow, oh), Image.Transform.PERSPECTIVE, g.pil_perspective_coeffs(hmat),
                         resample=Image.Resampling.BICUBIC, fillcolor=desk)
+    _trace("warped", img)
     img = img.filter(ImageFilter.GaussianBlur(float(rng.uniform(0.7, 1.3))))
+    _trace("blurred", img)
     # Uneven light: a tilted plane plus a soft vignette, and a warm tint.
     yy, xx = np.mgrid[0:oh, 0:ow].astype(np.float32)
     xn, yn = xx / ow - 0.5, yy / oh - 0.5
@@ -153,5 +171,7 @@ def photo(clean: Image.Image, rng: np.random.Generator, dpi: float, date: str, m
     light = np.clip(light, 0.55, 1.05)[..., None]
     tint = np.array([1.0, jitter(0.96, 0.99), jitter(0.88, 0.95)], dtype=np.float32)
     out = np.asarray(img, dtype=np.float32) * light * tint
+    _trace("lit", out)
     out = _noise(out, rng, float(rng.uniform(1.0, 2.0)))
+    _trace("final", out)
     return Degraded(Image.fromarray(out, "RGB"), hmat)
