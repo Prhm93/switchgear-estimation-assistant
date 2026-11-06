@@ -2,7 +2,10 @@
 
 For each page with text, the model gets the system prompt (documents are data,
 never instructions) and the page, and answers in the :class:`PageReading`
-schema. Then, per value:
+schema. A reply that is not valid JSON is usually one the model was cut off in
+(the way-table pages are the longest replies): every complete item up to the
+last closed one is kept for the checks below, and one rejection records "reply
+cut off, N items kept". An empty reply is recorded as such. Then, per value:
 
 1. schema check (known field name, a quote present), else rejected;
 2. the value is brought to the answer key's form (``"250"`` -> 250,
@@ -21,6 +24,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from enum import StrEnum
 
 from estimation_assistant.providers import ModelProvider, RecordingProvider
 from pydantic import BaseModel, ValidationError
@@ -55,11 +59,82 @@ class Rejection(BaseModel):
     reason: str
 
 
+class ReplyStatus(StrEnum):
+    OK = "ok"  # valid JSON
+    CUT_OFF = "cut_off"  # not valid JSON, and the text ends before the JSON does: the model stopped mid-reply
+    EMPTY = "empty"  # no text at all
+    INVALID = "invalid"  # not valid JSON for another reason (an error before the end of the text)
+
+
+class ReplyInfo(BaseModel):
+    """How one page's reply ended, for the cut-off counts in the evaluation."""
+
+    page: int
+    status: ReplyStatus
+    items_kept: int = 0  # complete items passed on to the checks
+    done_reason: str | None = None  # from the recording (schema 1.1) or the live reply; None in 1.0 recordings
+    eval_count: int | None = None
+
+
 class LlmResult(BaseModel):
     values: list[ExtractedValue]
     rejected: list[Rejection]
     model: str
     calls: int
+    replies: list[ReplyInfo] = []
+
+
+def salvage_items(text: str) -> list[object]:
+    """Every complete item of the ``values`` list of a reply that stops part-way.
+
+    Reads the items one by one with the standard JSON decoder and stops at the
+    first one that is incomplete, so nothing is guessed or repaired: an item is
+    either wholly in the reply or dropped.
+    """
+    m = re.search(r'"values"\s*:\s*\[', text)
+    if not m:
+        return []
+    decoder = json.JSONDecoder()
+    items: list[object] = []
+    i = m.end()
+    while True:
+        while i < len(text) and text[i] in " \t\r\n,":
+            i += 1
+        if i >= len(text) or text[i] == "]":
+            break
+        try:
+            item, i = decoder.raw_decode(text, i)
+        except json.JSONDecodeError:
+            break
+        items.append(item)
+    return items
+
+
+def parse_reply(text: str, salvage: bool = True) -> tuple[list[object], ReplyStatus, str | None]:
+    """The items of one reply, how the reply ended, and the page-level rejection reason (None if none).
+
+    ``salvage=False`` is the Stage 3 Part A parser (a reply that is not valid
+    JSON loses the whole page); the evaluation keeps it to report old and new
+    numbers side by side.
+    """
+    if not text.strip():
+        return [], ReplyStatus.EMPTY, "reply is empty"
+    try:
+        items = json.loads(text).get("values", [])
+        if not isinstance(items, list):
+            raise TypeError("values is not a list")
+        return items, ReplyStatus.OK, None
+    except (json.JSONDecodeError, AttributeError, TypeError) as error:
+        # Cut off: the decoder ran out of text (the error is at the very end, or a string never closes).
+        # Anything else is malformed.
+        at_end = isinstance(error, json.JSONDecodeError) and (error.pos >= len(text.rstrip())
+                                                               or error.msg.startswith("Unterminated string"))
+        status = ReplyStatus.CUT_OFF if at_end else ReplyStatus.INVALID
+        if not salvage:
+            return [], status, f"reply is not valid JSON ({error})"
+        items = salvage_items(text)
+        what = "reply cut off" if status == ReplyStatus.CUT_OFF else f"reply is not valid JSON ({error})"
+        return items, status, f"{what}, {len(items)} items kept"
 
 
 def expected_unit(field: str) -> str | None:
@@ -109,10 +184,16 @@ def canonical(field: str, value: object, unit: str | None) -> tuple[object, str 
     return value, unit
 
 
-def llm_extract(kind: DocumentKind, pages: list[PageText], file: str, provider: ModelProvider) -> LlmResult:
-    """Ask the model about every page and keep only the values whose quotes check out."""
+def llm_extract(kind: DocumentKind, pages: list[PageText], file: str, provider: ModelProvider, *,
+                system_prompt: str = SYSTEM_PROMPT, salvage: bool = True) -> LlmResult:
+    """Ask the model about every page and keep only the values whose quotes check out.
+
+    ``system_prompt`` is the current prompt; only the evaluation passes another
+    one (an older recording's own prompt, to score it with the new parser).
+    """
     values: list[ExtractedValue] = []
     rejected: list[Rejection] = []
+    replies: list[ReplyInfo] = []
     calls = 0
     schema = output_schema()
     for page in pages:
@@ -121,18 +202,16 @@ def llm_extract(kind: DocumentKind, pages: list[PageText], file: str, provider: 
             continue
         prompt = page_prompt(kind.value, page)
         if isinstance(provider, RecordingProvider):
-            reply = provider.generate(SYSTEM_PROMPT, prompt, schema, key=f"{file} page {page.number}")
+            reply = provider.generate(system_prompt, prompt, schema, key=f"{file} page {page.number}")
         else:
-            reply = provider.generate(SYSTEM_PROMPT, prompt, schema)
+            reply = provider.generate(system_prompt, prompt, schema)
         calls += 1
         flags = find_instructions(page.number, material)
-        try:
-            items = json.loads(reply.content).get("values", [])
-            if not isinstance(items, list):
-                raise TypeError("values is not a list")
-        except (json.JSONDecodeError, AttributeError, TypeError) as error:
-            rejected.append(Rejection(page=page.number, field=None, reason=f"reply is not valid JSON ({error})"))
-            continue
+        items, status, page_reason = parse_reply(reply.content, salvage)
+        replies.append(ReplyInfo(page=page.number, status=status, items_kept=len(items),
+                                 done_reason=reply.done_reason, eval_count=reply.eval_count))
+        if page_reason:
+            rejected.append(Rejection(page=page.number, field=None, reason=page_reason))
         for item in items:
             try:
                 v = LlmValue.model_validate(item)
@@ -161,7 +240,7 @@ def llm_extract(kind: DocumentKind, pages: list[PageText], file: str, provider: 
     for r in rejected:
         log.info("LLM value rejected: page %s field %s value %r quote %r: %s", r.page, r.field, r.value, r.quote,
                  r.reason)
-    return LlmResult(values=dedupe(values), rejected=rejected, model=provider.model, calls=calls)
+    return LlmResult(values=dedupe(values), rejected=rejected, model=provider.model, calls=calls, replies=replies)
 
 
 def dedupe(values: list[ExtractedValue]) -> list[ExtractedValue]:

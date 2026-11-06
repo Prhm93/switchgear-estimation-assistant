@@ -50,8 +50,14 @@ def run_label(provider: ModelProvider) -> str:
 
 
 def analyse_file(file_type: FileType, data: bytes, display_name: str,
-                 provider: ModelProvider | None = None) -> Analysis:
-    """Read, classify and extract. Files that cannot be read yet give no values."""
+                 provider: ModelProvider | None = None, *, system_prompt: str | None = None,
+                 salvage: bool = True) -> Analysis:
+    """Read, classify and extract. Files that cannot be read yet give no values.
+
+    ``system_prompt`` and ``salvage`` are for the evaluation only (scoring an
+    older recording with its own prompt, and with the Part A parser); the app
+    always uses the defaults.
+    """
     result = read_document(file_type, data)
     kind = classify(file_type, result)
     done = result.status == DocumentStatus.DONE
@@ -61,7 +67,8 @@ def analyse_file(file_type: FileType, data: bytes, display_name: str,
     if provider is None or not done:
         return analysis
     try:
-        llm = llm_extract(kind, result.pages, display_name, provider)
+        options = {"system_prompt": system_prompt} if system_prompt is not None else {}
+        llm = llm_extract(kind, result.pages, display_name, provider, salvage=salvage, **options)
     except (ModelUnavailable, RecordingMismatch) as error:
         analysis.llm_error = str(error)
         return analysis
