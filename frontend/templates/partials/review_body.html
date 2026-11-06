@@ -1,7 +1,8 @@
-{%- from "macros.html" import icon, confidence, value_status, provenance, segbar with context -%}
+{%- from "macros.html" import icon, confidence, value_status, provenance, segbar, instruction_flags with context -%}
 {#- The review list. Actions post with HTMX and this block replaces itself; without script they post and redirect. -#}
 <div id="review-body" class="gap-top-lg">
   {%- if error %}<p class="alert alert--error" role="alert">{{ error }}</p>{% endif %}
+  {%- if flags %}{{ instruction_flags(flags, project.id) }}{% endif %}
 
   <div class="grid-cards">
     <article class="glass kpi">

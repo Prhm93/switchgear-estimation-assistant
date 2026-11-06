@@ -37,6 +37,7 @@ from data_generator import symbols as sym  # noqa: E402
 from data_generator.design import DEVICE_LABEL, Way  # noqa: E402
 from data_generator.names import INITIALS, PANEL_BUILDER  # noqa: E402
 from data_generator.views import DocView  # noqa: E402
+from data_generator.wording import Wording  # noqa: E402
 
 FONT_DIR = Path(__file__).parent / "fonts"
 SHEET_W, SHEET_H = 420.0, 297.0  # A3 landscape, mm
@@ -176,8 +177,16 @@ def _new_doc(font: str, bold: str):
     return doc
 
 
-def rating_text(w: Way, view: DocView, variant: int) -> str:
+def rating_text(w: Way, view: DocView, variant: int, words: Wording | None = None) -> str:
     """The rating string printed beside a way, e.g. ``MCCB 250A 4P 36kA``."""
+    if words is not None:  # reworded set
+        rating = "TBC" if f"way.{w.id}.rating" in view.tbc else words.amps_short(w.rating_a)
+        parts = [words.device_label(w.device), rating, words.poles_short(w.poles).upper()]
+        if words.rng.random() < 0.5:
+            parts = [parts[1], parts[0], parts[2]]
+        if w.breaking_ka is not None:
+            parts.append(words.pick([f"{w.breaking_ka}kA", f"Icu={w.breaking_ka}kA", f"{w.breaking_ka} KA"]))
+        return " ".join(parts)
     label = DEVICE_LABEL[w.device]
     rating = "TBC" if f"way.{w.id}.rating" in view.tbc else f"{w.rating_a}A"
     parts = [label, rating, f"{w.poles}P"] if variant == 0 else [label, f"{w.poles}P", rating]
@@ -203,6 +212,7 @@ def draw_sheet1(s: Sheet, view: DocView, rng: random.Random, layout: DrawingLayo
     sc = layout.symbol_scale
     h = rng.choice([2.2, 2.5, 2.8])  # main text height
     variant = rng.randrange(2)
+    words = Wording(view.reword) if view.reword is not None else None
 
     _frame(s, d, h, drawing_no, revision, drawn, checked, sheet_title="SINGLE LINE DIAGRAM", rng=rng)
 
@@ -210,6 +220,10 @@ def draw_sheet1(s: Sheet, view: DocView, rng: random.Random, layout: DrawingLayo
     x_in = rng.uniform(30, 36)
     y_bus = rng.uniform(205, 222)
     supply = f"INCOMING SUPPLY {d.voltage_v}V 3PH+N {d.frequency_hz}Hz"
+    if words:
+        supply = words.pick([f"SUPPLY {d.voltage_v} V 3PH 4W {d.frequency_hz} HZ",
+                             f"LV SUPPLY {d.voltage_v}V TPN {d.frequency_hz}Hz", f"{d.voltage_v}V 50HZ 3PH+N INCOMER"
+                             if d.frequency_hz == 50 else f"{d.voltage_v}V {d.frequency_hz}HZ 3PH+N INCOMER"])
     box = s.text(supply, x_in + 3, 277, h)
     layout.values += [ValueMark("system.voltage", d.voltage_v, "V", supply, 1, box),
                       ValueMark("system.frequency", d.frequency_hz, "Hz", supply, 1, box)]
@@ -218,6 +232,10 @@ def draw_sheet1(s: Sheet, view: DocView, rng: random.Random, layout: DrawingLayo
     s.line((x_in, 281), (x_in, acb_top))
     layout.symbols.append(SymbolMark("acb", None, 1, sym.acb(s, x_in, acb_top, L_acb)))
     acb_txt = f"ACB {d.incomer_rating_a}A {d.incomer_poles}P 50kA"
+    if words:
+        acb_txt = words.pick([f"{d.incomer_rating_a}A ACB {d.incomer_poles} POLE",
+                              f"ACB In={d.incomer_rating_a}A {d.incomer_poles}P",
+                              f"AIR CB {d.incomer_rating_a} A {d.incomer_poles}-POLE"])
     box = s.text(acb_txt, x_in + 4, acb_top - L_acb / 2 - h / 2, h)
     layout.values += [ValueMark("incomer.device", "acb", None, acb_txt, 1, box),
                       ValueMark("incomer.rating", d.incomer_rating_a, "A", acb_txt, 1, box),
@@ -227,6 +245,8 @@ def draw_sheet1(s: Sheet, view: DocView, rng: random.Random, layout: DrawingLayo
     s.line((x_in, acb_top - L_acb), (x_in, y_bus))
     layout.symbols.append(SymbolMark("ct", None, 1, sym.current_transformer(s, x_in, ct_y, ct_r)))
     ct_txt = f"CT {d.ct_ratio}A"
+    if words:
+        ct_txt = words.pick([f"CTs {d.ct_ratio}", f"3 x CT {d.ct_ratio}A", f"CT RATIO {d.ct_ratio.replace('/', ':')}"])
     box = s.text(ct_txt, x_in + 2.6 * ct_r, ct_y + ct_r + 1.2, h * 0.9)
     layout.values.append(ValueMark("metering.ct_ratio", d.ct_ratio, "A", ct_txt, 1, box))
     m_r = 4.5 * sc
@@ -245,6 +265,11 @@ def draw_sheet1(s: Sheet, view: DocView, rng: random.Random, layout: DrawingLayo
     fault_stated = view.states("system.fault_level")
     if fault_stated:
         bus_txt += f" {d.fault_level_ka}kA 1s"
+    if words:
+        bus_txt = words.pick([f"MAIN BUSBARS {d.busbar_rating_a} A", f"{d.busbar_rating_a}A TPN BUSBAR",
+                              f"BB RATING {d.busbar_rating_a}A"])
+        if fault_stated:
+            bus_txt += words.pick([f" {d.fault_level_ka}kA/1s", f" Icw {d.fault_level_ka} kA 1 SEC"])
     box = s.text(bus_txt, x_bus1 - s.text_width(bus_txt, h), y_bus + 2.2, h)
     layout.values.append(ValueMark("busbar.rating", d.busbar_rating_a, "A", bus_txt, 1, box))
     if fault_stated:
@@ -276,7 +301,7 @@ def draw_sheet1(s: Sheet, view: DocView, rng: random.Random, layout: DrawingLayo
         s.line((x + 1.2, end + 2), (x, end))
         lbl_w = s.text_width(w.id, h, bold=True)
         s.text(w.id, x - lbl_w - 1.4, y_bus - 5.6, h, bold=True)
-        rt = rating_text(w, view, variant)
+        rt = rating_text(w, view, variant, words)
         rbox = s.text(rt, x + 0.45 * h, end - 2 - s.text_width(rt, h), h, rot=90)
         layout.values += _way_values(w, rt, rbox)
         desc = w.description.upper()
@@ -288,7 +313,7 @@ def draw_sheet1(s: Sheet, view: DocView, rng: random.Random, layout: DrawingLayo
                 max(b[2] for b in way_boxes), max(b[3] for b in way_boxes))
         layout.values.append(ValueMark("ways.count", n, None, None, 1, area))
 
-    _notes(s, view, h, layout)
+    _notes(s, view, h, layout, words)
     _cable_schedule(s, view, h, layout)
 
 
@@ -325,7 +350,7 @@ def _frame(s: Sheet, d, h: float, drawing_no: str, revision: str, drawn: str, ch
             s.text(cell, cx, y, 2.0)
 
 
-def _notes(s: Sheet, view: DocView, h: float, layout: DrawingLayout) -> None:
+def _notes(s: Sheet, view: DocView, h: float, layout: DrawingLayout, words: Wording | None = None) -> None:
     d = view.design
     x, y = 15.0, 84.0
     s.text("NOTES:", x, y, h, bold=True)
@@ -337,6 +362,20 @@ def _notes(s: Sheet, view: DocView, h: float, layout: DrawingLayout) -> None:
         (None, None, None, "ALL DIMENSIONS IN mm UNLESS STATED"),
         (None, None, None, "DO NOT SCALE FROM THIS DRAWING"),
     ]
+    if words:  # reworded set
+        below = {"bottom": "BELOW", "top": "ABOVE"}[d.cable_entry]
+        notes = [
+            ("enclosure.form", d.form, None, words.pick([f"SEGREGATION {words.form(d.form).upper()}",
+                                                          f"INTERNAL SEPARATION {d.form}"])),
+            ("enclosure.ip_rating", d.ip_rating, None, words.pick([f"ENCLOSURE {words.ip(d.ip_rating)}",
+                                                                  f"IP RATING {words.ip(d.ip_rating)}"])),
+            ("enclosure.cable_entry", d.cable_entry, None, words.pick([f"CABLES ENTER FROM {below}",
+                                                                      f"{d.cable_entry.upper()} CABLE ENTRY"])),
+            ("system.earthing", d.earthing, None, words.pick([f"SYSTEM {d.earthing}", f"EARTHING TO {d.earthing}"])),
+            (None, None, None, "DIMENSIONS IN MILLIMETRES"),
+            (None, None, None, "NOT TO SCALE"),
+        ]
+        words.rng.shuffle(notes)
     k = 1
     for fld, value, unit, text in notes:
         if fld is not None and not view.states(fld):

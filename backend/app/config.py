@@ -36,6 +36,13 @@ class Settings(BaseSettings):
     # Rules mode inputs.
     catalogue_csv: Path = Field(default=REPO_ROOT / "data" / "catalogue" / "catalogue.csv")
     estimate_rules: Path = Field(default=REPO_ROOT / "config" / "estimate.toml")
+    # Model calls (Stage 3). "rules" needs no model; "recorded" replays data/recorded/ files whose SHA-256
+    # matches the upload; "ollama" and "ollama-local" call an Ollama server (never required on the laptop).
+    model_mode: Literal["rules", "recorded", "ollama", "ollama-local"] = Field(default="rules",
+                                                                              description="MODEL_MODE")
+    ollama_url: str = Field(default="http://127.0.0.1:11434", description="OLLAMA_URL")
+    ollama_model: str = Field(default="gemma4:e2b", description="OLLAMA_MODEL")
+    recorded_dir: Path = Field(default=REPO_ROOT / "data" / "recorded", description="RECORDED_DIR")
 
     @property
     def max_upload_bytes(self) -> int:

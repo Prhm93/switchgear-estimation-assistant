@@ -21,8 +21,10 @@ from backend.app.estimate import ApprovedValue, Draft, build, load_rules
 from backend.app.models import (AuditEvent, CatalogueItemRow, Document, Estimate, EstimateLineRow,
                                 ExtractedValueRow, Match, Page, Project, Review)
 from backend.app.pipeline import analyse_file
+from backend.app.recordings import RecordingMismatch, find_recording
 from backend.app.schemas import DocumentStatus, MatchStatus, ReviewStatus
 from backend.app.storage import FileType, Storage, check_upload
+from estimation_assistant.providers import ModelProvider, make_provider
 
 log = logging.getLogger(__name__)
 DEFAULT_ACTOR = "engineer"
@@ -99,7 +101,28 @@ def add_document(session: Session, storage: Storage, settings: Settings, project
     return doc
 
 
-def process_document(sessions: sessionmaker[Session], storage: Storage, document_id: int) -> None:
+def model_provider(settings: Settings | None, data: bytes) -> tuple[ModelProvider | None, str | None]:
+    """The provider for this file in the configured mode, and a note when the mode cannot be used.
+
+    Recorded mode uses only a recording whose SHA-256 equals the uploaded bytes;
+    with none, the file is read by the rules alone and the note says why.
+    """
+    mode = settings.model_mode if settings else "rules"
+    if mode == "rules":
+        return None, None
+    if mode == "recorded":
+        try:
+            recording = find_recording(settings.recorded_dir, data)
+        except (RecordingMismatch, ValueError) as error:
+            return None, f"Recorded model run refused: {error}"
+        if recording is None:
+            return None, "No recorded model run matches this file's SHA-256; read by the rules only."
+        return make_provider("recorded", recording=recording), None
+    return make_provider(mode, url=settings.ollama_url, model=settings.ollama_model), None
+
+
+def process_document(sessions: sessionmaker[Session], storage: Storage, document_id: int,
+                     settings: Settings | None = None) -> None:
     """Background task: read, classify and extract one document, updating its status as it goes."""
     with sessions() as session:
         doc = session.get(Document, document_id)
@@ -109,12 +132,16 @@ def process_document(sessions: sessionmaker[Session], storage: Storage, document
         session.commit()
         try:
             data = storage.read(doc.storage_key)
-            analysis = analyse_file(FileType(doc.file_type), data, doc.original_name)
+            provider, model_note = model_provider(settings, data)
+            analysis = analyse_file(FileType(doc.file_type), data, doc.original_name, provider)
             del data  # the original stays in storage; keep memory low
             doc.status = DocumentStatus.EXTRACTING.value
             doc.kind = analysis.kind.value
             doc.page_count = len(analysis.read.pages) or None
-            doc.note = analysis.read.note
+            notes = [analysis.read.note, model_note,
+                     f"Model run failed, read by the rules only: {analysis.llm_error}" if analysis.llm_error else None]
+            doc.note = " ".join(n for n in notes if n) or None
+            doc.model_run = analysis.model_run
             for page in analysis.read.pages:
                 session.add(Page(document_id=doc.id, number=page.number, text=page.text, tables=page.tables))
             for v in analysis.values:
@@ -123,10 +150,19 @@ def process_document(sessions: sessionmaker[Session], storage: Storage, document
                     source_document=v.source.document.value, source_file=v.source.file, page=v.source.page,
                     source_text=v.source.source_text, regions=[r.model_dump() for r in v.source.regions],
                     method=v.method.value, confidence=v.confidence.value, review_status=v.review_status.value,
-                    rule=v.rule, derivation=v.derivation))
+                    rule=v.rule, derivation=v.derivation, agreement=v.agreement.value if v.agreement else None))
             doc.status = analysis.read.status.value
             audit(session, "extract", "document", doc.id, doc.project_id, kind=doc.kind, status=doc.status,
-                  values=len(analysis.values), method="rules")
+                  values=len(analysis.values), method="rules+llm" if analysis.llm else "rules",
+                  model_run=analysis.model_run)
+            if analysis.llm and analysis.llm.rejected:
+                # Every rejected model value is logged with its reason; none of them is stored as a value.
+                audit(session, "llm_values_rejected", "document", doc.id, doc.project_id,
+                      count=len(analysis.llm.rejected),
+                      rejected=[r.model_dump(mode="json") for r in analysis.llm.rejected])
+            if analysis.flags:
+                audit(session, "instruction_text_flagged", "document", doc.id, doc.project_id,
+                      flags=[f.model_dump() for f in analysis.flags])
             session.commit()
         except Exception as error:  # a broken file must not leave the card spinning
             session.rollback()

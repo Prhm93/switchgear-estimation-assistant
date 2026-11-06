@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session, object_session
 from backend.app import normalise as norm
 from backend.app import services
 from backend.app.highlight import segments
+from backend.app.injection import find_instructions
 from backend.app.models import AuditEvent, Document, Estimate, ExtractedValueRow, Match, Project
 from backend.app.report import estimate_docx
 from backend.app.schemas import DocumentStatus, ReviewStatus
@@ -78,7 +79,21 @@ def sidebar_context(project: Project) -> dict[str, Any]:
     if session is not None:
         others = list(session.execute(select(Project.id, Project.name).order_by(Project.id.desc()).limit(20)))
     return {"switch_projects": others, "project_initials": initials(project.name),
-            "review_count": sum(1 for v in project.values if v.review_status == ReviewStatus.EXTRACTED.value)}
+            "review_count": sum(1 for v in project.values if v.review_status == ReviewStatus.EXTRACTED.value),
+            "model_runs": sorted({d.model_run for d in project.documents if d.model_run})}
+
+
+def instruction_flags(project: Project, document_id: int | None = None) -> list[dict[str, Any]]:
+    """Instruction-like sentences in the stored page text of the project's documents (or one document)."""
+    out = []
+    for d in project.documents:
+        if document_id is not None and d.id != document_id:
+            continue
+        for page in d.pages:
+            for f in find_instructions(page.number, page.text):
+                out.append({"doc_id": d.id, "document": d.original_name, "page": f.page, "text": f.text,
+                            "reasons": f.reasons})
+    return out
 
 
 def project_or_404(session: Session, project_id: int) -> Project:
@@ -201,7 +216,7 @@ async def upload(request: Request, project_id: int, session: SessionDep, backgro
             errors.append({"name": (upload_file.filename or "unnamed").replace("\\", "/").split("/")[-1],
                            "reason": str(error)})
             continue
-        background.add_task(services.process_document, request.app.state.sessions, storage, doc.id)
+        background.add_task(services.process_document, request.app.state.sessions, storage, doc.id, settings)
     session.refresh(project)
     if request.headers.get("HX-Request"):
         return render(request, "partials/documents.html", errors=errors, **_documents_context(project))
@@ -233,9 +248,12 @@ def analysis(request: Request, project_id: int, session: SessionDep, doc: int | 
         text = next(p.text for p in pages if p.number == page_no)
         values = sorted((v for v in project.values if v.document_id == current.id and v.page == page_no),
                         key=lambda v: field_sort_key(v.field))
-        segs = segments(text, [(v.id, v.source_text or "", _anchor(v)) for v in values])
+        flagged = [f["text"] for f in instruction_flags(project, current.id) if f["page"] == page_no]
+        segs = segments(text, [(v.id, v.source_text or "", _anchor(v)) for v in values]
+                        + [(-1 - i, t, None) for i, t in enumerate(flagged)])
+    flags = instruction_flags(project, current.id) if current is not None else []
     return render(request, "analysis.html", project=project, current=current, pages=pages, page_no=page_no,
-                  segments=segs, values=values, field_label=field_label, display=display)
+                  segments=segs, values=values, field_label=field_label, display=display, flags=flags)
 
 
 # --- review ---------------------------------------------------------------------------------------
@@ -319,7 +337,8 @@ def _review_context(project: Project) -> dict[str, Any]:
             "field_label": field_label, "display": display, "source_label": services.source_label,
             "conflicts": sum(1 for g in groups.values() if g["conflict"]),
             "pending": sum(1 for v in project.values if v.review_status == "extracted"),
-            "not_read": [d for d in project.documents if d.status == DocumentStatus.NOT_READ.value]}
+            "not_read": [d for d in project.documents if d.status == DocumentStatus.NOT_READ.value],
+            "flags": instruction_flags(project)}
 
 
 def project_summary(project: Project) -> dict[str, Any]:

@@ -22,6 +22,7 @@ class DocView(BaseModel):
     tbc: set[str] = Field(default_factory=set)  # fields stated as "TBC"
     no_unit: set[str] = Field(default_factory=set)  # fields stated without a unit
     injection: str | None = None  # a hidden instruction line (prompt-injection test)
+    reword: int | None = None  # seed of the reworded phrasing (data_generator.wording); None = original wording
 
     def states(self, field: str) -> bool:
         """True when the document states ``field`` at all."""

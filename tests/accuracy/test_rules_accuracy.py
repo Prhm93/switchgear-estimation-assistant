@@ -39,7 +39,7 @@ def test_rules_with_the_dxf_find_every_value_without_false_ones(folders: list[Pa
 
 
 def test_rules_without_the_dxf_read_only_the_documents(folders: list[Path]) -> None:
-    grouped, _ = run(folders, with_dxf=False)
+    grouped, _, _ = run(folders, with_dxf=False)
     t = total(grouped)
     assert t.precision >= 0.99, t
     assert 0.3 < t.recall < 0.7, t  # no drawing values: the drawing PDF has no text layer and PNGs need OCR

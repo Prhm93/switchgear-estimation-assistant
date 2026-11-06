@@ -22,6 +22,7 @@ from docx.shared import Pt
 
 from data_generator.names import PANEL_BUILDER
 from data_generator.views import DocView
+from data_generator.wording import Wording
 
 FIXED_ZIP_TIME = (2026, 1, 1, 0, 0, 0)
 FIXED_CORE_TIME = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
@@ -79,33 +80,36 @@ def build_letter(view: DocView, seed: int, path: Path) -> list[LetterMark]:
     para(f"We are building a new {d.building_use} at the address above and would like a price for the main "
          f"low-voltage switchboard. The specification and the drawing are attached.")
 
-    if view.states("system.voltage"):
-        t = rng.choice([f"The supply will be {d.voltage_v} V three phase from a site transformer.",
-                        f"The board will be fed at {d.voltage_v} V, three phase and neutral."])
-        para(t, mk("system.voltage", d.voltage_v, "V", t))
-    if view.states("incomer.rating"):
-        t = rng.choice([f"Please allow for an incoming air circuit breaker rated {d.incomer_rating_a} A.",
-                        f"The incomer should be a {d.incomer_rating_a} A air circuit breaker."])
-        para(t, mk("incomer.rating", d.incomer_rating_a, "A", t))
-    t = rng.choice([f"We need {len(d.ways)} outgoing ways, as listed in the specification.",
-                    f"There are {len(d.ways)} outgoing circuits in total."])
-    para(t, mk("ways.count", len(d.ways), None, t))
-    if view.states("enclosure.ip_rating"):
-        t = rng.choice([f"The board will stand in a plant room, so it must be at least {d.ip_rating}.",
-                        f"Please provide {d.ip_rating} protection, as the room can be dusty."])
-        para(t, mk("enclosure.ip_rating", d.ip_rating, None, t))
-    if view.states("enclosure.form"):
-        t = f"Our consultant has asked for Form {d.form} separation."
-        para(t, mk("enclosure.form", d.form, None, t))
-    if view.states("enclosure.cable_entry"):
-        t = rng.choice([f"All cables will come in from the {d.cable_entry}.",
-                        f"Cable entry will be from the {d.cable_entry}."])
-        para(t, mk("enclosure.cable_entry", d.cable_entry, None, t))
-    if view.states("metering.meter"):
-        words = "a multifunction meter" if d.meter == "MFM" else "a kWh meter"
-        t = f"We would like {words} on the incomer so we can track energy use."
-        para(t, mk("metering.meter", d.meter, None, t))
+    if view.reword is None:
+        if view.states("system.voltage"):
+            t = rng.choice([f"The supply will be {d.voltage_v} V three phase from a site transformer.",
+                            f"The board will be fed at {d.voltage_v} V, three phase and neutral."])
+            para(t, mk("system.voltage", d.voltage_v, "V", t))
+        if view.states("incomer.rating"):
+            t = rng.choice([f"Please allow for an incoming air circuit breaker rated {d.incomer_rating_a} A.",
+                            f"The incomer should be a {d.incomer_rating_a} A air circuit breaker."])
+            para(t, mk("incomer.rating", d.incomer_rating_a, "A", t))
+        t = rng.choice([f"We need {len(d.ways)} outgoing ways, as listed in the specification.",
+                        f"There are {len(d.ways)} outgoing circuits in total."])
+        para(t, mk("ways.count", len(d.ways), None, t))
+        if view.states("enclosure.ip_rating"):
+            t = rng.choice([f"The board will stand in a plant room, so it must be at least {d.ip_rating}.",
+                            f"Please provide {d.ip_rating} protection, as the room can be dusty."])
+            para(t, mk("enclosure.ip_rating", d.ip_rating, None, t))
+        if view.states("enclosure.form"):
+            t = f"Our consultant has asked for Form {d.form} separation."
+            para(t, mk("enclosure.form", d.form, None, t))
+        if view.states("enclosure.cable_entry"):
+            t = rng.choice([f"All cables will come in from the {d.cable_entry}.",
+                            f"Cable entry will be from the {d.cable_entry}."])
+            para(t, mk("enclosure.cable_entry", d.cable_entry, None, t))
+        if view.states("metering.meter"):
+            words = "a multifunction meter" if d.meter == "MFM" else "a kWh meter"
+            t = f"We would like {words} on the incomer so we can track energy use."
+            para(t, mk("metering.meter", d.meter, None, t))
 
+    else:
+        _reworded_values(view, para, mk)
     para("Please send your price, lead time and any deviations from the specification within three weeks.")
     para("Yours faithfully,")
     para(d.contact)
@@ -126,3 +130,39 @@ def build_letter(view: DocView, seed: int, path: Path) -> list[LetterMark]:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(normalise_zip(buf.getvalue()))
     return marks
+
+
+def _reworded_values(view: DocView, para, mk) -> None:
+    """The value sentences of the letter in other words (reworded set)."""
+    d = view.design
+    w = Wording(view.reword)  # type: ignore[arg-type]
+    sentences = []
+    if view.states("system.voltage"):
+        t = w.pick([f"Our electricity supply is {w.volts(d.voltage_v)}, three phase.",
+                    f"The site has a {w.volts(d.voltage_v)} three-phase supply."])
+        sentences.append((t, mk("system.voltage", d.voltage_v, "V", t)))
+    if view.states("incomer.rating"):
+        t = w.pick([f"For the main incomer we expect an ACB of about {w.amps(d.incomer_rating_a)}.",
+                    f"The main breaker should be an air circuit breaker sized at {w.amps(d.incomer_rating_a)}."])
+        sentences.append((t, mk("incomer.rating", d.incomer_rating_a, "A", t)))
+    t = w.pick([f"In total the board feeds {w.count(len(d.ways))} outgoing circuits.",
+                f"Please allow for {w.count(len(d.ways))} outgoing ways."])
+    sentences.append((t, mk("ways.count", len(d.ways), None, t)))
+    if view.states("enclosure.ip_rating"):
+        t = w.pick([f"The room is dusty, so we need {w.ip(d.ip_rating)} as a minimum.",
+                    f"Ingress protection of {w.ip(d.ip_rating)} is needed."])
+        sentences.append((t, mk("enclosure.ip_rating", d.ip_rating, None, t)))
+    if view.states("enclosure.form"):
+        t = w.pick([f"The consultant wants {w.form(d.form)} segregation.",
+                    f"Internal separation must be {w.form(d.form)}."])
+        sentences.append((t, mk("enclosure.form", d.form, None, t)))
+    if view.states("enclosure.cable_entry"):
+        where = {"bottom": "below", "top": "above"}[d.cable_entry]
+        t = w.pick([f"Cables will be brought in from {where}.", f"We plan {d.cable_entry}-entry cabling."])
+        sentences.append((t, mk("enclosure.cable_entry", d.cable_entry, None, t)))
+    if view.states("metering.meter"):
+        t = f"Please include {w.pick(['a', 'one'])} {w.meter(d.meter)} on the incoming supply."
+        sentences.append((t, mk("metering.meter", d.meter, None, t)))
+    w.rng.shuffle(sentences)
+    for t, m in sentences:
+        para(t, m)
