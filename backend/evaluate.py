@@ -5,6 +5,7 @@ Usage (PowerShell, from the repo folder, after
 
     .venv\\Scripts\\python.exe -m backend.evaluate            # all 20 test projects, prints Markdown
     .venv\\Scripts\\python.exe -m backend.evaluate --count 2  # the first two only
+    .venv\\Scripts\\python.exe -m backend.evaluate --set reworded  # the held-out reworded set, R01 to R20
 
 Each project is scored twice, as two upload sets:
 
@@ -27,7 +28,7 @@ from backend.app.pipeline import analyse_file
 from backend.app.schemas import ExtractedValue
 from backend.app.storage import EXTENSIONS
 from data_generator.project import load_answers
-from data_generator.sets import DATA, TEST_COUNT, testset_id
+from data_generator.sets import DATA, REWORDED_COUNT, TEST_COUNT, reworded_id, testset_id
 
 UPLOAD = ["specification.pdf", "requirements.docx", "drawing/schematic.pdf", "drawing/schematic_sheet1_scanned.png",
           "drawing/schematic_sheet1_photo.png", "drawing/schematic_sheet2_scanned.png",
@@ -71,17 +72,22 @@ def table(grouped: dict[str, Score]) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m backend.evaluate", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--count", type=int, default=TEST_COUNT)
-    parser.add_argument("--root", type=Path, default=DATA / "projects" / "test")
+    parser.add_argument("--set", dest="set_name", choices=["test", "reworded"], default="test")
+    parser.add_argument("--count", type=int, default=None)
+    parser.add_argument("--root", type=Path, default=None, help="folder of the set (default: data/projects/<set>)")
     args = parser.parse_args(argv)
-    folders = [args.root / testset_id(i) for i in range(1, args.count + 1)]
+    root = args.root or DATA / "projects" / args.set_name
+    count = args.count or (TEST_COUNT if args.set_name == "test" else REWORDED_COUNT)
+    ids = testset_id if args.set_name == "test" else reworded_id
+    folders = [root / ids(i) for i in range(1, count + 1)]
     missing = [f.name for f in folders if not (f / "answers.json").exists()]
     if missing:
-        print(f"missing test projects {missing}: run python -m data_generator build --set test", file=sys.stderr)
+        print(f"missing projects {missing}: run python -m data_generator build --set {args.set_name}",
+              file=sys.stderr)
         return 2
     for with_dxf in (True, False):
         grouped, per_project = run(folders, with_dxf)
-        print(f"## Rules mode, {'with' if with_dxf else 'without'} DXF, {len(folders)} projects "
+        print(f"## Rules mode, {args.set_name} set, {'with' if with_dxf else 'without'} DXF, {len(folders)} projects "
               f"({per_project:.2f} s per project)\n")
         print(table(grouped) + "\n")
     return 0
