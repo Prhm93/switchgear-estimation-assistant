@@ -47,9 +47,17 @@ and recorded modes work without it. This guide is for Part B of Stage 3, to find
 
 ## 3. Run ollama-local on one set of files
 
-`ollama-local` is the same client as `ollama` with laptop settings: a 4096-token context, small
-batches, and the model unloaded two minutes after its last call. Use the laptop's own files (no zip
-upload needed, but the zip keeps the same hash checks):
+`ollama-local` is the same client as `ollama` with laptop settings: an 8192-token context
+(`num_ctx`), a reply limit of 6144 tokens (`num_predict`), small batches, and the model unloaded two
+minutes after its last call.
+
+**Untested:** the context was 4096 tokens until Stage 3b. It was raised to 8192 because the Colab
+recordings showed the longest replies (pages with a way table) being cut off mid-JSON. A larger context
+needs more memory for the model's key-value cache, and how much more on this laptop is **not measured**.
+If the run below runs out of memory, measure with 4096 first and record which replies come back with
+`done_reason` "length" (cut off).
+
+Use the laptop's own files (no zip upload needed, but the zip keeps the same hash checks):
 
 ```powershell
 .venv\Scripts\python.exe -m backend.record pack --out laptop-files.zip --sets showcase
@@ -96,7 +104,7 @@ seconds of every model call (`calls[].seconds`).
 | Measure | Value |
 |---|---|
 | Model size on disk (`gemma4:e2b`) | NOT RUN YET |
-| Peak memory of the Ollama processes | NOT RUN YET |
+| Peak memory of the Ollama processes (8192-token context) | NOT RUN YET |
 | Free RAM left at the peak | NOT RUN YET |
 | Seconds per document: specification | NOT RUN YET |
 | Seconds per document: letter | NOT RUN YET |

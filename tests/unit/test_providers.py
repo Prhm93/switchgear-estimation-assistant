@@ -16,9 +16,10 @@ from pathlib import Path
 import pytest
 
 import backend.app.llm  # noqa: F401  (makes the AI engine importable)
-from estimation_assistant.providers import (MODES, ModelUnavailable, OllamaProvider, RecordedProvider, Recording,
-                                            RecordingMismatch, RecordingProvider, load_recording, make_provider,
-                                            save_recording, sha256_bytes)
+from estimation_assistant.providers import (MODES, NUM_CTX, NUM_PREDICT, RECORDING_SCHEMA, ModelUnavailable,
+                                            OllamaProvider, RecordedProvider, Recording, RecordingMismatch,
+                                            RecordingProvider, load_recording, make_provider, save_recording,
+                                            sha256_bytes)
 from tests.fakes import ScriptedProvider
 
 
@@ -42,7 +43,8 @@ class _Ollama(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         _Ollama.requests.append(body)
-        self._send({"message": {"role": "assistant", "content": '{"values": []}'}, "done": True})
+        self._send({"message": {"role": "assistant", "content": '{"values": []}'}, "done": True,
+                    "done_reason": "length", "eval_count": 6144, "prompt_eval_count": 1987})
 
 
 @pytest.fixture
@@ -60,7 +62,8 @@ def test_modes() -> None:
     assert make_provider("rules") is None
     assert make_provider("ollama").mode == "ollama"
     local = make_provider("ollama-local")
-    assert local.mode == "ollama-local" and local.options["num_ctx"] == 4096 and local.keep_alive == "2m"
+    assert local.mode == "ollama-local" and local.options["num_ctx"] == NUM_CTX and local.keep_alive == "2m"
+    assert local.options["num_predict"] == NUM_PREDICT and local.options["num_batch"] == 64
     with pytest.raises(RecordingMismatch):
         make_provider("recorded")  # never without a recording checked by hash
     with pytest.raises(ValueError):
@@ -75,6 +78,47 @@ def test_ollama_client_sends_structured_output_request(ollama_url) -> None:
     assert body["format"] == schema and body["stream"] is False
     assert body["options"]["temperature"] == 0
     assert [m["role"] for m in body["messages"]] == ["system", "user"]
+
+
+def test_ollama_sets_its_limits_and_keeps_why_it_stopped(ollama_url) -> None:
+    reply = OllamaProvider(ollama_url, "gemma4:e2b").generate("system text", "user text", {})
+    options = _Ollama.requests[-1]["options"]
+    assert options["num_ctx"] == NUM_CTX == 8192 and options["num_predict"] == NUM_PREDICT == 6144
+    assert (reply.done_reason, reply.eval_count, reply.prompt_eval_count) == ("length", 6144, 1987)
+
+
+def test_recording_stores_done_reason_and_replays_it(ollama_url, tmp_path: Path) -> None:
+    recorder = RecordingProvider(OllamaProvider(ollama_url, "gemma4:e2b"))
+    recorder.generate("SYSTEM", "Page: 1\nhello", {}, key="page 1")
+    recording = recorder.recording(input_name="FAKE/input.txt", data=b"x", prompt_version="test",
+                                   system_prompt="SYSTEM", prompt_template="{text}").model_copy(update={"fake": True})
+    assert recording.schema_version == RECORDING_SCHEMA == "1.1"
+    assert recording.options["num_predict"] == NUM_PREDICT
+    path = tmp_path / "fake.json"
+    save_recording(recording, path)
+    call = load_recording(path, b"x").calls[0]
+    assert (call.done_reason, call.eval_count, call.prompt_eval_count) == ("length", 6144, 1987)
+    replay = RecordedProvider(load_recording(path, b"x")).generate("SYSTEM", "Page: 1\nhello", {})
+    assert (replay.done_reason, replay.eval_count) == ("length", 6144)
+
+
+def test_schema_1_0_recordings_still_load(tmp_path: Path) -> None:
+    """A Stage 3 Part A recording has no done_reason, token counts or options; it loads and replays as before."""
+    old = _fake_recording(b"x").model_dump()
+    old["schema_version"] = "1.0"
+    del old["options"]
+    for call in old["calls"]:
+        for name in ("done_reason", "eval_count", "prompt_eval_count"):
+            del call[name]
+    path = tmp_path / "old.json"
+    path.write_text(json.dumps(old), encoding="utf-8")
+    recording = load_recording(path, b"x")
+    assert recording.schema_version == "1.0" and recording.calls[0].done_reason is None
+    assert RecordedProvider(recording).generate("SYSTEM", "Page: 1\nhello", {}).done_reason is None
+    with pytest.raises(RecordingMismatch):
+        load_recording(path, b"other bytes")
+    with pytest.raises(RecordingMismatch):
+        RecordedProvider(recording).generate("ANOTHER SYSTEM PROMPT", "Page: 1\nhello", {})
 
 
 def test_ollama_down_raises_model_unavailable() -> None:

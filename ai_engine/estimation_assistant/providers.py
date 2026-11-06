@@ -9,8 +9,13 @@
   rather than answered with an old reply.
 - ``ollama``: live calls to an Ollama server (Colab, or any machine with a GPU).
 - ``ollama-local``: the same client with settings for a laptop with 8 GB of
-  RAM and no GPU: a small context window, the model unloaded two minutes
-  after its last call (so it stays loaded through one document), and a long timeout.
+  RAM and no GPU: small batches, the model unloaded two minutes after its
+  last call (so it stays loaded through one document), and a long timeout.
+
+Both live modes set the context window (``num_ctx``) and the reply length
+limit (``num_predict``) explicitly, and every reply keeps Ollama's
+``done_reason`` and token counts, so a reply cut off by a limit is visible in
+the recording instead of guessed.
 
 Only the Python standard library is used (``urllib``), so no extra package is
 needed and nothing has to be installed on a laptop that never calls a model.
@@ -33,7 +38,13 @@ from pydantic import BaseModel, ConfigDict, Field
 
 ModelMode = Literal["rules", "recorded", "ollama", "ollama-local"]
 MODES: tuple[str, ...] = ("rules", "recorded", "ollama", "ollama-local")
-RECORDING_SCHEMA = "1.0"
+RECORDING_SCHEMA = "1.1"  # 1.1 adds done_reason, token counts and options; 1.0 files still load
+
+# Context window and reply limit for both live modes. A specification page with the longest way table
+# (14 ways x 7 fields, each item with its quote) needs about 4,000 to 4,500 reply tokens; the system prompt
+# plus the largest page is about 2,000 tokens. Ollama's default limits cut such replies off mid-JSON.
+NUM_CTX = 8192
+NUM_PREDICT = 6144
 
 
 class ModelUnavailable(RuntimeError):
@@ -61,6 +72,9 @@ class ModelReply(BaseModel):
     model_version: str  # Ollama's model digest (first 12 characters), or "unknown"
     content: str
     seconds: float = Field(ge=0)
+    done_reason: str | None = None  # Ollama's reason for stopping: "stop" (finished) or "length" (cut off)
+    eval_count: int | None = None  # reply tokens
+    prompt_eval_count: int | None = None  # prompt tokens
 
 
 class ModelProvider(Protocol):
@@ -88,7 +102,8 @@ class OllamaProvider:
         self.url = url.rstrip("/")
         self.model = model
         self.mode = mode
-        self.options = {"temperature": 0, "seed": 42, **(options or {})}
+        self.options = {"temperature": 0, "seed": 42, "num_ctx": NUM_CTX, "num_predict": NUM_PREDICT,
+                        **(options or {})}
         self.keep_alive = keep_alive
         self.timeout_s = timeout_s
         self._version: str | None = None
@@ -128,12 +143,18 @@ class OllamaProvider:
         content = (reply.get("message") or {}).get("content")
         if not isinstance(content, str):
             raise ModelUnavailable(f"Ollama reply has no message content: {str(reply)[:200]}")
-        return ModelReply(model=self.model, model_version=version, content=content, seconds=round(seconds, 3))
+        return ModelReply(model=self.model, model_version=version, content=content, seconds=round(seconds, 3),
+                          done_reason=reply.get("done_reason"), eval_count=reply.get("eval_count"),
+                          prompt_eval_count=reply.get("prompt_eval_count"))
 
 
 def ollama_local(url: str, model: str) -> OllamaProvider:
-    """Laptop settings: a 4k context and small batches to save memory; unloaded 2 minutes after the last call."""
-    return OllamaProvider(url, model, mode="ollama-local", options={"num_ctx": 4096, "num_batch": 64},
+    """Laptop settings: small batches to save memory; unloaded 2 minutes after the last call.
+
+    The context is the same 8192 tokens as on Colab (a 4096-token context cut long replies off). Its memory
+    use on an 8 GB laptop is not measured yet (docs/ollama-laptop.md).
+    """
+    return OllamaProvider(url, model, mode="ollama-local", options={"num_ctx": NUM_CTX, "num_batch": 64},
                           keep_alive="2m", timeout_s=900.0)
 
 
@@ -148,6 +169,9 @@ class RecordedCall(BaseModel):
     prompt_sha256: str
     reply: str
     seconds: float = Field(ge=0)
+    done_reason: str | None = None  # schema 1.1; None in 1.0 recordings
+    eval_count: int | None = None
+    prompt_eval_count: int | None = None
 
 
 class Recording(BaseModel):
@@ -155,7 +179,7 @@ class Recording(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["1.0"] = RECORDING_SCHEMA
+    schema_version: Literal["1.0", "1.1"] = RECORDING_SCHEMA
     model: str
     model_version: str
     created: str  # ISO 8601 date and time (UTC) of the run
@@ -166,6 +190,7 @@ class Recording(BaseModel):
     input_name: str  # e.g. "T03/specification.pdf"; for people only, never used to find a recording
     input_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     calls: list[RecordedCall] = Field(default_factory=list)
+    options: dict[str, Any] | None = None  # the model options of the run (schema 1.1; None in 1.0)
     fake: bool = False
 
     @property
@@ -208,7 +233,8 @@ class RecordedProvider:
             raise RecordingMismatch("This prompt is not in the recording (the page text or prompt changed); "
                                     "refused.")
         return ModelReply(model=self.recording.model, model_version=self.recording.model_version,
-                          content=call.reply, seconds=call.seconds)
+                          content=call.reply, seconds=call.seconds, done_reason=call.done_reason,
+                          eval_count=call.eval_count, prompt_eval_count=call.prompt_eval_count)
 
 
 class RecordingProvider:
@@ -227,7 +253,8 @@ class RecordingProvider:
         self.system = system
         self.last_version = reply.model_version
         self.calls.append(RecordedCall(key=key or f"call {len(self.calls) + 1}", prompt_sha256=sha256_text(prompt),
-                                       reply=reply.content, seconds=reply.seconds))
+                                       reply=reply.content, seconds=reply.seconds, done_reason=reply.done_reason,
+                                       eval_count=reply.eval_count, prompt_eval_count=reply.prompt_eval_count))
         return reply
 
     def recording(self, *, input_name: str, data: bytes, prompt_version: str, system_prompt: str,
@@ -235,7 +262,8 @@ class RecordingProvider:
         return Recording(model=self.model, model_version=self.last_version,
                          created=datetime.now(UTC).replace(microsecond=0).isoformat(), mode=self.mode,
                          prompt_version=prompt_version, system_prompt=system_prompt, prompt_template=prompt_template,
-                         input_name=input_name, input_sha256=sha256_bytes(data), calls=self.calls)
+                         input_name=input_name, input_sha256=sha256_bytes(data), calls=self.calls,
+                         options=getattr(self.inner, "options", None))
 
 
 def make_provider(mode: str, *, url: str = "http://127.0.0.1:11434", model: str = "gemma4:e2b",
