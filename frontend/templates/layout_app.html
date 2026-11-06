@@ -51,7 +51,8 @@
       <div class="nav__label">Reading mode</div>
       <div class="mode-panel">
         <div class="mode-panel__row"><span>Rules</span><span class="mode-panel__live">&#9679; live</span></div>
-        <div class="mode-panel__row"><span>Model run</span><span>none until Stage 3</span></div>
+        {#- The real recorded (or live) run label when a document of this project was read with one. -#}
+        <div class="mode-panel__row"><span>Model run</span><span>{% if model_runs %}{{ model_runs | join("; ") }}{% else %}none{% endif %}</span></div>
       </div>
     </div>
 

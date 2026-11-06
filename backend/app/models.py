@@ -52,6 +52,7 @@ class Document(Base):
     status: Mapped[str] = mapped_column(String(20))
     note: Mapped[str | None] = mapped_column(Text)
     page_count: Mapped[int | None] = mapped_column(Integer)
+    model_run: Mapped[str | None] = mapped_column(String(200))  # e.g. "gemma4:e2b, 2026-11-07"; None in rules mode
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     project: Mapped[Project] = relationship(back_populates="documents")
@@ -92,6 +93,7 @@ class ExtractedValueRow(Base):
     review_status: Mapped[str] = mapped_column(String(20), default="extracted")
     rule: Mapped[str | None] = mapped_column(String(60))
     derivation: Mapped[str | None] = mapped_column(Text)
+    agreement: Mapped[str | None] = mapped_column(String(20))  # combined mode: agree, disagree, rules_only, llm_only
     # Set only by an engineer's approve or edit; the estimate reads these, never ``value``.
     approved_value: Mapped[Any] = mapped_column(JSON, nullable=True)
     approved_unit: Mapped[str | None] = mapped_column(String(20))

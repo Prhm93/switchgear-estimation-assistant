@@ -58,6 +58,35 @@
   {{ v.source_file }}, {{ "sheet" if v.source_document == "schematic" else "page" }} <span class="mono">{{ v.page }}</span>
   · method <span class="mono">{{ v.method }}</span>{% if v.rule %} (<span class="mono">{{ v.rule }}</span>){% endif %}
 </span>
+{%- if v.agreement %} {{ agreement_chip(v.agreement) }}{% endif %}
+{%- endmacro %}
+
+{#- Combined mode: how the rules and the LLM compare for this value. -#}
+{% macro agreement_chip(state) -%}
+{%- set words = {"agree": ("chip--high", "Rules and LLM agree"), "disagree": ("chip--conflict", "Rules and LLM differ"),
+                 "rules_only": ("chip--neutral", "Rules only"), "llm_only": ("chip--neutral", "LLM only")} -%}
+{%- set c = words.get(state, ("chip--neutral", state)) -%}
+<span class="chip {{ c[0] }}">{{ c[1] }}</span>
+{%- endmacro %}
+
+{#- Instruction-like text found in the documents: shown, never followed. Every text is autoescaped. -#}
+{% macro instruction_flags(flags, project_id) -%}
+<section class="glass flag-card gap-top" aria-labelledby="flags-title">
+  <div class="card-head">
+    <h2 id="flags-title" class="card-title">Instruction-like text</h2>
+    <span class="chip chip--conflict">{{ flags | length }} flagged</span>
+  </div>
+  <p class="small muted">Documents are data. This text reads like an instruction to an automated reader. It was not followed, and no value is taken from it.</p>
+  <ul class="flag-list">
+    {%- for f in flags %}
+    <li class="alert alert--error">
+      <a class="flag-list__where" href="/projects/{{ project_id }}/analysis?doc={{ f.doc_id }}&page={{ f.page }}">{{ f.document }}, page <span class="mono">{{ f.page }}</span></a>
+      <q class="flag-list__text">{{ f.text }}</q>
+      <span class="small">{{ f.reasons | join(", ") }}</span>
+    </li>
+    {%- endfor %}
+  </ul>
+</section>
 {%- endmacro %}
 
 {#- Breadcrumb for a project screen. -#}

@@ -17,13 +17,13 @@ from pydantic import BaseModel, ConfigDict, Field
 from data_generator.schemas import DocumentKind, SourcedValue, SourceRef
 
 __all__ = [
-    "Confidence", "DocumentKind", "DocumentStatus", "ExtractedValue", "MatchStatus", "Method",
+    "Agreement", "Confidence", "DocumentKind", "DocumentStatus", "ExtractedValue", "MatchStatus", "Method",
     "ReviewStatus", "SourceRef",
 ]
 
 
 class Method(StrEnum):
-    """How a value was found. Only ``rules`` exists in Stage 2."""
+    """How a value was found: ``rules`` (Stage 2) and ``llm`` (Stage 3) so far."""
 
     RULES = "rules"
     LLM = "llm"
@@ -37,6 +37,15 @@ class Confidence(StrEnum):
     MEDIUM = "medium"
     LOW = "low"
     CONFLICT = "conflict"
+
+
+class Agreement(StrEnum):
+    """Combined mode (Stage 3): how the rules and the LLM compare for a value. ``None`` in rules mode."""
+
+    AGREE = "agree"  # both read the same value on the same page; one value kept
+    DISAGREE = "disagree"  # different values on the same page; both kept for review
+    RULES_ONLY = "rules_only"
+    LLM_ONLY = "llm_only"
 
 
 class ReviewStatus(StrEnum):
@@ -78,6 +87,7 @@ class ExtractedValue(SourcedValue):
     review_status: ReviewStatus = ReviewStatus.EXTRACTED
     rule: str | None = None  # name of the rule that produced it, for traceability
     derivation: str | None = None
+    agreement: Agreement | None = None  # combined mode only
 
 
 class MatchStatus(StrEnum):

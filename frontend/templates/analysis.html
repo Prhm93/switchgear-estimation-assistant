@@ -1,5 +1,5 @@
 {%- extends "layout_app.html" -%}
-{%- from "macros.html" import icon, confidence, value_status, provenance, project_crumbs, project_heading with context -%}
+{%- from "macros.html" import icon, confidence, value_status, provenance, project_crumbs, project_heading, instruction_flags with context -%}
 {%- set nav = "analysis" -%}
 
 {%- block title %}Analysis · {{ project.name }} · {{ app_name }}{% endblock -%}
@@ -20,6 +20,8 @@
   {%- endfor %}
 </nav>
 
+{%- if flags %}{{ instruction_flags(flags, project.id) }}{% endif %}
+
 {%- if current is none %}
 <p class="glass muted gap-top">No document has been read yet. Upload documents on the <a href="/projects/{{ project.id }}/upload">Documents</a> screen.</p>
 {%- else %}
@@ -35,7 +37,7 @@
       </nav>
     </div>
     {#- Document text: every segment is autoescaped; highlighted spans are the sources of the values on the right. -#}
-    <pre class="doc-text">{% for s in segments %}{% if s.marked %}<mark id="src-{{ s.value_ids[0] }}" data-values="{{ s.value_ids | join(' ') }}">{{ s.text }}</mark>{% else %}{{ s.text }}{% endif %}{% endfor %}</pre>
+    <pre class="doc-text">{% for s in segments %}{% if s.marked and s.value_ids[0] < 0 %}<mark class="mark--flag" title="Instruction-like text: not followed">{{ s.text }}</mark>{% elif s.marked %}<mark id="src-{{ s.value_ids[0] }}" data-values="{{ s.value_ids | join(' ') }}">{{ s.text }}</mark>{% else %}{{ s.text }}{% endif %}{% endfor %}</pre>
   </section>
 
   <section class="glass" aria-labelledby="values-title">
