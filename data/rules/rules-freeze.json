@@ -1,0 +1,8 @@
+{
+  "frozen_at_commit": "88fa103",
+  "note": "SHA-256 of the rule files with line endings normalised to LF. Frozen before the reworded test set was generated; never changed after seeing it.",
+  "files": {
+    "backend/app/extraction.py": "cb9d0a0426c8d9751d75af4afa52cf3cab966ca1d5045fd94947a638eef63ac8",
+    "backend/app/normalise.py": "4af6edc793b496681197a392fbba1473e71fb8d253cd6eae9d46b5d07f7d7c67"
+  }
+}
