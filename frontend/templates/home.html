@@ -1,0 +1,153 @@
+{#- Public home page, as docs/design/mockup-home.html. Works without a database.
+    Numbers are real results from docs/stage-1.md and docs/stage-2.md or live
+    showcase counts; anything not measured yet reads [PLACEHOLDER]. -#}
+{%- extends "base.html" -%}
+{%- from "macros.html" import icon, brand_mark, segbar with context -%}
+
+{%- block title %}{{ app_name }}{% endblock -%}
+{%- block body_class %}page--home{% endblock -%}
+
+{%- block body %}
+<div class="glow" aria-hidden="true"></div>
+<header class="site-header">
+  <div class="site-header__inner">
+    <a class="brand" href="/">{{ brand_mark(28) }}<span class="brand__name">{{ app_name }}</span></a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="#how">How it works</a>
+      <a href="#accuracy">Accuracy</a>
+      <a href="#trust">Trust &amp; safety</a>
+      <a href="/projects">Dashboard</a>
+    </nav>
+    {#- Sign in is hidden until login is built (Stage 8). -#}
+    <a class="btn btn--primary" href="/projects">Open workspace</a>
+  </div>
+  <div class="site-header__line" aria-hidden="true"></div>
+</header>
+
+<main id="main" class="site-main">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero__side hero__side--left">
+      <article class="float-card sheen">
+        <div class="float-card__head"><span>Value found</span><span class="chip chip--high">High</span></div>
+        <div class="float-card__value">ACB 1250 A 4P</div>
+        <div class="float-card__meta">Specification · page 5 · incomer</div>
+        <div class="meter" aria-hidden="true"><div class="meter__fill" style="width: 100%"></div></div>
+        <div class="float-card__meta">3 of 3 documents agree</div>
+      </article>
+      <article class="float-card sheen">
+        <div class="float-card__head"><span>Conflict · Q2 rating</span><span class="chip chip--conflict">Conflict</span></div>
+        <div class="pair">
+          <div class="pair__side"><div class="pair__src">Drawing · sheet 1</div><div class="pair__value">200 A</div></div>
+          <div class="pair__side"><div class="pair__src">Specification · p5</div><div class="pair__value">250 A</div></div>
+        </div>
+      </article>
+    </div>
+
+    <div class="hero__center">
+      <span class="hero__pill"><span class="dot" aria-hidden="true"></span>Local-first · every value traceable</span>
+      <h1 id="hero-title" class="hero__title">Turn enquiries into <em>checked</em> estimates</h1>
+      <p class="hero__lede">Upload the specification, drawing and customer letter. Every rating, quantity and price shows where it came from, and nothing reaches the estimate until an engineer approves it.</p>
+      <form class="hero__form" method="post" action="/projects">
+        <div class="upload-box">
+          <div class="upload-box__inner">
+            <label class="visually-hidden" for="home-name">Project name</label>
+            <input id="home-name" class="upload-box__input" name="name" type="text" required maxlength="200" autocomplete="off"
+                   placeholder="Name the enquiry, e.g. MSB-2 main switchboard">
+            <button class="btn btn--primary btn--lg" type="submit">Start a project{{ icon("arrow-right", "sm") }}</button>
+          </div>
+        </div>
+      </form>
+      <div class="hero__facts">
+        <span>PDF · DXF · DOCX · PNG · JPG</span>
+        <span>SHA-256 fingerprint on every upload</span>
+        <span>Prices only from the catalogue</span>
+      </div>
+    </div>
+
+    <div class="hero__side hero__side--right">
+      <article class="float-card sheen">
+        <div class="float-card__head"><span>Values approved</span></div>
+        {%- if summary %}
+        <div class="float-card__value"><span class="kpi__value">{{ summary.approved }}</span> <span class="muted">of {{ summary["values"] }}</span></div>
+        {{ segbar(summary) }}
+        <div class="float-card__meta">{{ showcase.name }}</div>
+        {%- else %}
+        <div class="float-card__value placeholder">[PLACEHOLDER]</div>
+        <div class="float-card__meta">Live counts appear once the showcase project is uploaded.</div>
+        {%- endif %}
+      </article>
+      <article class="float-card sheen">
+        <div class="float-card__head"><span>Missing information</span><span class="chip chip--missing">Missing</span></div>
+        <div class="float-card__value">Way Q3 rating</div>
+        <div class="float-card__meta">Test project T12: the specification says "TBC"</div>
+      </article>
+    </div>
+  </section>
+
+  <section class="preview" aria-label="Product preview">
+    <div class="frame">
+      <div class="frame__bar">
+        <span class="frame__dot" aria-hidden="true"></span><span class="frame__dot" aria-hidden="true"></span><span class="frame__dot" aria-hidden="true"></span>
+        <span class="frame__title">Analysis · Showcase MSB-2 main switchboard</span>
+      </div>
+      <div class="frame__body">
+        <div class="frame__nav" aria-hidden="true">
+          <span>Dashboard</span><span aria-current="true">Analysis</span><span>Review</span><span>Estimate</span><span>Audit log</span>
+        </div>
+        <div class="frame__content">
+          <div class="paper"><div class="paper__src">specification.pdf · page 4</div>3.4 Prospective fault level: <mark>36 kA</mark> for 1 s.
+4 Construction
+4.1 Form of separation: <mark>Form 4a</mark> to BS EN IEC 61439-2.
+4.2 Degree of protection: <mark>IP54</mark> with all doors closed.
+4.4 Cable entry: <mark>bottom entry</mark> for all incoming and outgoing cables.</div>
+          <div class="preview-values">
+            <div class="preview-value"><div><div class="preview-value__v">Q2 · MCCB 250 A 4P 36 kA</div><div class="preview-value__src">Spec p5 · rules · drawing says 200 A</div></div><span class="chip chip--conflict">Conflict</span></div>
+            <div class="preview-value"><div><div class="preview-value__v">Fault level · 36 kA</div><div class="preview-value__src">Spec p4 · rules</div></div><span class="chip chip--high">High</span></div>
+            <div class="preview-value"><div><div class="preview-value__v">Form of separation · 4a</div><div class="preview-value__src">Spec p4 · rules</div></div><span class="chip chip--high">High</span></div>
+            <div class="preview-value"><div><div class="preview-value__v">IP rating · IP54</div><div class="preview-value__src">Spec p4 · rules</div></div><span class="chip chip--high">High</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" class="section" aria-labelledby="how-title">
+    <div class="eyebrow">How it works</div>
+    <h2 id="how-title" class="section-title">From three documents to one checked estimate</h2>
+    <div class="steps">
+      <div class="tile glass--tile"><div class="tile__no">01</div><h3 class="tile__title">Upload</h3><p class="tile__text">Specification, drawing and letter are stored unchanged, each with its own fingerprint.</p></div>
+      <div class="tile glass--tile"><div class="tile__no">02</div><h3 class="tile__title">Read</h3><p class="tile__text">Ratings, poles, quantities and part types are found with the exact sentence or drawing text they came from.</p></div>
+      <div class="tile glass--tile"><div class="tile__no">03</div><h3 class="tile__title">Cross-check</h3><p class="tile__text">Where the drawing and specification disagree, both sources are shown side by side. Nothing is chosen quietly.</p></div>
+      <div class="tile glass--tile"><div class="tile__no">04</div><h3 class="tile__title">Approve &amp; export</h3><p class="tile__text">Only approved values reach the estimate. Prices come from the catalogue, and every action is logged.</p></div>
+    </div>
+  </section>
+
+  <section id="accuracy" class="section accuracy" aria-labelledby="accuracy-title">
+    <div>
+      <div class="eyebrow">Measured, not promised</div>
+      <h2 id="accuracy-title" class="section-title">Every step is scored against an answer key</h2>
+      <p class="section-lede">Each method is scored on the same 20 test enquiries. From Stage 4, drawing results are reported separately for clean, scanned, photographed and real drawings.</p>
+    </div>
+    <div class="stats">
+      <div class="stat glass--tile"><div class="stat__value">20</div><div class="stat__label">test enquiries with exact answer keys</div></div>
+      <div class="stat glass--tile"><div class="stat__value">17</div><div class="stat__label">planted problems to catch, plus 4 clean controls</div></div>
+      <div class="stat glass--tile"><div class="stat__value">0.486</div><div class="stat__label">rules recall without the CAD file: the gap the drawing-reading stages must close</div></div>
+      <div class="stat glass--tile"><div class="stat__value placeholder">[PLACEHOLDER]</div><div class="stat__label">drawing conditions scored apart: clean, scanned, photo, real</div></div>
+    </div>
+  </section>
+
+  <section id="trust" class="section cta-panel" aria-labelledby="trust-title">
+    <div>
+      <h2 id="trust-title">The engineer decides. The system shows its work.</h2>
+      <p>Runs locally. No documents leave the machine, and prices never come from a model. From Stage 3, every model answer must quote its source, and a quote that is not in the document is rejected.</p>
+    </div>
+    <a class="btn btn--primary btn--lg" href="{{ '/projects/%d' % showcase.id if showcase else '/projects/new' }}">
+      {{- "Open the showcase project" if showcase else "Start the showcase project" }}{{ icon("arrow-right", "sm") }}</a>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <span>Independent personal project. Synthetic data only. Not affiliated with or endorsed by any company.</span>
+  <span class="mono placeholder">[PLACEHOLDER]</span>
+</footer>
+{% endblock -%}

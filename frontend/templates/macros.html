@@ -9,16 +9,22 @@
 </svg>
 {%- endmacro %}
 
-{#- Review status badge. status is one of: extracted, review, conflict, approved. -#}
+{#- The invented three-bar product mark (not a company logo). -#}
+{% macro brand_mark(size=28) -%}
+<svg class="brand__mark" width="{{ size }}" height="{{ size }}" viewBox="0 0 28 28" aria-hidden="true" focusable="false"><rect x="3" y="12" width="4" height="13" rx="2" fill="#1C5FD1"/><rect x="12" y="7" width="4" height="18" rx="2" fill="#9CC0FF"/><rect x="21" y="3" width="4" height="22" rx="2" fill="#E31E24"/></svg>
+{%- endmacro %}
+
+{#- Status chip. status is one of: extracted, review, conflict, missing, approved. -#}
 {% macro badge(status) -%}
 {%- set labels = {
-  "extracted": ("Extracted", "document"),
-  "review": ("Needs review", "warning"),
-  "conflict": ("Conflict", "warning"),
-  "approved": ("Approved", "check"),
+  "extracted": ("Extracted", "document", "neutral"),
+  "review": ("Needs review", "warning", "review"),
+  "conflict": ("Conflict", "warning", "conflict"),
+  "missing": ("Missing", "warning", "missing"),
+  "approved": ("Approved", "check", "approved"),
 } -%}
-{%- set label, glyph = labels[status] -%}
-<span class="badge badge--{{ status }}">{{ icon(glyph) }}{{ label }}</span>
+{%- set label, glyph, tone = labels[status] -%}
+<span class="chip chip--{{ tone }}">{{ icon(glyph) }}{{ label }}</span>
 {%- endmacro %}
 
 {#- Confidence chip. level is one of: high, medium, low, conflict. -#}
@@ -26,15 +32,23 @@
 <span class="conf conf--{{ level }}">Confidence: {{ level | capitalize }}</span>
 {%- endmacro %}
 
+{#- Confidence as a filled chip, as in the dashboard table. -#}
+{% macro level_chip(level) -%}
+{%- if level == "conflict" %}<span class="chip chip--conflict">Conflict</span>
+{%- elif level == "missing" %}<span class="chip chip--missing">Missing</span>
+{%- elif level == "high" %}<span class="chip chip--high">High</span>
+{%- elif level == "medium" %}<span class="chip chip--neutral">Medium</span>
+{%- else %}<span class="chip chip--review">Low</span>{% endif -%}
+{%- endmacro %}
 
 {#- Review status of an extracted value, in the plain labels of the design. -#}
 {% macro value_status(v) -%}
 {%- if v.review_status in ("approved", "edited") -%}
-<span class="badge badge--approved">{{ icon("check") }}{{ "Approved" if v.review_status == "approved" else "Edited" }}</span>
+<span class="chip chip--approved">{{ icon("check") }}{{ "Approved" if v.review_status == "approved" else "Edited" }}</span>
 {%- elif v.review_status == "rejected" -%}
-<span class="badge badge--sample">Rejected</span>
+<span class="chip chip--neutral">Rejected</span>
 {%- else -%}
-<span class="badge badge--review">{{ icon("warning") }}Needs review</span>
+<span class="chip chip--review">{{ icon("warning") }}Needs review</span>
 {%- endif -%}
 {%- endmacro %}
 
@@ -46,15 +60,49 @@
 </span>
 {%- endmacro %}
 
-{#- Tabs for the screens of one project; the active tab has the red underline. -#}
-{% macro project_tabs(project, active) -%}
-<nav class="tabs project-tabs" aria-label="Project screens">
-  {%- for key, label, href in [("upload", "Documents", "/upload"), ("analysis", "Analysis", "/analysis"),
-                                ("review", "Review", "/review"), ("estimate", "Estimate", "/estimate"),
-                                ("audit", "Audit log", "/audit")] %}
-  <a class="tab" href="/projects/{{ project.id }}{{ href }}"{% if key == active %} aria-current="page"{% endif %}>{{ label }}</a>
-  {%- endfor %}
-</nav>
+{#- Breadcrumb for a project screen. -#}
+{% macro project_crumbs(project, here=None) -%}
+<a href="/projects">Projects</a> <span aria-hidden="true">/</span>
+{%- if here %} <a href="/projects/{{ project.id }}">{{ project.name }}</a> <span aria-hidden="true">/</span> <span aria-current="page">{{ here }}</span>
+{%- else %} <span aria-current="page">{{ project.name }}</span>{% endif -%}
+{%- endmacro %}
+
+{#- Serif page title with the project's reference and document count. -#}
+{% macro project_heading(project, title=None) -%}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">{{ title or project.name }}</h1>
+    <div class="page-meta">
+      {%- if title %}<span>{{ project.name }}</span>{% endif %}
+      <span class="mono">{{ project.reference or "No reference" }}</span>
+      <span>{{ project.documents | length }} document{{ "s" if project.documents | length != 1 }}</span>
+    </div>
+  </div>
+  <span class="chip chip--neutral">Synthetic data</span>
+</div>
+{%- endmacro %}
+
+{#- Ring gauge: part of whole as a green arc (r = 34, so the circumference is 213.63). -#}
+{% macro ring(part, whole, label) -%}
+{%- set c = 213.63 -%}
+{%- set done = (c * part / whole) if whole else 0 -%}
+<svg class="ring" width="84" height="84" viewBox="0 0 84 84" role="img" aria-label="{{ label }}">
+  <circle class="ring__track" cx="42" cy="42" r="34"/>
+  {%- if part %}
+  <circle class="ring__arc" cx="42" cy="42" r="34" stroke-dasharray="{{ '%.1f' | format(done) }} {{ '%.1f' | format(c) }}" transform="rotate(-90 42 42)"/>
+  {%- endif %}
+  <text class="ring__text" x="42" y="48" text-anchor="middle">{{ ((100 * part / whole) if whole else 0) | round | int }}%</text>
+</svg>
+{%- endmacro %}
+
+{#- Segment bar: approved, to review, conflict, missing; widths follow the counts. -#}
+{% macro segbar(s) -%}
+<div class="segbar" role="img" aria-label="{{ s.approved }} approved, {{ s.review }} to review, {{ s.conflict }} in conflict, {{ s.missing }} missing">
+  {%- for key in ("approved", "review", "conflict", "missing") %}{% if s[key] %}
+  <span class="segbar__seg segbar__seg--{{ key }}" style="flex-grow: {{ s[key] }}"></span>
+  {%- endif %}{% endfor %}
+</div>
+<div class="legend"><span class="l-approved">Approved {{ s.approved }}</span><span class="l-review">Review {{ s.review }}</span><span class="l-conflict">Conflict {{ s.conflict }}</span><span class="l-missing">Missing {{ s.missing }}</span></div>
 {%- endmacro %}
 
 {#- Size in plain units. -#}

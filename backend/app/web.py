@@ -1,4 +1,4 @@
-"""Server-rendered screens (Jinja2 + HTMX): dashboard, new project and upload, analysis, review, estimate.
+"""Server-rendered screens (Jinja2 + HTMX): home, projects, project dashboard, upload, analysis, review, estimate.
 
 All document text and every value reach the templates as plain data and are
 escaped by Jinja's autoescaping; nothing from a document is marked safe.
@@ -16,7 +16,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from backend.app import normalise as norm
 from backend.app import services
@@ -50,10 +50,35 @@ SessionDep = Annotated[Session, Depends(get_session)]
 
 
 def render(request: Request, template: str, /, status_code: int = 200, **context: Any) -> HTMLResponse:
-    """Render a template; ``template`` is positional-only so any context key (``name`` too) is allowed."""
+    """Render a template; ``template`` is positional-only so any context key (``name`` too) is allowed.
+
+    Adds the sidebar context: the environment, and for a project screen the
+    project switcher list and the number of values still to review.
+    """
     templates = request.app.state.templates
-    base = {"app_name": request.app.state.settings.app_name, "status_words": STATUS_WORDS, "kind_words": KIND_WORDS}
+    base = {"app_name": request.app.state.settings.app_name, "status_words": STATUS_WORDS, "kind_words": KIND_WORDS,
+            "environment": request.app.state.settings.environment}
+    project = context.get("project")
+    if isinstance(project, Project):
+        base.update(sidebar_context(project))
     return templates.TemplateResponse(request, template, {**base, **context}, status_code=status_code)
+
+
+def initials(name: str) -> str:
+    """Two characters for the project tile: the first letters of the first two words."""
+    words = [w for w in re.split(r"[\s_/-]+", name) if w]
+    letters = "".join(w[0] for w in words[:2]) if len(words) > 1 else name[:2]
+    return letters.upper() or "P"
+
+
+def sidebar_context(project: Project) -> dict[str, Any]:
+    """Project switcher entries (the 20 newest projects) and the number of values to review."""
+    session = object_session(project)
+    others = []
+    if session is not None:
+        others = list(session.execute(select(Project.id, Project.name).order_by(Project.id.desc()).limit(20)))
+    return {"switch_projects": others, "project_initials": initials(project.name),
+            "review_count": sum(1 for v in project.values if v.review_status == ReviewStatus.EXTRACTED.value)}
 
 
 def project_or_404(session: Session, project_id: int) -> Project:
@@ -84,8 +109,30 @@ def display(value: Any, unit: str | None) -> str:
 
 # --- dashboard and projects ---------------------------------------------------------------------
 
+SHOWCASE_NAME = "showcase"
+
+
 @router.get("/", response_class=HTMLResponse)
-def dashboard(request: Request, session: SessionDep) -> HTMLResponse:
+def home(request: Request) -> HTMLResponse:
+    """The public home page. Works without a database; with one, the hero cards show the showcase project."""
+    showcase, summary = None, None
+    sessions = request.app.state.sessions
+    if sessions is not None:
+        try:
+            with sessions() as session:
+                found = session.scalars(select(Project).where(func.lower(Project.name).contains(SHOWCASE_NAME))
+                                        .order_by(Project.id.desc()).limit(1)).first()
+                if found is not None:
+                    summary = project_summary(found)
+                    summary = {k: summary[k] for k in ("values", "approved", "review", "conflict", "missing")}
+                    showcase = {"id": found.id, "name": found.name}
+        except Exception:  # an unreachable database must not take the home page down
+            showcase, summary = None, None
+    return render(request, "home.html", showcase=showcase, summary=summary)
+
+
+@router.get("/projects", response_class=HTMLResponse)
+def projects(request: Request, session: SessionDep) -> HTMLResponse:
     projects = list(session.scalars(select(Project).order_by(Project.id.desc())))
     pending = dict(session.execute(select(ExtractedValueRow.project_id, func.count(ExtractedValueRow.id))
                                    .where(ExtractedValueRow.review_status == "extracted")
@@ -100,7 +147,7 @@ def dashboard(request: Request, session: SessionDep) -> HTMLResponse:
     rows = [{"project": p, "documents": len(p.documents), "pending": pending.get(p.id, 0),
              "approved": approved.get(p.id, 0), "value_count": totals.get(p.id, 0), "errors": errors.get(p.id, 0),
              "estimate": services.latest_estimate(session, p.id)} for p in projects]
-    return render(request, "dashboard.html", counts=services.project_counts(session), rows=rows)
+    return render(request, "projects.html", counts=services.project_counts(session), rows=rows)
 
 
 @router.get("/projects/new", response_class=HTMLResponse)
@@ -251,15 +298,84 @@ def missing_information(project: Project, groups: OrderedDict[str, dict[str, Any
     return out
 
 
+def segment_counts(project: Project, groups: OrderedDict[str, dict[str, Any]],
+                   missing: list[dict[str, str]]) -> dict[str, int]:
+    """Counts for the segment bar and the ring gauge. Rejected values count in none of them."""
+    in_conflict = {v.id for g in groups.values() if g["conflict"] for v in g["values"]}
+    pending = [v for v in project.values if v.review_status == ReviewStatus.EXTRACTED.value]
+    return {"values": sum(1 for v in project.values if v.review_status != ReviewStatus.REJECTED.value),
+            "approved": sum(1 for v in project.values if v.review_status in ("approved", "edited")),
+            "conflict": sum(1 for v in pending if v.id in in_conflict),
+            "review": sum(1 for v in pending if v.id not in in_conflict),
+            "missing": len(missing)}
+
+
 def _review_context(project: Project) -> dict[str, Any]:
     groups = review_groups(project)
+    missing = missing_information(project, groups)
     # Conflicts first, then values still to review, then reviewed ones; field order within each.
     shown = OrderedDict(sorted(groups.items(), key=lambda kv: (not kv[1]["conflict"], not kv[1]["pending"])))
-    return {"project": project, "groups": shown, "missing": missing_information(project, groups),
+    return {"project": project, "groups": shown, "missing": missing, "seg": segment_counts(project, groups, missing),
             "field_label": field_label, "display": display, "source_label": services.source_label,
             "conflicts": sum(1 for g in groups.values() if g["conflict"]),
             "pending": sum(1 for v in project.values if v.review_status == "extracted"),
             "not_read": [d for d in project.documents if d.status == DocumentStatus.NOT_READ.value]}
+
+
+def project_summary(project: Project) -> dict[str, Any]:
+    """The segment counts plus the review groups, the missing list and the fields in conflict."""
+    groups = review_groups(project)
+    missing = missing_information(project, groups)
+    return {**segment_counts(project, groups, missing), "groups": groups, "missing_list": missing,
+            "conflicts": [g for g in groups.values() if g["conflict"]]}
+
+
+def way_of(field: str) -> str:
+    """The way column of the dashboard table: Q2, IN for the incomer, a dash otherwise."""
+    if m := WAY_FIELD.match(field):
+        return m.group(1)
+    return "IN" if field.startswith("incomer.") else "-"
+
+
+DASHBOARD_ROWS = 12
+FILTERS = {"all": "All", "review": "Needs review", "approved": "Approved"}
+
+
+def dashboard_rows(groups: OrderedDict[str, dict[str, Any]], show: str) -> list[dict[str, Any]]:
+    """One row per value that is not rejected; conflicts first, then values to review, then approved ones."""
+    rows = []
+    for g in groups.values():
+        for v in g["values"]:
+            if v.review_status == ReviewStatus.REJECTED.value:
+                continue
+            done = v.review_status in ("approved", "edited")
+            if (show == "review" and done) or (show == "approved" and not done):
+                continue
+            others = [o for o in g["values"] if o.id != v.id and o.review_status != ReviewStatus.REJECTED.value]
+            rows.append({"v": v, "way": way_of(g["field"]), "label": g["label"], "conflict": g["conflict"],
+                         "done": done, "others": others, "rank": (not g["conflict"], done)})
+    rows.sort(key=lambda r: r["rank"])  # stable: field order within each rank
+    return rows
+
+
+@router.get("/projects/{project_id}", response_class=HTMLResponse)
+def project_dashboard(request: Request, project_id: int, session: SessionDep, show: str = "all") -> HTMLResponse:
+    """Overview of one project. It changes nothing itself: its buttons post to the review routes."""
+    project = project_or_404(session, project_id)
+    show = show if show in FILTERS else "all"
+    summary = project_summary(project)
+    rows = dashboard_rows(summary["groups"], show)
+    counts = {"all": summary["values"], "review": summary["review"] + summary["conflict"],
+              "approved": summary["approved"]}
+    events = list(session.scalars(select(AuditEvent).where(AuditEvent.project_id == project_id)
+                                  .order_by(AuditEvent.id.desc()).limit(5)))
+    estimate = services.latest_estimate(session, project_id)
+    blocked = len({line for p in estimate.problems for line in p["lines"]}) if estimate else 0
+    return render(request, "project_dashboard.html", project=project, summary=summary,
+                  rows=rows[:DASHBOARD_ROWS], row_total=len(rows), show=show, filters=FILTERS,
+                  filter_counts=counts, events=events, estimate=estimate, blocked=blocked,
+                  money=services.money, display=display, source_label=services.source_label,
+                  audit_detail=audit_detail)
 
 
 @router.get("/projects/{project_id}/review", response_class=HTMLResponse)

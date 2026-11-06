@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Switchgear Estimation Assistant – Project dashboard</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0A1630}
+a{color:#9CC0FF;text-decoration:none}a:hover{color:#F4F7FB}
+.grid-bg{background-color:#0A1630;background-image:linear-gradient(rgba(156,192,255,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(156,192,255,0.05) 1px,transparent 1px);background-size:56px 56px}
+.nav-item{transition:background-color 150ms ease,color 150ms ease}
+.nav-item:hover{background-color:rgba(156,192,255,0.08);color:#F4F7FB}
+.btn-red{transition:background-color 150ms ease}
+.btn-red:hover{background-color:#C8161C}
+.btn-glass{transition:background-color 150ms ease}
+.btn-glass:hover{background-color:rgba(156,192,255,0.16)}
+.icon-btn{transition:background-color 150ms ease}
+.icon-btn:hover{background-color:rgba(156,192,255,0.18)}
+.row{transition:background-color 150ms ease}
+.row:hover{background-color:rgba(28,95,209,0.14)}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #9CC0FF;outline-offset:3px}
+</style>
+</helmet>
+<div class="grid-bg" style="min-height: 100vh; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #F4F7FB; display: flex; flex-wrap: wrap">
+
+<aside style="flex: 1 1 260px; max-width: 280px; background: rgba(8,18,40,0.88); border-right: 1px solid rgba(156,192,255,0.08); padding: 22px 16px; display: flex; flex-direction: column; gap: 22px; box-sizing: border-box">
+<a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; color: #F4F7FB; padding: 0 8px">
+<svg width="24" height="24" viewBox="0 0 28 28" aria-hidden="true"><rect x="3" y="12" width="4" height="13" rx="2" fill="#1C5FD1"/><rect x="12" y="7" width="4" height="18" rx="2" fill="#9CC0FF"/><rect x="21" y="3" width="4" height="22" rx="2" fill="#E31E24"/></svg>
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 21px; line-height: 1.1">Estimation Assistant</span>
+</a>
+
+<button type="button" style="display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px; border: 0; border-radius: 14px; background: rgba(156,192,255,0.07); color: #F4F7FB; text-align: left; font-family: inherit; cursor: pointer">
+<span aria-hidden="true" style="width: 34px; height: 34px; border-radius: 10px; background: #16305F; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 13px">M2</span>
+<span style="flex: 1 1 auto; min-width: 0"><span style="display: block; font-size: 14px; font-weight: 500">MSB-2 main switchboard</span><span style="display: block; font-size: 12px; color: #A9B8D3">Ingleby Example Housing</span></span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A9B8D3" stroke-width="2" aria-hidden="true"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg>
+</button>
+
+<nav aria-label="Workspace" style="display: flex; flex-direction: column; gap: 2px; font-size: 14px">
+<div style="font-size: 11px; letter-spacing: 1.6px; color: #8597B8; padding: 0 12px 8px">WORKSPACE</div>
+<a href="#dashboard" class="nav-item" aria-current="page" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: rgba(28,95,209,0.24); color: #F4F7FB"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/></svg>Dashboard</a>
+<a href="#analysis" class="nav-item" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; color: #C9D6EC"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>Analysis</a>
+<a href="#review" class="nav-item" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; color: #C9D6EC"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>Review<span style="margin-left: auto; padding: 1px 8px; border-radius: 999px; background: rgba(227,30,36,0.22); color: #FF9CA0; font-size: 12px">6</span></a>
+<a href="#estimate" class="nav-item" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; color: #C9D6EC"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h4"/></svg>Estimate</a>
+<a href="#catalogue" class="nav-item" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; color: #C9D6EC"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Catalogue</a>
+<a href="#audit" class="nav-item" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; color: #C9D6EC"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Audit log</a>
+</nav>
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 11px; letter-spacing: 1.6px; color: #8597B8; padding: 0 12px">READING MODE</div>
+<div style="margin: 0 4px; padding: 12px; border-radius: 12px; background: rgba(156,192,255,0.06); font-size: 13px">
+<div style="display: flex; justify-content: space-between"><span>Rules</span><span style="color: #7EE2B4">● live</span></div>
+<div style="display: flex; justify-content: space-between; margin-top: 6px; color: #A9B8D3"><span>Model run</span><span style="font-family: 'IBM Plex Mono', monospace">gemma4:e2b</span></div>
+</div>
+</div>
+
+<div style="margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 10px 8px; font-size: 13px; color: #C9D6EC">
+<span aria-hidden="true" style="width: 30px; height: 30px; border-radius: 50%; background: #16305F; display: flex; align-items: center; justify-content: center; font-size: 12px">EN</span>
+Engineer
+</div>
+</aside>
+
+<main style="flex: 999 1 560px; min-width: 0; padding: 26px 36px 48px; box-sizing: border-box">
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px">
+<div style="font-size: 13px; color: #A9B8D3">Projects <span aria-hidden="true">/</span> <span style="color: #F4F7FB">MSB-2 main switchboard</span></div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center">
+<label for="dash-search" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Search values</label>
+<input id="dash-search" type="search" placeholder="Search values, ways, parts" style="width: 240px; max-width: 100%; padding: 11px 16px; border-radius: 999px; border: 1px solid rgba(156,192,255,0.14); background: rgba(16,34,74,0.6); color: #F4F7FB; font-family: inherit; font-size: 14px">
+<a href="#export" class="btn-glass" style="padding: 11px 18px; border-radius: 999px; background: rgba(156,192,255,0.09); color: #F4F7FB; font-size: 14px; font-weight: 500">Export DOCX</a>
+<a href="#approve" class="btn-red" style="padding: 11px 18px; border-radius: 999px; background: #E31E24; color: #FFFFFF; font-size: 14px; font-weight: 600; box-shadow: 0 8px 22px rgba(227,30,36,0.28)">Approve high confidence</a>
+</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-top: 30px">
+<div>
+<h1 style="font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 54px; line-height: 1; margin: 0">MSB-2 main switchboard</h1>
+<div style="display: flex; flex-wrap: wrap; gap: 18px; margin-top: 12px; font-size: 14px; color: #A9B8D3"><span>Ingleby Example Housing Ltd</span><span style="font-family: 'IBM Plex Mono', monospace">EPL-SHOWCASE-SLD · Rev B</span><span>3 documents</span></div>
+</div>
+<span style="padding: 6px 12px; border-radius: 999px; background: rgba(156,192,255,0.10); color: #C9D6EC; font-size: 12px">Sample data</span>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; margin-top: 28px">
+
+<div style="background: rgba(16,34,74,0.78); border: 1px solid rgba(156,192,255,0.10); border-radius: 20px; padding: 22px; display: flex; align-items: center; gap: 18px; box-shadow: 0 20px 50px rgba(0,0,0,0.28)">
+<svg width="84" height="84" viewBox="0 0 84 84" role="img" aria-label="18 of 24 values approved"><circle cx="42" cy="42" r="34" fill="none" stroke="rgba(156,192,255,0.14)" stroke-width="9"/><circle cx="42" cy="42" r="34" fill="none" stroke="#2EA06E" stroke-width="9" stroke-linecap="round" stroke-dasharray="160 214" transform="rotate(-90 42 42)"/><text x="42" y="47" text-anchor="middle" fill="#F4F7FB" font-family="IBM Plex Mono, monospace" font-size="17">75%</text></svg>
+<div><div style="font-size: 13px; color: #A9B8D3">Values approved</div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 28px; margin-top: 4px">18<span style="font-size: 16px; color: #A9B8D3"> / 24</span></div></div>
+</div>
+
+<div style="background: rgba(16,34,74,0.78); border: 1px solid rgba(156,192,255,0.10); border-radius: 20px; padding: 22px; box-shadow: 0 20px 50px rgba(0,0,0,0.28)">
+<div style="display: flex; justify-content: space-between; font-size: 13px; color: #A9B8D3"><span>Open conflicts</span><span aria-hidden="true" style="width: 9px; height: 9px; border-radius: 50%; background: #E31E24; margin-top: 4px"></span></div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 40px; margin-top: 8px">1</div>
+<div style="font-size: 13px; color: #C9D6EC; margin-top: 4px">Q2 rating: drawing vs specification</div>
+</div>
+
+<div style="background: rgba(16,34,74,0.78); border: 1px solid rgba(156,192,255,0.10); border-radius: 20px; padding: 22px; box-shadow: 0 20px 50px rgba(0,0,0,0.28)">
+<div style="display: flex; justify-content: space-between; font-size: 13px; color: #A9B8D3"><span>Missing information</span><span aria-hidden="true" style="width: 9px; height: 9px; border-radius: 50%; background: #E0A93B; margin-top: 4px"></span></div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 40px; margin-top: 8px">1</div>
+<div style="font-size: 13px; color: #C9D6EC; margin-top: 4px">Fault level marked "TBC"</div>
+</div>
+
+<div style="background: rgba(16,34,74,0.78); border: 1px solid rgba(156,192,255,0.10); border-radius: 20px; padding: 22px; box-shadow: 0 20px 50px rgba(0,0,0,0.28)">
+<div style="font-size: 13px; color: #A9B8D3">Estimate</div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 40px; margin-top: 8px">17<span style="font-size: 16px; color: #A9B8D3"> lines</span></div>
+<div style="font-size: 13px; color: #C9D6EC; margin-top: 4px">Total [EST. TOTAL] · 2 lines blocked</div>
+</div>
+
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 18px; margin-top: 18px">
+
+<section style="flex: 3 1 560px; min-width: 0; background: rgba(16,34,74,0.78); border: 1px solid rgba(156,192,255,0.10); border-radius: 20px; padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.28)">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px">
+<h2 style="font-size: 18px; font-weight: 600; margin: 0">Values to review</h2>
+<div style="display: flex; gap: 6px; font-size: 13px">
+<button type="button" style="padding: 7px 14px; border: 0; border-radius: 999px; background: rgba(28,95,209,0.28); color: #F4F7FB; font-family: inherit; font-size: 13px">All 24</button>
+<button type="button" style="padding: 7px 14px; border: 0; border-radius: 999px; background: transparent; color: #A9B8D3; font-family: inherit; font-size: 13px">Needs review 6</button>
+<button type="button" style="padding: 7px 14px; border: 0; border-radius: 999px; background: transparent; color: #A9B8D3; font-family: inherit; font-size: 13px">Approved 18</button>
+</div>
+</div>
+<div style="overflow-x: auto; margin-top: 18px">
+<table style="width: 100%; min-width: 640px; border-collapse: separate; border-spacing: 0 6px; font-size: 14px">
+<thead><tr style="color: #8FA2C4; font-size: 11px; letter-spacing: 1.4px; text-align: left"><th style="padding: 0 14px; font-weight: 500">WAY</th><th style="padding: 0 14px; font-weight: 500">VALUE</th><th style="padding: 0 14px; font-weight: 500">SOURCE</th><th style="padding: 0 14px; font-weight: 500">CONFIDENCE</th><th style="padding: 0 14px; font-weight: 500; text-align: right">ACTION</th></tr></thead>
+<tbody>
+<tr class="row" style="background: rgba(10,22,48,0.55)"><td style="padding: 14px; border-radius: 12px 0 0 12px; font-family: 'IBM Plex Mono', monospace">Q2</td><td style="padding: 14px; font-family: 'IBM Plex Mono', monospace">MCCB 250A 4P 36kA</td><td style="padding: 14px; color: #A9B8D3">Spec p.4 · vs drawing 200 A</td><td style="padding: 14px"><span style="padding: 3px 10px; border-radius: 999px; background: rgba(227,30,36,0.18); color: #FF8A8E; font-size: 12px; font-weight: 600">Conflict</span></td><td style="padding: 14px; border-radius: 0 12px 12px 0; text-align: right"><a href="#compare" class="btn-glass" style="padding: 7px 12px; border-radius: 999px; background: rgba(156,192,255,0.10); color: #F4F7FB; font-size: 13px">Compare</a></td></tr>
+<tr class="row" style="background: rgba(10,22,48,0.55)"><td style="padding: 14px; border-radius: 12px 0 0 12px; font-family: 'IBM Plex Mono', monospace">—</td><td style="padding: 14px; font-family: 'IBM Plex Mono', monospace">Fault level · TBC</td><td style="padding: 14px; color: #A9B8D3">Spec p.2</td><td style="padding: 14px"><span style="padding: 3px 10px; border-radius: 999px; background: rgba(224,169,59,0.18); color: #F2C66D; font-size: 12px; font-weight: 600">Missing</span></td><td style="padding: 14px; border-radius: 0 12px 12px 0; text-align: right"><a href="#request" class="btn-glass" style="padding: 7px 12px; border-radius: 999px; background: rgba(156,192,255,0.10); color: #F4F7FB; font-size: 13px">Request</a></td></tr>
+<tr class="row" style="background: rgba(10,22,48,0.55)"><td style="padding: 14px; border-radius: 12px 0 0 12px; font-family: 'IBM Plex Mono', monospace">Q1</td><td style="padding: 14px; font-family: 'IBM Plex Mono', monospace">MCB 20A 3P 10kA</td><td style="padding: 14px; color: #A9B8D3">Drawing DXF · sheet 1</td><td style="padding: 14px"><span style="padding: 3px 10px; border-radius: 999px; background: rgba(46,160,110,0.18); color: #7EE2B4; font-size: 12px; font-weight: 600">High</span></td><td style="padding: 14px; border-radius: 0 12px 12px 0; text-align: right; white-space: nowrap"><button type="button" class="icon-btn" aria-label="Approve Q1" style="width: 34px; height: 34px; border: 0; border-radius: 50%; background: rgba(46,160,110,0.16); color: #7EE2B4; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg></button> <button type="button" class="icon-btn" aria-label="Edit Q1" style="width: 34px; height: 34px; border: 0; border-radius: 50%; background: rgba(156,192,255,0.10); color: #C9D6EC; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></button> <button type="button" class="icon-btn" aria-label="Reject Q1" style="width: 34px; height: 34px; border: 0; border-radius: 50%; background: rgba(227,30,36,0.14); color: #FF8A8E; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></td></tr>
+<tr class="row" style="background: rgba(10,22,48,0.55)"><td style="padding: 14px; border-radius: 12px 0 0 12px; font-family: 'IBM Plex Mono', monospace">IN</td><td style="padding: 14px; font-family: 'IBM Plex Mono', monospace">ACB 1250A 4P 50kA</td><td style="padding: 14px; color: #A9B8D3">Spec p.3 · drawing agrees</td><td style="padding: 14px"><span style="padding: 3px 10px; border-radius: 999px; background: rgba(46,160,110,0.18); color: #7EE2B4; font-size: 12px; font-weight: 600">High</span></td><td style="padding: 14px; border-radius: 0 12px 12px 0; text-align: right"><span style="color: #7EE2B4; font-size: 13px">Approved</span></td></tr>
+<tr class="row" style="background: rgba(10,22,48,0.55)"><td style="padding: 14px; border-radius: 12px 0 0 12px; font-family: 'IBM Plex Mono', monospace">—</td><td style="padding: 14px; font-family: 'IBM Plex Mono', monospace">Form 4a · IP54</td><td style="padding: 14px; color: #A9B8D3">Spec p.4 · drawing notes</td><td style="padding: 14px"><span style="padding: 3px 10px; border-radius: 999px; background: rgba(46,160,110,0.18); color: #7EE2B4; font-size: 12px; font-weight: 600">High</span></td><td style="padding: 14px; border-radius: 0 12px 12px 0; text-align: right"><span style="color: #7EE2B4; font-size: 13px">Approved</span></td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<div style="flex: 2 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
+
+<section style="background: rgba(16,34,74,0.78); border: 1px solid rgba(156,192,255,0.10); border-radius: 20px; padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.28)">
+<div style="display: flex; justify-content: space-between; align-items: center"><h2 style="font-size: 18px; font-weight: 600; margin: 0">Conflict · Q2 rating</h2><span style="padding: 3px 10px; border-radius: 999px; background: rgba(227,30,36,0.18); color: #FF8A8E; font-size: 12px; font-weight: 600">Open</span></div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 16px">
+<div style="background: rgba(10,22,48,0.6); border-radius: 14px; padding: 14px"><div style="font-size: 12px; color: #A9B8D3">Drawing · sheet 1</div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 22px; margin-top: 6px">200 A</div><div style="font-size: 12px; color: #A9B8D3; margin-top: 6px">"MCCB 200A 4P 36kA"</div></div>
+<div style="background: rgba(10,22,48,0.6); border-radius: 14px; padding: 14px"><div style="font-size: 12px; color: #A9B8D3">Specification · p.4</div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 22px; margin-top: 6px">250 A</div><div style="font-size: 12px; color: #A9B8D3; margin-top: 6px">"…rated 250 A, 4 pole"</div></div>
+</div>
+<div style="display: flex; gap: 8px; margin-top: 14px">
+<a href="#keep-spec" class="btn-glass" style="flex: 1 1 0; text-align: center; padding: 10px; border-radius: 999px; background: rgba(28,95,209,0.30); color: #F4F7FB; font-size: 13px; font-weight: 500">Use 250 A</a>
+<a href="#keep-drawing" class="btn-glass" style="flex: 1 1 0; text-align: center; padding: 10px; border-radius: 999px; background: rgba(156,192,255,0.09); color: #F4F7FB; font-size: 13px; font-weight: 500">Use 200 A</a>
+</div>
+</section>
+
+<section style="background: rgba(16,34,74,0.78); border: 1px solid rgba(156,192,255,0.10); border-radius: 20px; padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.28)">
+<h2 style="font-size: 18px; font-weight: 600; margin: 0">Documents</h2>
+<div style="display: flex; flex-direction: column; gap: 10px; margin-top: 14px; font-size: 14px">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 10px"><span>specification.pdf</span><span style="color: #7EE2B4; font-size: 13px">Read · 12 pages</span></div>
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 10px"><span>schematic.dxf</span><span style="color: #7EE2B4; font-size: 13px">Read · 2 sheets</span></div>
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 10px"><span>schematic.pdf</span><span style="color: #F2C66D; font-size: 13px">Not read yet · OCR</span></div>
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 10px"><span>requirements.docx</span><span style="color: #7EE2B4; font-size: 13px">Read</span></div>
+</div>
+</section>
+
+<section style="background: rgba(16,34,74,0.78); border: 1px solid rgba(156,192,255,0.10); border-radius: 20px; padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.28)">
+<h2 style="font-size: 18px; font-weight: 600; margin: 0">Activity</h2>
+<div style="display: flex; flex-direction: column; gap: 14px; margin-top: 14px; font-size: 13px">
+<div style="display: flex; gap: 12px"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 50%; background: #2EA06E; margin-top: 5px; flex: 0 0 auto"></span><span><span style="color: #F4F7FB">Engineer approved 12 values</span><span style="display: block; color: #A9B8D3; margin-top: 2px">Bulk approve · high confidence only</span></span></div>
+<div style="display: flex; gap: 12px"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 50%; background: #9CC0FF; margin-top: 5px; flex: 0 0 auto"></span><span><span style="color: #F4F7FB">Extraction finished</span><span style="display: block; color: #A9B8D3; margin-top: 2px">Rules mode · 3 documents</span></span></div>
+<div style="display: flex; gap: 12px"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 50%; background: #9CC0FF; margin-top: 5px; flex: 0 0 auto"></span><span><span style="color: #F4F7FB">3 files uploaded</span><span style="display: block; color: #A9B8D3; margin-top: 2px; font-family: 'IBM Plex Mono', monospace">sha256 9f2c…e41a</span></span></div>
+</div>
+</section>
+
+</div>
+</div>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1250}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

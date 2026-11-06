@@ -20,13 +20,13 @@
       </div>
       <div class="doc-card__status">
         {%- if d.status in ("uploaded", "reading", "extracting") %}
-        <span class="badge badge--extracted"><span class="spinner" aria-hidden="true"></span>{{ status_words[d.status] }}</span>
+        <span class="chip chip--review"><span class="spinner" aria-hidden="true"></span>{{ status_words[d.status] }}</span>
         {%- elif d.status == "done" %}
-        <span class="badge badge--approved">{{ icon("check") }}{{ status_words[d.status] }}</span>
+        <span class="chip chip--approved">{{ icon("check") }}{{ status_words[d.status] }}</span>
         {%- elif d.status == "not_read" %}
-        <span class="badge badge--review">{{ icon("warning") }}{{ status_words[d.status] }}</span>
+        <span class="chip chip--missing">{{ icon("warning") }}{{ status_words[d.status] }}</span>
         {%- else %}
-        <span class="badge badge--conflict">{{ icon("warning") }}{{ status_words[d.status] }}</span>
+        <span class="chip chip--conflict">{{ icon("warning") }}{{ status_words[d.status] }}</span>
         {%- endif %}
         {%- if d.note %}<span class="small muted">{{ d.note }}</span>{% endif %}
       </div>
@@ -38,6 +38,6 @@
     </div>
   </article>
   {%- else %}
-  <p class="panel muted">No documents yet.</p>
+  <p class="glass muted">No documents yet.</p>
   {%- endfor %}
 </section>

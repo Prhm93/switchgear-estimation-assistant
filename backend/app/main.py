@@ -1,12 +1,12 @@
 """FastAPI application factory.
 
 Routes:
-    GET /          Projects dashboard and the product screens (see :mod:`backend.app.web`).
-    GET /system    Design system and health-check page (HTML).
+    GET /          Home page; /projects and the product screens (see :mod:`backend.app.web`).
+    GET /health    Design system and health-check page (HTML); /system redirects here.
     GET /healthz   Machine-readable health status (JSON), used by Docker.
 
-With no DATABASE_URL the app still starts: /system and /healthz work and the
-product screens answer 503 with a plain explanation.
+With no DATABASE_URL the app still starts: /, /health and /healthz work and
+the product screens answer 503 with a plain explanation.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -86,13 +86,18 @@ def create_app(settings: Settings | None = None, storage: Storage | None = None)
     def healthz() -> HealthStatus:
         return current_health()
 
-    @app.get("/system", response_class=HTMLResponse)
+    @app.get("/health", response_class=HTMLResponse)
     def health_page(request: Request) -> HTMLResponse:
         return templates.TemplateResponse(
             request,
             "health.html",
-            {"app_name": settings.app_name, "health": current_health()},
+            {"app_name": settings.app_name, "environment": settings.environment, "health": current_health()},
         )
+
+    @app.get("/system", include_in_schema=False)
+    def old_health_page() -> RedirectResponse:
+        """The health page moved to /health; old bookmarks still work."""
+        return RedirectResponse("/health", status_code=301)
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error(request: Request, error: HTTPException) -> Response:
@@ -101,7 +106,8 @@ def create_app(settings: Settings | None = None, storage: Storage | None = None)
             return JSONResponse({"detail": error.detail}, status_code=error.status_code)
         return templates.TemplateResponse(
             request, "error.html",
-            {"app_name": settings.app_name, "status": error.status_code, "detail": error.detail},
+            {"app_name": settings.app_name, "environment": settings.environment,
+             "status": error.status_code, "detail": error.detail},
             status_code=error.status_code,
         )
 

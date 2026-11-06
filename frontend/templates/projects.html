@@ -1,40 +1,45 @@
-{%- extends "base.html" -%}
+{%- extends "layout_app.html" -%}
 {%- from "macros.html" import icon with context -%}
+{%- set nav = "projects" -%}
 
 {%- block title %}Projects · {{ app_name }}{% endblock -%}
 
-{%- block content %}
-<div class="page-header">
-  <div>
-    <p class="eyebrow">Projects</p>
-    <h1>Enquiries</h1>
-    <p class="lede">Each enquiry goes from uploaded documents to a checked draft estimate. Only values an engineer has approved reach an estimate.</p>
-  </div>
-  <a class="btn btn--primary" href="/projects/new">{{ icon("upload", "sm") }}New project</a>
-</div>
+{%- block crumbs %}<span aria-current="page">Projects</span>{% endblock -%}
+{%- block actions %}<a class="btn btn--primary" href="/projects/new">{{ icon("upload", "sm") }}New project</a>{% endblock -%}
 
-<section class="grid" aria-label="Counts">
-  <article class="kpi span-3">
-    <span class="kpi__label">{{ icon("switchboard", "sm") }}Projects</span>
+{%- block heading %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Enquiries</h1>
+    <p class="page-lede">Each enquiry goes from uploaded documents to a checked draft estimate. Only values an engineer has approved reach an estimate.</p>
+  </div>
+</div>
+{% endblock -%}
+
+{%- block content %}
+<section class="grid-cards gap-top-lg" aria-label="Counts">
+  <article class="glass kpi">
+    <span class="kpi__label"><span>Projects</span>{{ icon("switchboard", "sm") }}</span>
     <span class="kpi__value">{{ counts.projects }}</span>
   </article>
-  <article class="kpi span-3">
-    <span class="kpi__label">{{ icon("document", "sm") }}Documents</span>
+  <article class="glass kpi">
+    <span class="kpi__label"><span>Documents</span>{{ icon("document", "sm") }}</span>
     <span class="kpi__value">{{ counts.documents }}</span>
   </article>
-  <article class="kpi span-3">
-    <span class="kpi__label">{{ icon("check", "sm") }}Values to review</span>
+  <article class="glass kpi">
+    <span class="kpi__label"><span>Values to review</span>{{ icon("review", "sm") }}</span>
     <span class="kpi__value">{{ counts.pending_reviews }}</span>
   </article>
-  <article class="kpi span-3">
-    <span class="kpi__label">{{ icon("warning", "sm") }}Read errors</span>
+  <article class="glass kpi">
+    <span class="kpi__label"><span>Read errors</span>{{ icon("warning", "sm") }}</span>
     <span class="kpi__value">{{ counts.errors }}</span>
   </article>
 </section>
 
-<section class="panel section-gap" aria-labelledby="projects-title">
-  <div class="panel__title"><h2 id="projects-title">All projects</h2></div>
+<section class="glass gap-top" aria-labelledby="projects-title">
+  <div class="card-head"><h2 id="projects-title" class="card-title">All projects</h2></div>
   {%- if rows %}
+  <div class="table-wrap">
   <table class="data-table">
     <caption class="visually-hidden">Projects</caption>
     <thead>
@@ -59,13 +64,14 @@
         <td class="num">{{ r.pending }}</td>
         <td class="num">{{ r.errors }}</td>
         <td class="num">{{ "{:,.2f}".format(r.estimate.total) if r.estimate else "-" }}</td>
-        <td><a class="btn btn--ghost" href="/projects/{{ r.project.id }}/review">Open{{ icon("arrow-right", "sm") }}</a></td>
+        <td class="actions"><a class="btn btn--secondary btn--sm" href="/projects/{{ r.project.id }}">Open{{ icon("arrow-right", "sm") }}</a></td>
       </tr>
       {%- endfor %}
     </tbody>
   </table>
+  </div>
   {%- else %}
-  <p class="muted">No projects yet. Start with <a href="/projects/new">New project</a> and upload the enquiry documents.</p>
+  <p class="muted gap-top">No projects yet. Start with <a href="/projects/new">New project</a> and upload the enquiry documents.</p>
   {%- endif %}
 </section>
 {% endblock -%}

@@ -1,11 +1,18 @@
 """WCAG 2.2 contrast checks for the colour tokens in app.css.
 
 The stylesheet is the single source of truth for colours. This module reads
-the hex tokens from its ``:root`` block and checks every foreground and
+the colour tokens from its ``:root`` block and checks every foreground and
 background pair the UI actually uses against the AA thresholds:
 
 * 4.5:1 for normal text (WCAG 1.4.3),
 * 3:1 for UI components, focus rings and large text (WCAG 1.4.11).
+
+Glass surfaces and tints are semi-transparent. Each has a solid "twin" token
+(its colour over the surface it sits on), and the pairs check text on the
+twins. ``COMPOSITES`` says which rgba token over which base makes each twin,
+and ``GRADIENT_STOPS`` does the same for the light ends of the allowed
+gradients; tests/unit/test_contrast.py recomputes every twin so that it cannot
+drift from its rgba value.
 
 Run it directly to print a table of ratios::
 
@@ -24,6 +31,11 @@ NON_TEXT_AA = 3.0
 
 _ROOT_BLOCK = re.compile(r":root\s*\{(?P<body>.*?)\}", re.DOTALL)
 _HEX_TOKEN = re.compile(r"--(?P<name>[a-z0-9-]+)\s*:\s*(?P<value>#[0-9a-fA-F]{6})\s*;")
+_RGBA_TOKEN = re.compile(
+    r"--(?P<name>[a-z0-9-]+)\s*:\s*rgba\(\s*(?P<r>\d+)\s*,\s*(?P<g>\d+)\s*,\s*(?P<b>\d+)\s*,\s*(?P<a>[0-9.]+)\s*\)\s*;"
+)
+
+Rgba = tuple[int, int, int, float]
 
 
 class ContrastPair(BaseModel):
@@ -39,47 +51,128 @@ class ContrastPair(BaseModel):
 REQUIRED_PAIRS: tuple[ContrastPair, ...] = tuple(
     ContrastPair(foreground=fg, background=bg, minimum=minimum, usage=usage)
     for fg, bg, minimum, usage in (
-        # Body and secondary text on every surface, including the header.
+        # Text on the page, the header and the sidebar.
         ("text", "bg", TEXT_AA, "body text"),
-        ("text", "surface", TEXT_AA, "text in panels and cards"),
-        ("text", "surface-2", TEXT_AA, "text in raised cards"),
-        ("text", "surface-row", TEXT_AA, "text in alternate table rows"),
-        ("text", "header-end", TEXT_AA, "header text over the gradient"),
-        ("text-muted", "bg", TEXT_AA, "secondary text"),
-        ("text-muted", "surface", TEXT_AA, "secondary text in cards"),
-        ("text-muted", "surface-2", TEXT_AA, "secondary text in raised cards"),
-        ("text-muted", "surface-row", TEXT_AA, "secondary text in alternate rows"),
-        ("text-muted", "header-end", TEXT_AA, "header metadata over the gradient"),
-        # Solid buttons.
+        ("text-muted", "bg", TEXT_AA, "secondary text, footer"),
+        ("text-soft", "bg", TEXT_AA, "hero lede"),
+        ("text-nav", "header-solid", TEXT_AA, "site navigation"),
+        ("text-nav", "header-glow-solid", TEXT_AA, "site navigation where the glow is brightest"),
+        ("text", "header-glow-solid", TEXT_AA, "product name in the header over the glow"),
+        ("text", "sidebar-solid", TEXT_AA, "sidebar brand and project name"),
+        ("text-soft", "sidebar-solid", TEXT_AA, "sidebar navigation"),
+        ("text-muted", "sidebar-solid", TEXT_AA, "sidebar environment line"),
+        ("label", "sidebar-solid", TEXT_AA, "sidebar section labels"),
+        ("text", "nav-active-solid", TEXT_AA, "selected sidebar item"),
+        ("text", "veil-solid", TEXT_AA, "project switcher, glass button"),
+        ("text-soft", "veil-solid", TEXT_AA, "hero pill"),
+        ("count-text", "count-solid", TEXT_AA, "review count in the sidebar"),
+        ("success-text", "mode-solid", TEXT_AA, "reading mode: live"),
+        ("text-muted", "mode-solid", TEXT_AA, "reading mode: model run"),
+        # Text in glass cards, rows and insets.
+        ("text", "glass-solid", TEXT_AA, "text in glass cards"),
+        ("text-muted", "glass-solid", TEXT_AA, "secondary text in glass cards"),
+        ("text-soft", "glass-solid", TEXT_AA, "body copy in glass cards"),
+        ("label-table", "glass-solid", TEXT_AA, "table headings"),
+        ("blue-text", "glass-solid", TEXT_AA, "links in cards"),
+        ("warning-text", "glass-solid", TEXT_AA, "[PLACEHOLDER] marks"),
+        ("text", "glass-soft-solid", TEXT_AA, "home page tiles"),
+        ("text-soft", "glass-soft-solid", TEXT_AA, "home page tile text"),
+        ("red-text", "glass-soft-solid", TEXT_AA, "step numbers on the home page"),
+        ("text", "deep-solid", TEXT_AA, "table rows and value rows"),
+        ("text-muted", "deep-solid", TEXT_AA, "sources in rows"),
+        ("blue-text", "deep-solid", TEXT_AA, "links in rows"),
+        ("text", "row-hover-solid", TEXT_AA, "table row, hover"),
+        ("text-muted", "row-hover-solid", TEXT_AA, "table row source, hover"),
+        ("text", "inset-solid", TEXT_AA, "values in a conflict pair"),
+        ("text-muted", "inset-solid", TEXT_AA, "sources and quotes in a conflict pair"),
+        ("text", "conflict-chip", TEXT_AA, "values on the conflict cards of the review screen"),
+        ("text-muted", "conflict-chip", TEXT_AA, "sources on the conflict cards of the review screen"),
+        ("text", "field-solid", TEXT_AA, "text typed in an input"),
+        ("text-muted", "field-solid", TEXT_AA, "input placeholder"),
+        ("text", "upload-inner", TEXT_AA, "upload box input"),
+        ("text-muted", "upload-inner", TEXT_AA, "upload box placeholder"),
+        ("text-muted", "sheen-solid", TEXT_AA, "labels at the light corner of a hero card"),
+        ("text-soft", "cta-solid", TEXT_AA, "call-to-action panel text"),
+        ("text", "frame", TEXT_AA, "app preview on the home page"),
+        ("text-muted", "frame", TEXT_AA, "app preview navigation"),
+        ("text", "preview-row-solid", TEXT_AA, "values in the app preview"),
+        ("text-muted", "preview-row-solid", TEXT_AA, "sources in the app preview"),
+        ("ink", "paper", TEXT_AA, "document text in the preview"),
+        ("ink-muted", "paper", TEXT_AA, "document page label in the preview"),
+        ("ink-mark", "paper-mark", TEXT_AA, "highlighted source in the preview"),
+        # Buttons.
         ("on-red", "red", TEXT_AA, "primary button label"),
         ("on-red", "red-hover", TEXT_AA, "primary button label, hover"),
-        ("on-blue", "blue", TEXT_AA, "secondary button and selected toggle label"),
-        ("on-blue", "blue-hover", TEXT_AA, "secondary button label, hover"),
-        # Tonal fills: tonal button, icon buttons.
-        ("text", "tonal", TEXT_AA, "tonal button label, icon button glyph"),
-        ("text", "tonal-hover", TEXT_AA, "tonal button label, hover"),
-        # Links and coloured text on navy.
-        ("blue-text", "bg", TEXT_AA, "links"),
-        ("blue-text", "surface", TEXT_AA, "links in cards"),
-        # Tonal badges: coloured text on its own tint.
-        ("red-text", "red-tint", TEXT_AA, "Conflict badge"),
-        ("blue-text", "blue-tint", TEXT_AA, "Extracted badge"),
-        ("success-text", "success-tint", TEXT_AA, "Approved badge"),
-        ("warning-text", "warning-tint", TEXT_AA, "Needs review badge"),
-        # Conflict pair panel: values and sources on the red tint.
-        ("text", "red-tint", TEXT_AA, "values in a conflict pair"),
-        ("text-muted", "red-tint", TEXT_AA, "sources in a conflict pair"),
+        ("text", "veil-hover-solid", TEXT_AA, "glass button label, hover"),
+        ("text", "tonal-solid", TEXT_AA, "tonal button label, selected pager item"),
+        ("text", "tonal-hover-solid", TEXT_AA, "tonal button label, hover"),
+        ("text", "active-solid", TEXT_AA, "selected filter, document chip and toggle segment"),
+        ("text-soft", "neutral-chip", TEXT_AA, "edit icon button glyph, neutral chip"),
+        ("text", "neutral-hover-solid", TEXT_AA, "icon button glyph, hover"),
+        ("success-text", "approve-solid", TEXT_AA, "approve icon button glyph"),
+        ("success-text", "approve-hover-solid", TEXT_AA, "approve icon button glyph, hover"),
+        ("red-text", "reject-solid", TEXT_AA, "reject icon button glyph"),
+        ("red-text", "reject-hover-solid", TEXT_AA, "reject icon button glyph, hover"),
+        # Chips: coloured text on its own tint.
+        ("success-text", "success-chip", TEXT_AA, "High and Approved chips"),
+        ("blue-text", "review-chip", TEXT_AA, "Needs review chip, info alert"),
+        ("red-text", "conflict-chip", TEXT_AA, "Conflict chip, error alert"),
+        ("warning-text", "missing-chip", TEXT_AA, "Missing chip, warning alert"),
         # Non-text indicators (WCAG 1.4.11).
-        ("red", "surface", NON_TEXT_AA, "active tab underline, conflict dot"),
-        ("blue", "bg", NON_TEXT_AA, "selected toggle segment against its track"),
-        ("blue-text", "surface", NON_TEXT_AA, "Low confidence outline"),
-        ("success", "surface", NON_TEXT_AA, "High confidence and status dot"),
-        ("warning", "surface", NON_TEXT_AA, "Medium confidence dot"),
+        ("red", "glass-solid", NON_TEXT_AA, "conflict dot and segment"),
+        ("success", "glass-solid", NON_TEXT_AA, "ring gauge arc, approved segment, High dot"),
+        ("warning", "glass-solid", NON_TEXT_AA, "review segment, Medium dot"),
+        ("blue-text", "glass-solid", NON_TEXT_AA, "Low confidence ring"),
+        ("success", "deep-solid", NON_TEXT_AA, "High dot in rows"),
+        ("warning", "deep-solid", NON_TEXT_AA, "Medium dot in rows"),
+        ("red", "deep-solid", NON_TEXT_AA, "Conflict dot in rows"),
+        ("red", "bg", NON_TEXT_AA, "red line under the header, hero pill dot"),
         ("focus", "bg", NON_TEXT_AA, "keyboard focus ring"),
-        ("focus", "surface", NON_TEXT_AA, "keyboard focus ring in cards"),
-        ("focus", "surface-2", NON_TEXT_AA, "keyboard focus ring in raised cards"),
+        ("focus", "glass-solid", NON_TEXT_AA, "keyboard focus ring in cards"),
+        ("focus", "deep-solid", NON_TEXT_AA, "keyboard focus ring in rows"),
+        ("focus", "sidebar-solid", NON_TEXT_AA, "keyboard focus ring in the sidebar"),
     )
 )
+
+# Solid twin -> (semi-transparent token, the token it sits on).
+COMPOSITES: dict[str, tuple[str, str]] = {
+    "glass-solid": ("glass", "bg"),
+    "glass-soft-solid": ("glass-soft", "bg"),
+    "deep-solid": ("deep", "glass-solid"),
+    "sidebar-solid": ("sidebar", "bg"),
+    "veil-solid": ("veil", "glass-solid"),
+    "veil-hover-solid": ("veil-hover", "glass-solid"),
+    "tonal-solid": ("tonal", "glass-solid"),
+    "tonal-hover-solid": ("tonal-hover", "glass-solid"),
+    "nav-active-solid": ("nav-active", "sidebar-solid"),
+    "active-solid": ("active", "glass-solid"),
+    "row-hover-solid": ("row-hover", "glass-solid"),
+    "success-chip": ("tint-success", "glass-solid"),
+    "conflict-chip": ("tint-conflict", "glass-solid"),
+    "missing-chip": ("tint-missing", "glass-solid"),
+    "review-chip": ("tint-review", "glass-solid"),
+    "neutral-chip": ("tint-neutral", "glass-solid"),
+    "neutral-hover-solid": ("tint-neutral-hover", "deep-solid"),
+    "approve-solid": ("tint-approve", "deep-solid"),
+    "approve-hover-solid": ("tint-approve-hover", "deep-solid"),
+    "reject-solid": ("tint-reject", "deep-solid"),
+    "reject-hover-solid": ("tint-reject-hover", "deep-solid"),
+    "count-solid": ("tint-count", "sidebar-solid"),
+    "mode-solid": ("mode-bg", "sidebar-solid"),
+    "field-solid": ("field", "glass-solid"),
+    "inset-solid": ("inset", "glass-solid"),
+    "preview-row-solid": ("preview-row", "frame"),
+    "header-solid": ("header", "bg"),
+    "glow-solid": ("glow-core", "bg"),
+    "header-glow-solid": ("header", "glow-solid"),
+}
+
+# Twins of gradient stops and other colours that are not tokens: (r, g, b, alpha) over a token.
+GRADIENT_STOPS: dict[str, tuple[Rgba, str]] = {
+    "sheen-solid": ((156, 192, 255, 0.14), "bg"),  # .sheen, the light corner
+    "cta-solid": ((28, 95, 209, 0.22), "bg"),  # .cta-panel, the light end
+    "paper-mark": ((28, 95, 209, 0.18), "paper"),  # highlighted source on the light page
+}
 
 
 def _channel(value: int) -> float:
@@ -103,12 +196,29 @@ def contrast_ratio(first: str, second: str) -> float:
     return (lighter + 0.05) / (darker + 0.05)
 
 
-def load_tokens(stylesheet: Path = STYLESHEET) -> dict[str, str]:
-    """Return the hex colour tokens from the first ``:root`` block, without ``--``."""
+def _root(stylesheet: Path) -> str:
     match = _ROOT_BLOCK.search(stylesheet.read_text(encoding="utf-8"))
     if not match:
         raise ValueError(f"no :root block in {stylesheet}")
-    return {m["name"]: m["value"] for m in _HEX_TOKEN.finditer(match["body"])}
+    return match["body"]
+
+
+def load_tokens(stylesheet: Path = STYLESHEET) -> dict[str, str]:
+    """Return the hex colour tokens from the first ``:root`` block, without ``--``."""
+    return {m["name"]: m["value"] for m in _HEX_TOKEN.finditer(_root(stylesheet))}
+
+
+def load_rgba_tokens(stylesheet: Path = STYLESHEET) -> dict[str, Rgba]:
+    """Return the rgba() colour tokens from the first ``:root`` block, without ``--``."""
+    return {m["name"]: (int(m["r"]), int(m["g"]), int(m["b"]), float(m["a"]))
+            for m in _RGBA_TOKEN.finditer(_root(stylesheet))}
+
+
+def composite(rgba: Rgba, base: str) -> str:
+    """The solid colour of ``rgba`` drawn over the #RRGGBB colour ``base``, rounded per channel."""
+    *rgb, alpha = rgba
+    under = (int(base[i:i + 2], 16) for i in (1, 3, 5))
+    return "#" + "".join(f"{round(alpha * c + (1 - alpha) * u):02X}" for c, u in zip(rgb, under, strict=True))
 
 
 def main() -> None:

@@ -27,7 +27,7 @@ def test_healthz_reports_unreachable_database() -> None:
 
 
 def test_health_page_renders_every_component(client: TestClient) -> None:
-    response = client.get("/system")
+    response = client.get("/health")
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
     html = response.text
@@ -57,12 +57,12 @@ def test_health_page_renders_every_component(client: TestClient) -> None:
 
 
 def test_health_page_shows_database_state(client: TestClient) -> None:
-    assert "Not configured" in client.get("/system").text
+    assert "Not configured" in client.get("/health").text
 
 
 def test_health_page_uses_no_forbidden_wording(client: TestClient) -> None:
     """Design rule: plain professional labels, no 'magic' wording or sparkle symbols."""
-    html = client.get("/system").text.lower()
+    html = client.get("/health").text.lower()
     for word in ("magic", "sparkle", "ai-powered", "✨"):
         assert word not in html
 
@@ -71,8 +71,23 @@ def test_stylesheet_fonts_and_icons_are_served(client: TestClient) -> None:
     css = client.get("/static/css/app.css")
     assert css.status_code == 200
     assert "--red" in css.text
-    for font in ("IBMPlexSans-Regular.woff2", "IBMPlexMono-Regular.woff2"):
+    for font in ("IBMPlexSans-Regular.woff2", "IBMPlexMono-Regular.woff2",
+                 "InstrumentSerif-Regular.woff2", "InstrumentSerif-Italic.woff2"):
         response = client.get(f"/static/fonts/{font}")
         assert response.status_code == 200
         assert response.content[:4] == b"wOF2"
     assert client.get("/static/icons/icons.svg").status_code == 200
+
+
+def test_old_system_address_redirects_to_health(client: TestClient) -> None:
+    response = client.get("/system", follow_redirects=False)
+    assert response.status_code == 301 and response.headers["location"] == "/health"
+
+
+def test_home_page_works_without_a_database(client: TestClient) -> None:
+    html = client.get("/").text
+    assert "checked</em> estimates" in html
+    assert 'action="/projects"' in html  # the hero form creates a project through the existing route
+    assert "Not affiliated with or endorsed by any company" in html
+    assert "Sign in" not in html  # hidden until login is built (Stage 8)
+    assert "[PLACEHOLDER]" in html  # numbers not measured yet are marked, never invented
