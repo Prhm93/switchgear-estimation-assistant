@@ -21,7 +21,12 @@ Step 2, on Colab (notebooks/04-colab-llm-extraction.ipynb)::
   ``data/recorded/<set>/<project>/<file>.json``.
 
 Step 3, back on the laptop: unzip the recordings into ``data/recorded/`` and
-run ``python -m backend.evaluate --mode llm`` and ``--mode combined``.
+run ``python -m backend.evaluate --mode llm`` and ``--mode combined``. Older
+recordings (another prompt version) belong in ``data/recorded-v1/``; the
+evaluation reports both.
+
+``run`` records every file of the zip each time; it does not skip files that
+already have a recording.
 """
 
 from __future__ import annotations
