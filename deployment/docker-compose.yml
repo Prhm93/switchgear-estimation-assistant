@@ -48,6 +48,11 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-development}
       DATABASE_URL: postgresql+pg8000://${POSTGRES_USER:-sea}:${POSTGRES_PASSWORD:-sea-local-only}@db:5432/${POSTGRES_DB:-sea}
+      STORAGE_DIR: /app/storage
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-25}
+      MAX_PDF_PAGES: ${MAX_PDF_PAGES:-60}
+    volumes:
+      - app-storage:/app/storage  # uploaded originals, unchanged
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
@@ -61,3 +66,4 @@ services:
 
 volumes:
   db-data:
+  app-storage:

@@ -1,0 +1,68 @@
+{%- extends "base.html" -%}
+{%- from "macros.html" import icon, confidence, value_status, provenance, project_tabs with context -%}
+
+{%- block title %}Analysis · {{ project.name }} · {{ app_name }}{% endblock -%}
+
+{%- block content %}
+<div class="page-header">
+  <div>
+    <p class="eyebrow">{{ project.reference or "Project" }}</p>
+    <h1>{{ project.name }}</h1>
+  </div>
+  <a class="btn btn--secondary" href="/projects/{{ project.id }}/review">Review values{{ icon("arrow-right", "sm") }}</a>
+</div>
+{{ project_tabs(project, "analysis") }}
+
+<div class="doc-switch section-gap" role="navigation" aria-label="Documents">
+  {%- for d in project.documents %}
+  {%- if d.pages %}
+  <a class="chip{% if current and d.id == current.id %} chip--active{% endif %}" href="?doc={{ d.id }}"
+     {%- if current and d.id == current.id %} aria-current="true"{% endif %}>{{ kind_words.get(d.kind, d.kind) }} · {{ d.original_name }}</a>
+  {%- else %}
+  <span class="chip chip--off" title="{{ d.note or '' }}">{{ d.original_name }} · {{ status_words[d.status] }}</span>
+  {%- endif %}
+  {%- endfor %}
+</div>
+
+{%- if current is none %}
+<p class="panel muted section-gap">No document has been read yet. Upload documents on the <a href="/projects/{{ project.id }}/upload">Documents</a> tab.</p>
+{%- else %}
+<div class="split section-gap">
+  <section class="panel viewer" aria-labelledby="viewer-title">
+    <div class="panel__title">
+      <h2 id="viewer-title">{{ current.original_name }}</h2>
+      <nav class="pager" aria-label="Pages">
+        {%- for p in pages %}
+        <a class="pager__item{% if p.number == page_no %} pager__item--active{% endif %}" href="?doc={{ current.id }}&page={{ p.number }}"
+           {%- if p.number == page_no %} aria-current="page"{% endif %} aria-label="{{ 'Sheet' if current.kind == 'schematic' else 'Page' }} {{ p.number }}">{{ p.number }}</a>
+        {%- endfor %}
+      </nav>
+    </div>
+    {#- Document text: every segment is autoescaped; highlighted spans are the sources of the values on the right. -#}
+    <pre class="doc-text">{% for s in segments %}{% if s.marked %}<mark id="src-{{ s.value_ids[0] }}" data-values="{{ s.value_ids | join(' ') }}">{{ s.text }}</mark>{% else %}{{ s.text }}{% endif %}{% endfor %}</pre>
+  </section>
+
+  <section class="panel" aria-labelledby="values-title">
+    <div class="panel__title">
+      <h2 id="values-title">Extracted on this {{ "sheet" if current.kind == "schematic" else "page" }}</h2>
+      <span class="small muted">{{ values | length }} value{{ "s" if values | length != 1 }}</span>
+    </div>
+    <div class="value-list">
+      {%- for v in values %}
+      <article class="value-row" id="v-{{ v.id }}">
+        <span class="value-row__label">{{ field_label(v.field) }}</span>
+        {{ value_status(v) }}
+        <a class="value-row__value mono" href="#src-{{ v.id }}">{{ display(v.value, v.unit) }}</a>
+        {{ confidence(v.confidence) }}
+        <span class="value-row__quote">"{{ v.source_text }}"</span>
+        {{ provenance(v) }}
+        {%- if v.derivation %}<span class="value-row__source">{{ v.derivation }}</span>{% endif %}
+      </article>
+      {%- else %}
+      <p class="muted">No values were found on this page.</p>
+      {%- endfor %}
+    </div>
+  </section>
+</div>
+{%- endif %}
+{% endblock -%}

@@ -9,12 +9,19 @@
   <link rel="preload" href="{{ url_for('static', path='fonts/IBMPlexMono-Regular.woff2') }}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
   <script src="{{ url_for('static', path='js/tabs.js') }}" defer></script>
+  <script src="{{ url_for('static', path='js/htmx.min.js') }}" defer></script>
+  <script src="{{ url_for('static', path='js/upload.js') }}" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="topbar">
     <a class="brand" href="/">{{ icon("switchboard") }}<span>{{ app_name }}</span></a>
-    {% block topbar_actions %}{% endblock %}
+    {% block topbar_actions %}
+    <nav class="topnav" aria-label="Main">
+      <a class="btn btn--ghost" href="/">Projects</a>
+      <a class="btn btn--ghost" href="/system">System check</a>
+    </nav>
+    {% endblock %}
   </header>
   <main id="main" class="page">
     {% block content %}{% endblock %}

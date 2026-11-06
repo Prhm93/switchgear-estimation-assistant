@@ -27,7 +27,7 @@ def test_healthz_reports_unreachable_database() -> None:
 
 
 def test_health_page_renders_every_component(client: TestClient) -> None:
-    response = client.get("/")
+    response = client.get("/system")
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
     html = response.text
@@ -57,12 +57,12 @@ def test_health_page_renders_every_component(client: TestClient) -> None:
 
 
 def test_health_page_shows_database_state(client: TestClient) -> None:
-    assert "Not configured" in client.get("/").text
+    assert "Not configured" in client.get("/system").text
 
 
 def test_health_page_uses_no_forbidden_wording(client: TestClient) -> None:
     """Design rule: plain professional labels, no 'magic' wording or sparkle symbols."""
-    html = client.get("/").text.lower()
+    html = client.get("/system").text.lower()
     for word in ("magic", "sparkle", "ai-powered", "✨"):
         assert word not in html
 

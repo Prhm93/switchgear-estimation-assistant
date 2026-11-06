@@ -1,0 +1,71 @@
+{%- extends "base.html" -%}
+{%- from "macros.html" import icon with context -%}
+
+{%- block title %}Projects · {{ app_name }}{% endblock -%}
+
+{%- block content %}
+<div class="page-header">
+  <div>
+    <p class="eyebrow">Projects</p>
+    <h1>Enquiries</h1>
+    <p class="lede">Each enquiry goes from uploaded documents to a checked draft estimate. Only values an engineer has approved reach an estimate.</p>
+  </div>
+  <a class="btn btn--primary" href="/projects/new">{{ icon("upload", "sm") }}New project</a>
+</div>
+
+<section class="grid" aria-label="Counts">
+  <article class="kpi span-3">
+    <span class="kpi__label">{{ icon("switchboard", "sm") }}Projects</span>
+    <span class="kpi__value">{{ counts.projects }}</span>
+  </article>
+  <article class="kpi span-3">
+    <span class="kpi__label">{{ icon("document", "sm") }}Documents</span>
+    <span class="kpi__value">{{ counts.documents }}</span>
+  </article>
+  <article class="kpi span-3">
+    <span class="kpi__label">{{ icon("check", "sm") }}Values to review</span>
+    <span class="kpi__value">{{ counts.pending_reviews }}</span>
+  </article>
+  <article class="kpi span-3">
+    <span class="kpi__label">{{ icon("warning", "sm") }}Read errors</span>
+    <span class="kpi__value">{{ counts.errors }}</span>
+  </article>
+</section>
+
+<section class="panel section-gap" aria-labelledby="projects-title">
+  <div class="panel__title"><h2 id="projects-title">All projects</h2></div>
+  {%- if rows %}
+  <table class="data-table">
+    <caption class="visually-hidden">Projects</caption>
+    <thead>
+      <tr>
+        <th scope="col">Reference</th>
+        <th scope="col">Project</th>
+        <th scope="col" class="num">Documents</th>
+        <th scope="col" class="num">Approved</th>
+        <th scope="col" class="num">To review</th>
+        <th scope="col" class="num">Errors</th>
+        <th scope="col" class="num">Draft total (GBP)</th>
+        <th scope="col"><span class="visually-hidden">Open</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {%- for r in rows %}
+      <tr>
+        <td class="mono">{{ r.project.reference or "-" }}</td>
+        <td>{{ r.project.name }}<span class="data-table__sub">Created {{ r.project.created_at.strftime("%d %b %Y") }}</span></td>
+        <td class="num">{{ r.documents }}</td>
+        <td class="num">{{ r.approved }} / {{ r.value_count }}</td>
+        <td class="num">{{ r.pending }}</td>
+        <td class="num">{{ r.errors }}</td>
+        <td class="num">{{ "{:,.2f}".format(r.estimate.total) if r.estimate else "-" }}</td>
+        <td><a class="btn btn--ghost" href="/projects/{{ r.project.id }}/review">Open{{ icon("arrow-right", "sm") }}</a></td>
+      </tr>
+      {%- endfor %}
+    </tbody>
+  </table>
+  {%- else %}
+  <p class="muted">No projects yet. Start with <a href="/projects/new">New project</a> and upload the enquiry documents.</p>
+  {%- endif %}
+</section>
+{% endblock -%}

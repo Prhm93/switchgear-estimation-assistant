@@ -10,5 +10,8 @@ notebooks
 tutorials
 docs
 tests
-data
+# Only the parts catalogue is needed in the image.
+data/*
+!data/catalogue
 *.log
+storage

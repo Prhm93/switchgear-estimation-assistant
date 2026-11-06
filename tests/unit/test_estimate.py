@@ -114,3 +114,79 @@ def test_unmatched_items_are_listed_and_not_priced():
                                           ("2x 4C 185 mm2 SWA", ("M63", 2)), ("fibre optic", None)])
 def test_gland_sizing(cable, gland):
     assert gland_for(cable, RULES) == gland
+
+
+LAYOUT_LINES = {"section.incomer", "section.outgoing", "busbar", "form_kit"}
+HELD_LINES = LAYOUT_LINES - {"section.incomer"}  # the incomer section is one section whatever the layout
+
+
+def _with(values: list[ApprovedValue], field: str, value, unit: str | None, source: str) -> list[ApprovedValue]:
+    return values + [ApprovedValue(value_id=900, field=field, value=value, unit=unit, source=source)]
+
+
+def _layout_built(draft) -> set[str]:
+    return {k for ln in draft.lines for k in ln.requirement_keys} & LAYOUT_LINES
+
+
+def test_a_rating_conflict_that_changes_the_section_count_holds_back_the_stated_sections():
+    """630 A takes two units, 400 A one: the drawing's stated sections and width may follow the wrong one."""
+    values = [v if v.field != "way.Q2.rating" else v.model_copy(update={"value": 630}) for v in resolved_showcase()]
+    draft = build(_with(values, "way.Q2.rating", 400, "A", "schematic sheet 1"), ITEMS, RULES)
+    assert _layout_built(draft) == LAYOUT_LINES - HELD_LINES
+    held = next(p for p in draft.problems if p.field == "enclosure.sections")
+    assert held.kind == "conflict" and "way.Q2.rating" in held.message
+    assert set(held.lines) >= {"sections", "busbar", "form_kit"}
+    assert "PRT-0103" in {ln.code for ln in draft.lines}  # the incomer is unaffected
+
+
+def test_a_rating_conflict_that_keeps_the_section_count_does_not_hold_back_the_sections():
+    """The showcase's 250 A against 200 A: one unit either way, so the stated layout stands."""
+    draft = build(approved_from_key(), ITEMS, RULES)
+    assert _layout_built(draft) == LAYOUT_LINES
+    assert "enclosure.sections" not in {p.field for p in draft.problems}
+
+
+def test_a_conflicting_number_of_ways_holds_back_the_stated_sections():
+    draft = build(_with(resolved_showcase(), "ways.count", 9, None, "schematic sheet 1"), ITEMS, RULES)
+    assert _layout_built(draft) == LAYOUT_LINES - HELD_LINES
+    assert "ways.count" in next(p for p in draft.problems if p.field == "enclosure.sections").message
+
+
+def test_an_open_conflict_between_unapproved_values_still_holds_back_the_stated_layout():
+    """Neither Q2 rating is approved yet: the drawing's sections may follow the wrong one, so they wait."""
+    values = [v for v in resolved_showcase() if v.field != "way.Q2.rating"]
+    disputed = [ApprovedValue(value_id=901, field="way.Q2.rating", value=630, unit="A", source="specification p5"),
+                ApprovedValue(value_id=902, field="way.Q2.rating", value=400, unit="A", source="schematic sheet 1")]
+    draft = build(values, ITEMS, RULES, open_values=disputed)
+    assert _layout_built(draft) == LAYOUT_LINES - HELD_LINES
+    q2 = next(p for p in draft.problems if p.field == "way.Q2.rating")
+    assert q2.kind == "conflict" and "resolve" in q2.message
+    assert not {901, 902} & {i for ln in draft.lines for i in getattr(ln, "value_ids", [])}
+    assert all("way.Q2.rating" not in ln.basis for ln in draft.lines)  # open values are never priced
+
+
+def test_glands_wait_for_the_cable_entry():
+    """The gland plate is at the top or the bottom: without the cable entry no gland is priced."""
+    draft = build([v for v in resolved_showcase() if v.field != "enclosure.cable_entry"], ITEMS, RULES)
+    assert not any(k.startswith("gland.") for ln in draft.lines for k in ln.requirement_keys)
+    entry = next(p for p in draft.problems if p.field == "enclosure.cable_entry")
+    assert entry.kind == "missing" and all(line.startswith("gland.") for line in entry.lines)
+    full = build(resolved_showcase(), ITEMS, RULES)
+    assert all("enclosure.cable_entry" in ln.basis for ln in full.lines if ln.code.startswith("PRT-10"))
+
+
+def test_a_breaking_capacity_conflict_blocks_an_mccb_way():
+    """The MCCB must break max(fault level, its own kA): with the kA in dispute the part cannot be chosen."""
+    mccb = next(v for v in resolved_showcase() if v.field.endswith(".device") and v.value == "mccb")
+    way = mccb.field.rsplit(".", 1)[0]
+    draft = build(_with(resolved_showcase(), f"{way}.breaking_capacity", 99, "kA", "schematic sheet 1"), ITEMS, RULES)
+    assert all(f"{way}.rating" not in ln.basis for ln in draft.lines)
+    problem = next(p for p in draft.problems if p.field == f"{way}.breaking_capacity")
+    assert problem.kind == "conflict" and way in problem.lines
+
+
+def test_an_mccb_way_without_its_own_breaking_capacity_uses_the_fault_level():
+    mccb = next(v for v in resolved_showcase() if v.field.endswith(".device") and v.value == "mccb")
+    way = mccb.field.rsplit(".", 1)[0]
+    draft = build([v for v in resolved_showcase() if v.field != f"{way}.breaking_capacity"], ITEMS, RULES)
+    assert any(f"{way}.rating" in ln.basis for ln in draft.lines)

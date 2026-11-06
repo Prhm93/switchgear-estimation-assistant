@@ -19,9 +19,15 @@ RUN pip install -r requirements.txt
 COPY ai_engine ./ai_engine
 COPY backend ./backend
 COPY frontend ./frontend
+# The answer-key schema is shared with the extracted values; the parts catalogue and the
+# estimate rules are read at start-up. No generated project data goes into the image.
+COPY data_generator ./data_generator
+COPY data/catalogue ./data/catalogue
+COPY config ./config
 
-# Run as an unprivileged user.
-RUN useradd --create-home --uid 10001 app
+# Run as an unprivileged user. Uploaded originals live in /app/storage (a volume).
+RUN useradd --create-home --uid 10001 app     && mkdir -p /app/storage && chown app:app /app/storage
+ENV STORAGE_DIR=/app/storage
 USER app
 
 EXPOSE 8000

@@ -7,6 +7,23 @@ on:
 jobs:
   pytest:
     runs-on: ubuntu-latest
+    # PostgreSQL with pgvector, the same image as docker compose, so tests marked "database" run here.
+    services:
+      db:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: sea
+          POSTGRES_PASSWORD: sea-ci-only
+          POSTGRES_DB: sea
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sea -d sea"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+pg8000://sea:sea-ci-only@127.0.0.1:5432/sea
     steps:
       - uses: actions/checkout@v4
 
@@ -35,6 +52,6 @@ jobs:
           name: showcase-diagnostics
           path: showcase-diagnostics.json
 
-      # DATABASE_URL is not set here, so tests marked "database" skip.
+      # DATABASE_URL points at the service above; the accuracy tests run a two-project subset only.
       - name: Run tests
         run: python -m pytest -ra

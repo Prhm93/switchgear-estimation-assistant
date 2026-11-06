@@ -134,11 +134,23 @@ class Draft(BaseModel):
 class Fields:
     """Resolved approved values, recording what is missing or in conflict."""
 
-    def __init__(self, approved: list[ApprovedValue]) -> None:
+    def __init__(self, approved: list[ApprovedValue], open_values: list[ApprovedValue] | None = None) -> None:
         self.by_field: dict[str, list[ApprovedValue]] = {}
         for v in approved:
             self.by_field.setdefault(v.field, []).append(v)
+        # Values not yet reviewed: never priced, only used to tell a conflict from a gap.
+        self.open_by_field: dict[str, list[ApprovedValue]] = {}
+        for v in open_values or []:
+            self.open_by_field.setdefault(v.field, []).append(v)
         self.problems: dict[str, Problem] = {}
+
+    def disputed(self, field: str) -> list[ApprovedValue]:
+        """Distinct approved and unreviewed values of ``field``: more than one means the documents disagree."""
+        seen: dict[tuple, ApprovedValue] = {}
+        for v in self.by_field.get(field, []) + self.open_by_field.get(field, []):
+            if v.value is not None:
+                seen.setdefault((norm.value_key(v.value), norm.unit(v.unit)), v)
+        return list(seen.values())
 
     def distinct(self, field: str) -> list[ApprovedValue]:
         seen: dict[tuple, ApprovedValue] = {}
@@ -155,6 +167,10 @@ class Fields:
             listed = "; ".join(f"{v.value}{' ' + v.unit if v.unit else ''} ({v.source})" for v in values)
             problem = self.problems.setdefault(field, Problem(
                 kind="conflict", field=field, message=f"Approved values disagree: {listed}"))
+        elif len(open_ := self.disputed(field)) > 1:
+            listed = "; ".join(f"{v.value}{' ' + v.unit if v.unit else ''} ({v.source})" for v in open_)
+            problem = self.problems.setdefault(field, Problem(
+                kind="conflict", field=field, message=f"Documents disagree, resolve on the review screen: {listed}"))
         else:
             problem = self.problems.setdefault(field, Problem(
                 kind="missing", field=field, message="No approved value"))
@@ -181,7 +197,8 @@ class Fields:
         return None if v is None else str(v.value)
 
     def ways(self) -> list[str]:
-        ids = {m.group(1) for f in self.by_field if (m := re.match(r"^way\.([^.]+)\.", f))}
+        """Every way with an approved or an unreviewed value; a way still under review is listed as missing."""
+        ids = {m.group(1) for f in [*self.by_field, *self.open_by_field] if (m := re.match(r"^way\.([^.]+)\.", f))}
         return sorted(ids, key=lambda w: (len(w), w))
 
 
@@ -189,6 +206,19 @@ class Fields:
 
 DEVICE_CATEGORY = {"acb": "acb", "mccb": "mccb", "mcb": "mcb", "switch_disconnector": "switch_disconnector"}
 CONDUCTOR = re.compile(r"(?:(\d)x\s*)?\d+C\s+(\d+)\s*mm2", re.IGNORECASE)
+
+
+def _layout_conflicts(fields: Fields, rules: EstimateRules) -> list[str]:
+    """Conflicting fields that could change the number of section units: the number of ways, or a way
+    rating whose alternatives fall on different sides of the 400 A two-unit limit."""
+    out = ["ways.count"] if len(fields.disputed("ways.count")) > 1 else []
+    for w in fields.ways():
+        field = f"way.{w}.rating"
+        ratings = [norm.number(str(v.value)) for v in fields.disputed(field)]
+        units = {rules.units_above_400a if r is not None and r > 400 else 1 for r in ratings}
+        if len(ratings) > 1 and len(units) > 1:
+            out.append(field)
+    return out
 
 
 def gland_for(cable: str, rules: EstimateRules) -> tuple[str, int] | None:
@@ -253,8 +283,8 @@ def requirements(fields: Fields, rules: EstimateRules) -> list[Requirement]:
                     continue
             else:
                 fl = fields.number("system.fault_level", key, "kA")
-                if fl is None:
-                    continue
+                if fl is None or len(fields.disputed(f"{f}.breaking_capacity")) > 1:
+                    continue  # a disputed own kA could need a bigger breaker: never priced around it
                 min_ka = int(max(fl, bc or 0))
                 basis += [f"{f}.breaking_capacity", "system.fault_level"]
         add(key=key, category=DEVICE_CATEGORY[dev], quantity=1, rating_a=int(rating), poles=int(poles),
@@ -262,25 +292,34 @@ def requirements(fields: Fields, rules: EstimateRules) -> list[Requirement]:
             basis=basis)
 
     # Sections: stated on the drawing, else counted from the ways (marked as calculated).
-    sections = fields.number("enclosure.sections", "sections")
+    # A stated layout follows the ways, so it waits while a conflict could change it.
+    if layout_doubt := _layout_conflicts(fields, rules):
+        for field in ("enclosure.sections", "enclosure.width"):
+            if fields.by_field.get(field):
+                fields.problems[field] = Problem(
+                    kind="conflict", field=field, lines=["sections", "busbar", "form_kit"],
+                    message=f"Depends on {', '.join(layout_doubt)}, which the documents give differently")
+        sections = None
+    else:
+        sections = fields.number("enclosure.sections", "sections")
     sections_basis = ["enclosure.sections"]
-    if sections is None and fields.ways() and not unit_problem:
+    if sections is None and fields.ways() and not unit_problem and not layout_doubt:
         sections = 1 + math.ceil(units / rules.units_per_outgoing_section)
         sections_basis = [f"way.{w}.rating" for w in fields.ways()]
         fields.problems.pop("enclosure.sections", None)
     ip = fields.text("enclosure.ip_rating", "sections")
-    if sections and ip:
+    if (sections or layout_doubt) and ip:  # one incomer section whatever the outgoing layout
         add(key="section.incomer", category="enclosure_section", quantity=1, ip_rating=ip,
             width_mm=rules.incomer_width_mm, description=f"Incomer section W{rules.incomer_width_mm} {ip}",
             basis=["enclosure.ip_rating"])
-        if sections > 1:
+        if sections and sections > 1:
             add(key="section.outgoing", category="enclosure_section", quantity=int(sections) - 1, ip_rating=ip,
                 width_mm=rules.outgoing_width_mm, description=f"Outgoing sections W{rules.outgoing_width_mm} {ip}",
                 basis=["enclosure.ip_rating", *sections_basis])
 
     # Busbar per metre of board width: stated width, else from the sections.
     bus = fields.number("busbar.rating", "busbar", "A")
-    width = fields.number("enclosure.width", "busbar", "mm")
+    width = None if layout_doubt else fields.number("enclosure.width", "busbar", "mm")
     width_basis = ["enclosure.width"]
     if width is None and sections:
         width = rules.incomer_width_mm + rules.outgoing_width_mm * (int(sections) - 1)
@@ -296,10 +335,11 @@ def requirements(fields: Fields, rules: EstimateRules) -> list[Requirement]:
         add(key="form_kit", category="form_kit", quantity=int(sections), size=form.lower(),
             description=f"Form {form} kits", basis=["enclosure.form", *sections_basis])
 
-    # Glands: one per outgoing cable (two for parallel cables).
+    # Glands: one per outgoing cable (two for parallel cables), on the gland plate at the cable entry.
     for w in fields.ways():
         cable = fields.text(f"way.{w}.cable", f"gland.{w}")
-        if not cable:
+        entry = fields.text("enclosure.cable_entry", f"gland.{w}")
+        if not (cable and entry):
             continue
         gland = gland_for(cable, rules)
         if gland is None:
@@ -308,7 +348,7 @@ def requirements(fields: Fields, rules: EstimateRules) -> list[Requirement]:
                 lines=[f"gland.{w}"]))
             continue
         add(key=f"gland.{w}", category="cable_gland", quantity=gland[1], size=gland[0],
-            description=f"Glands {gland[0]} for way {w}", basis=[f"way.{w}.cable"])
+            description=f"Glands {gland[0]} for way {w}", basis=[f"way.{w}.cable", "enclosure.cable_entry"])
     return out
 
 
@@ -319,9 +359,15 @@ def _money(x: Decimal) -> Decimal:
 
 
 def build(approved: list[ApprovedValue], items: list[CatalogueItem], rules: EstimateRules,
-          approved_substitutes: set[tuple[str, str]] = frozenset()) -> Draft:
-    """The draft estimate. ``approved_substitutes`` holds (requirement key, code) pairs the engineer approved."""
-    fields = Fields(approved)
+          approved_substitutes: set[tuple[str, str]] = frozenset(),
+          open_values: list[ApprovedValue] | None = None) -> Draft:
+    """The draft estimate from approved values only.
+
+    ``approved_substitutes`` holds (requirement key, code) pairs the engineer approved.
+    ``open_values`` are extracted values not yet reviewed: they are never priced and only
+    show where documents disagree, so a conflict is reported as one and its dependants wait.
+    """
+    fields = Fields(approved, open_values)
     reqs = requirements(fields, rules)
     by_code = {i.code: i for i in items}
     decisions = []

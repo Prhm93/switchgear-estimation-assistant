@@ -193,6 +193,15 @@ def approved_values(session: Session, project_id: int) -> list[ApprovedValue]:
                           source=source_label(r.source_document, r.page)) for r in rows]
 
 
+def open_values(session: Session, project_id: int) -> list[ApprovedValue]:
+    """Values not yet reviewed. The estimate never prices them; it uses them only to see open conflicts."""
+    rows = session.scalars(select(ExtractedValueRow).where(
+        ExtractedValueRow.project_id == project_id,
+        ExtractedValueRow.review_status == ReviewStatus.EXTRACTED.value))
+    return [ApprovedValue(value_id=r.id, field=r.field, value=r.value, unit=r.unit,
+                          source=source_label(r.source_document, r.page)) for r in rows if r.value is not None]
+
+
 def source_label(document: str, page: int | None) -> str:
     """Plain words for a source: "specification p5", "schematic sheet 1"."""
     if page is None:
@@ -227,11 +236,12 @@ def build_estimate(session: Session, project_id: int, settings: Settings, actor:
     rules = load_rules(settings.estimate_rules)
     items = catalogue_items(session)
     values = approved_values(session, project_id)
-    first = build(values, items, rules)
+    pending_values = open_values(session, project_id)
+    first = build(values, items, rules, open_values=pending_values)
     matches = _sync_matches(session, project_id, first)
     approved_subs = {(k, m.code) for k, m in matches.items()
                      if m.status == MatchStatus.SUBSTITUTE.value and m.review_status == "approved"}
-    draft = build(values, items, rules, approved_substitutes=approved_subs)
+    draft = build(values, items, rules, approved_substitutes=approved_subs, open_values=pending_values)
     ids_by_field: dict[str, list[int]] = {}
     for v in values:
         ids_by_field.setdefault(v.field, []).append(v.value_id)
