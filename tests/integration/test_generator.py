@@ -17,6 +17,7 @@ from docx import Document
 from PIL import Image
 
 from data_generator import geometry as g
+from data_generator import sets
 from data_generator.catalogue import build_catalogue
 from data_generator.planted import TEST_PLAN
 from data_generator.project import render_pdf_pages, sha256_file
@@ -272,6 +273,45 @@ def test_every_planted_problem_is_present_in_the_documents(built):
                 assert _norm(src.source_text) in spec_pages(folder)[src.page - 1], (pid, p.id)
             if p.kind != ProblemKind.PROMPT_INJECTION:
                 assert any(p.id in line.blocked_by for line in key.estimate), (pid, p.id, "blocks no line")
+
+
+def _true_design(project_id: str):
+    """The design of a test project after the plan's own design changes, rebuilt from its seed."""
+    import random
+
+    from data_generator.design import random_design
+    from data_generator.planted import apply_plan
+    from data_generator.project import seed_for
+
+    i = int(project_id[1:])
+    seed = sets.TEST_SEED_BASE + i
+    design = random_design(seed_for(seed, "design"), project_id)
+    apply_plan(design, sets.TEST_PLAN[i], random.Random(seed_for(seed, "planted")))
+    return design
+
+
+def test_lines_that_depend_on_a_derived_value_a_problem_changed_are_blocked(built):
+    """A changed way rating on the drawing can change the drawing's sections and width: lines using them are blocked."""
+    from data_generator.estimate import DERIVED_FIELDS
+
+    checked = 0
+    for pid, (_, key) in built.items():
+        design = _true_design(pid)
+        for field, get in DERIVED_FIELDS.items():
+            if any(v.value != get(design) for v in key.values_for(field)):
+                checked += 1
+                for line in key.estimate:
+                    if field in line.basis:
+                        assert line.blocked_by, (pid, field, line.code)
+    assert checked > 0  # T01 is in the rendered set and has this case
+
+
+def test_t01_section_busbar_and_form_lines_are_blocked_by_its_rating_conflict(built):
+    _, key = built["T01"]
+    blocked = {line.code for line in key.estimate if "T01-P1" in line.blocked_by}
+    sections = [v.value for v in key.values_for("enclosure.sections")]
+    assert sections and any(c.startswith("PRT-07") for c in blocked)  # busbar per metre of width
+    assert any(c.startswith("PRT-08") for c in blocked) and any(c.startswith("PRT-09") for c in blocked)
 
 
 def test_control_project_has_no_problems_and_no_blocked_lines(built):

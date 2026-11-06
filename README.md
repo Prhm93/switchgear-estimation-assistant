@@ -4,9 +4,9 @@ A web application that helps an engineer turn a customer enquiry for low-voltage
 
 > **Disclaimer:** this is an independent personal project. It uses synthetic data only: every document, drawing, part code and price is invented. It is not affiliated with or endorsed by any company.
 
-The product is being built in stages. Stage 0 set up the structure, the Docker stack and the design system. Stage 1 (this version) adds the synthetic data: an invented parts catalogue and a generator of customer enquiries with exact answer keys. The estimation workflow itself is not built yet; see [Status](#status).
+The product is being built in stages. Stage 0 set up the structure, the Docker stack and the design system. Stage 1 added the synthetic data: an invented parts catalogue and a generator of customer enquiries with exact answer keys. Stage 2 (this version) is the first working slice, in rules mode with no model: upload, reading, rule-based extraction, review, catalogue matching, a draft estimate from approved values only, a DOCX report and an audit log. See [Status](#status).
 
-![Design system health-check page](docs/images/stage-0-health-check.png)
+![Review screen with a conflict shown side by side](docs/images/stage-2-review.png)
 
 ## Quick start (Docker)
 
@@ -16,7 +16,7 @@ Needs Docker Desktop. On an 8 GB laptop, cap the Docker memory first ([steps](do
 docker compose up --build
 ```
 
-Then open <http://127.0.0.1:8000/> for the health-check page, or <http://127.0.0.1:8000/healthz> for the JSON status. Stop with `Ctrl+C`, or `docker compose down` (add `-v` to delete the database volume).
+Then open <http://127.0.0.1:8000/> for the projects dashboard (a walk-through of the showcase is in [docs/stage-2.md](docs/stage-2.md#how-to-run-it)), <http://127.0.0.1:8000/system> for the design system and health-check page, or <http://127.0.0.1:8000/healthz> for the JSON status. Stop with `Ctrl+C`, or `docker compose down` (add `-v` to delete the database volume).
 
 ## Local development
 
@@ -29,12 +29,15 @@ pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-Run the app without Docker (no database; the health page shows "Not configured"):
+Run the app without Docker, with a local SQLite database (created and migrated on start):
 
 ```powershell
 $env:PYTHONPATH = "ai_engine;."
+$env:DATABASE_URL = "sqlite:///./storage/dev.sqlite"
 uvicorn backend.app.main:app --reload
 ```
+
+Without `DATABASE_URL` the app still starts: `/system` shows the database as "Not configured" and the product screens explain that a database is needed.
 
 Run the database tests against the Docker database:
 
@@ -49,12 +52,12 @@ Remove-Item Env:DATABASE_URL
 
 | Path | What it is |
 |---|---|
-| `backend/app/` | FastAPI app: settings, database check, routes, design-token contrast checker |
+| `backend/app/` | FastAPI app: storage, reading, rule extraction, catalogue matcher, estimate rules, screens, DOCX report, audit log, evaluation |
 | `backend/migrations/` | Alembic migrations (`backend/alembic.ini`) |
 | `ai_engine/estimation_assistant/` | The AI engine: tools, safe tool runner, agent loop, retrieval, number check |
 | `frontend/templates/` | Jinja2 templates |
 | `frontend/static/` | The one stylesheet (`css/app.css`), self-hosted fonts, line icons, small scripts |
-| `tests/unit/`, `tests/integration/`, `tests/accuracy/` | pytest suites; accuracy tests arrive with Stage 2 |
+| `tests/unit/`, `tests/integration/`, `tests/accuracy/` | pytest suites; CI runs a two-project accuracy subset |
 | `deployment/` | Dockerfile and docker compose file (the root `compose.yaml` includes it) |
 | `data_generator/` | Synthetic enquiry generator: catalogue, specification PDF, DXF schematic, scanned and photo versions, letter, answer keys |
 | `data/` | Catalogue, showcase project, planted-problem list; test and training sets are rebuilt from seeds ([data/README.md](data/README.md)) |
@@ -68,7 +71,7 @@ Remove-Item Env:DATABASE_URL
 |---|---|---|
 | 0 Setup | Repo structure, Docker stack (Postgres + pgvector, app), design system health-check page, CI | Done: [report](docs/stage-0.md) |
 | 1 Synthetic data | Enquiry generator, showcase project, 20 test projects, 300 training drawings, parts catalogue, real-drawing format | Done: [report](docs/stage-1.md) |
-| 2 Thin slice (rules mode) | Upload to DOCX report with audit log | Not started |
+| 2 Thin slice (rules mode) | Upload to DOCX report with audit log | Done: [report](docs/stage-2.md) |
 | 3 LLM extraction | Ollama and recorded modes, quote check, rules vs LLM scores | Not started |
 | 4 Drawing understanding | OCR, vision reading, symbol detector | Not started |
 | 5 Cross-document checks | Conflicts and missing information | Not started |
@@ -142,7 +145,7 @@ Each enquiry has a specification PDF, a requirements letter (DOCX), a two-sheet 
 
 ## Licences
 
-Only permissive licences are used. AGPL libraries (for example PyMuPDF and Ultralytics YOLO) are excluded, and so are fpdf2 (LGPL), pdf2image and Poppler (GPL). Versions are those tested (Stage 0 for the web stack, Stage 1 for the data generator).
+Only permissive licences are used. AGPL libraries (for example PyMuPDF and Ultralytics YOLO) are excluded, and so are fpdf2 (LGPL), pdf2image and Poppler (GPL). Versions are those tested (Stage 0 for the web stack, Stage 1 for the data generator, Stage 2 for reading and export).
 
 | Component | Version | Licence | Used for |
 |---|---|---|---|
@@ -157,10 +160,13 @@ Only permissive licences are used. AGPL libraries (for example PyMuPDF and Ultra
 | ollama (Python client) | 0.6.3 | MIT | Model calls in live mode |
 | pytest | 9.2.0 | MIT | Tests (development only) |
 | httpx2, httpcore2 | 2.16.0 | BSD-3-Clause | Test client (development only); replaces httpx for Starlette's TestClient |
-| ezdxf | 1.4.5 | MIT | Writes the schematic DXF and renders it through its matplotlib backend (the PyMuPDF backend is not used) |
+| ezdxf | 1.4.5 | MIT | App: reads the text entities of uploaded DXF drawings. Generator: writes the schematic DXF and renders it through its matplotlib backend (the PyMuPDF backend is not used) |
 | matplotlib | 3.11.2 | Matplotlib licence (PSF-based, BSD-style) | Vector PDF of the schematic |
 | reportlab | 5.1.0 | BSD-3-Clause | Specification PDF |
-| python-docx | 1.2.0 | MIT | Requirements letter (DOCX) |
+| python-docx | 1.2.0 | MIT | App: reads letters, exports the DOCX report. Generator: requirements letter |
+| pdfplumber, pdfminer.six | 0.11.10, 20260107 | MIT | App: PDF text and tables per page |
+| htmx | 2.0.4 | Zero-Clause BSD | Partial page updates, vendored (`frontend/static/js/htmx.LICENSE.txt`) |
+| python-multipart | 0.0.33 | Apache-2.0 | App: file uploads |
 | pypdfium2 (PDFium) | 5.14.0 | Apache-2.0 or BSD-3-Clause (PDFium: BSD-3-Clause) | PDF to image, PDF text in tests |
 | Pillow | 13.0.0 | MIT-CMU | Scan and photo effects |
 | numpy | 2.5.4 | BSD-3-Clause | Scan and photo effects, homographies |
@@ -173,11 +179,11 @@ Only permissive licences are used. AGPL libraries (for example PyMuPDF and Ultra
 | Gemma 4 E2B (`gemma4:e2b`) | n/a | Apache-2.0 ([model card](https://huggingface.co/google/gemma-4-E2B-it)) | Chat and vision model, on Colab only |
 | mxbai-embed-large | v1 | Apache-2.0 ([model card](https://huggingface.co/mixedbread-ai/mxbai-embed-large-v1)) | Embedding model, on Colab only |
 
-Transitive dependencies (for example AnyIO, Click, MarkupSafe, Mako, scramp, typing-extensions, fontTools, lxml, contourpy, kiwisolver, cycler, pyparsing, python-dateutil, truststore) are MIT, BSD, Apache-2.0, MIT-0 or PSF-2.0. Drawings for `data/external/` may be made in QElectroTech or LibreCAD (both GPL-2.0); those tools are not dependencies and none of their code is in the repo. Model licences are from the Hugging Face model cards (checked 5 Nov 2026).
+Transitive dependencies (for example AnyIO, Click, MarkupSafe, Mako, scramp, typing-extensions, fontTools, lxml, contourpy, kiwisolver, cycler, pyparsing, python-dateutil, truststore, charset-normalizer, cryptography, cffi, pycparser) are MIT, BSD, Apache-2.0, Apache-2.0 OR BSD-3-Clause (cryptography), MIT-0 or PSF-2.0. Drawings for `data/external/` may be made in QElectroTech or LibreCAD (both GPL-2.0); those tools are not dependencies and none of their code is in the repo. Model licences are from the Hugging Face model cards (checked 5 Nov 2026).
 
 ## Limits
 
-- **No product features yet.** There is no upload, extraction or estimate in the app; Stage 1 adds the data the later stages are built and scored on.
+- **Rules mode only.** Extraction uses rules written for the generator's wording, so the baseline (F1 1.000 with the DXF) measures template coverage, not generalisation. Drawings are read from the DXF only; drawing PDFs and images are marked "not read yet" until OCR in Stage 4. See [docs/stage-2.md](docs/stage-2.md#known-limits).
 - **Synthetic data is cleaner than real data.** See [docs/stage-1.md](docs/stage-1.md#limits) for how it differs.
 - **Engine, small tests.** Real-model results come from a few questions on four notes. They show the parts work, not how often.
 - **Engine, refusal gap.** The search always returns the nearest note, even when no note fits.

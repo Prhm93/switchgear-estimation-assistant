@@ -1,0 +1,105 @@
+{%- from "macros.html" import icon, confidence, value_status, provenance with context -%}
+{#- The review list. Actions post with HTMX and this block replaces itself; without script they post and redirect. -#}
+<div id="review-body" class="section-gap">
+  {%- if error %}<p class="alert alert--error" role="alert">{{ error }}</p>{% endif %}
+
+  <div class="grid">
+    <article class="kpi span-4">
+      <span class="kpi__label">{{ icon("check", "sm") }}Values to review</span>
+      <span class="kpi__value">{{ pending }}</span>
+    </article>
+    <article class="kpi span-4">
+      <span class="kpi__label">{{ icon("warning", "sm") }}Conflicts</span>
+      <span class="kpi__value">{{ conflicts }}</span>
+      <span class="kpi__note">Documents give different values</span>
+    </article>
+    <article class="kpi span-4">
+      <span class="kpi__label">{{ icon("document", "sm") }}Missing information</span>
+      <span class="kpi__value">{{ missing | length }}</span>
+    </article>
+  </div>
+
+  <div class="row section-gap">
+    <form method="post" action="/projects/{{ project.id }}/review/approve-agreed">
+      <button class="btn btn--secondary" type="submit"{% if not pending %} disabled{% endif %}>{{ icon("check", "sm") }}Approve all high-confidence values without conflicts</button>
+    </form>
+    <span class="small muted">Each value is approved and logged one by one. Conflicts, low and medium confidence values stay for you to decide.</span>
+  </div>
+
+  {%- if missing or not_read %}
+  <section class="panel section-gap" aria-labelledby="missing-title">
+    <div class="panel__title"><h2 id="missing-title">Missing information</h2></div>
+    {%- for d in not_read %}
+    <p class="alert alert--info">{{ d.original_name }}: {{ d.note }}</p>
+    {%- endfor %}
+    {%- if missing %}
+    <ul class="plain-list">
+      {%- for m in missing %}
+      <li><span class="mono">{{ m.label }}</span> <span class="muted small">{{ m.why }}</span></li>
+      {%- endfor %}
+    </ul>
+    {%- endif %}
+  </section>
+  {%- endif %}
+
+  <section class="stack section-gap" aria-label="Values by field">
+    {%- for g in groups.values() %}
+    <article class="panel review-group{% if g.conflict %} review-group--conflict{% endif %}" id="f-{{ g.field }}">
+      <div class="panel__title">
+        <h3>{{ g.label }}</h3>
+        {%- if g.conflict %}<span class="badge badge--conflict">{{ icon("warning") }}Conflict</span>
+        {%- elif g.missing_from and g.pending %}<span class="badge badge--review">{{ icon("warning") }}Not in the {{ g.missing_from | map("lower") | join(", ") }}</span>
+        {%- elif g.pending %}<span class="badge badge--review">{{ icon("warning") }}Needs review</span>
+        {%- else %}<span class="badge badge--approved">{{ icon("check") }}Reviewed</span>{% endif %}
+      </div>
+      {%- if g.left_open and g.pending %}<p class="small muted">One document leaves this open (for example TBC). Approve another document's value only if it is confirmed.</p>{% endif %}
+      {%- if g.missing_from %}<p class="small muted">This way is not listed in the {{ g.missing_from | join(", ") }}. Check the number of ways before approving it.</p>{% endif %}
+      <div class="{{ 'side-by-side' if g.conflict or g['values'] | length > 1 else '' }}">
+        {%- for v in g["values"] %}
+        {%- set shown = v.approved_value if v.review_status in ("approved", "edited") else v.value %}
+        {%- set shown_unit = v.approved_unit if v.review_status in ("approved", "edited") else v.unit %}
+        <div class="review-value" id="v-{{ v.id }}">
+          <div class="review-value__head">
+            <span class="review-value__value mono">{{ display(shown, shown_unit) }}</span>
+            {{ value_status(v) }}
+          </div>
+          {%- if v.review_status == "edited" %}<span class="small muted">Extracted as {{ display(v.value, v.unit) }}</span>{% endif %}
+          <span class="review-value__doc">{{ kind_words.get(v.source_document, v.source_document) }} · {{ source_label(v.source_document, v.page) }}</span>
+          <span class="value-row__quote">"{{ v.source_text }}"</span>
+          {%- if v.derivation %}<span class="value-row__source">{{ v.derivation }}</span>{% endif %}
+          <div class="row">{{ confidence("conflict" if g.conflict else v.confidence) }}</div>
+          {{ provenance(v) }}
+          <div class="review-actions">
+            <form method="post" action="/values/{{ v.id }}/approve" hx-post="/values/{{ v.id }}/approve" hx-target="#review-body" hx-swap="outerHTML">
+              <button class="btn btn--secondary btn--sm" type="submit"{% if v.review_status == "approved" or v.value is none %} disabled{% endif %}>Approve</button>
+            </form>
+            <details class="action-form">
+              <summary class="btn btn--tonal btn--sm">Edit</summary>
+              <form method="post" action="/values/{{ v.id }}/edit" hx-post="/values/{{ v.id }}/edit" hx-target="#review-body" hx-swap="outerHTML" class="inline-form">
+                <label class="field field--inline"><span class="field__label">Value</span>
+                  <input class="input mono" name="value" value="{{ shown if shown is not none else '' }}" required></label>
+                <label class="field field--inline field--unit"><span class="field__label">Unit</span>
+                  <input class="input mono" name="unit" value="{{ shown_unit or '' }}"></label>
+                <label class="field field--inline"><span class="field__label">Reason</span>
+                  <input class="input" name="reason"></label>
+                <button class="btn btn--secondary btn--sm" type="submit">Save and approve</button>
+              </form>
+            </details>
+            <details class="action-form">
+              <summary class="btn btn--ghost btn--sm">Reject</summary>
+              <form method="post" action="/values/{{ v.id }}/reject" hx-post="/values/{{ v.id }}/reject" hx-target="#review-body" hx-swap="outerHTML" class="inline-form">
+                <label class="field field--inline"><span class="field__label">Reason</span>
+                  <input class="input" name="reason" required></label>
+                <button class="btn btn--tonal btn--sm" type="submit">Reject value</button>
+              </form>
+            </details>
+          </div>
+        </div>
+        {%- endfor %}
+      </div>
+    </article>
+    {%- else %}
+    <p class="panel muted">No values yet. Upload documents on the <a href="/projects/{{ project.id }}/upload">Documents</a> tab.</p>
+    {%- endfor %}
+  </section>
+</div>

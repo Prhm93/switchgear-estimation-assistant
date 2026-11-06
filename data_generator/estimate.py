@@ -4,9 +4,12 @@ Built from the intended design, using only parts that exist in the catalogue
 (:func:`catalogue.match_part` raises rather than guesses). Prices are not
 part of the answer key; they come from the catalogue.
 
-A line is *blocked* by a planted problem when the problem's field is one of
-the fields the line depends on (its ``basis``). A correct system must not
-finalise a blocked line until the engineer resolves the problem.
+A line is *blocked* by a planted problem when one of the fields the problem
+affects is in the line's ``basis``. A problem affects its own field and every
+derived field that changes with it in the documents it alters: for example a
+way's rating changed on the drawing can change the number of sections and
+the board width the drawing states (:func:`affected_fields`). A correct system
+must not finalise a blocked line until the engineer resolves the problem.
 """
 
 from __future__ import annotations
@@ -18,7 +21,24 @@ from data_generator.design import BoardDesign, Device
 from data_generator.schemas import EstimateLine, PlantedProblem
 
 
-def estimate_lines(design: BoardDesign, parts: list[cat.Part], problems: list[PlantedProblem]) -> list[EstimateLine]:
+# Fields a document states from values derived from the ways, not given directly.
+DERIVED_FIELDS = {
+    "enclosure.sections": lambda d: d.sections,
+    "enclosure.width": lambda d: d.width_mm,
+}
+
+
+def affected_fields(design: BoardDesign, problem_field: str | None, altered: list[BoardDesign]) -> set[str]:
+    """The problem's field plus every derived field that differs from the design in an altered document."""
+    fields = {problem_field} if problem_field else set()
+    for view in altered:
+        fields |= {f for f, get in DERIVED_FIELDS.items() if get(view) != get(design)}
+    return fields
+
+
+def estimate_lines(design: BoardDesign, parts: list[cat.Part], problems: list[PlantedProblem],
+                   affected: dict[str, set[str]] | None = None) -> list[EstimateLine]:
+    """``affected`` maps a problem id to the fields it affects; by default just the problem's field."""
     d = design
     groups: OrderedDict[str, dict] = OrderedDict()
 
@@ -63,7 +83,8 @@ def estimate_lines(design: BoardDesign, parts: list[cat.Part], problems: list[Pl
 
     lines = []
     for code, g in groups.items():
-        blocked = [p.id for p in problems if p.field is not None and p.field in g["basis"]]
+        blocked = [p.id for p in problems
+                   if (affected or {}).get(p.id, {p.field} if p.field else set()) & set(g["basis"])]
         lines.append(EstimateLine(code=code, description=g["part"].description, quantity=round(g["qty"], 3),
                                   unit=g["part"].unit, basis=g["basis"], blocked_by=blocked))
     return lines

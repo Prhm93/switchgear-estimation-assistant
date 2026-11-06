@@ -1,0 +1,32 @@
+{%- extends "base.html" -%}
+{%- from "macros.html" import project_tabs with context -%}
+
+{%- block title %}Audit log · {{ project.name }} · {{ app_name }}{% endblock -%}
+
+{%- block content %}
+<div class="page-header">
+  <div>
+    <p class="eyebrow">{{ project.reference or "Project" }}</p>
+    <h1>{{ project.name }}</h1>
+  </div>
+</div>
+{{ project_tabs(project, "audit") }}
+<section class="panel section-gap" aria-labelledby="audit-title">
+  <div class="panel__title"><h2 id="audit-title">Every action, newest first</h2><span class="small muted">{{ events | length }} events</span></div>
+  <table class="data-table">
+    <caption class="visually-hidden">Audit events</caption>
+    <thead><tr><th scope="col">When (UTC)</th><th scope="col">Who</th><th scope="col">Action</th><th scope="col">What</th><th scope="col">Detail</th></tr></thead>
+    <tbody>
+      {%- for e in events %}
+      <tr>
+        <td class="mono">{{ e.at.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+        <td>{{ e.actor }}</td>
+        <td class="mono">{{ e.action }}</td>
+        <td class="mono">{{ e.entity }}{% if e.entity_id %} {{ e.entity_id }}{% endif %}</td>
+        <td class="small muted">{% for k, v in audit_detail(e.detail) %}{{ k }}: {% if k == "sha256" %}<span class="mono">{{ v[:16] }}…</span>{% else %}{{ v }}{% endif %}{% if not loop.last %}; {% endif %}{% endfor %}</td>
+      </tr>
+      {%- endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock -%}

@@ -25,3 +25,39 @@
 {% macro confidence(level) -%}
 <span class="conf conf--{{ level }}">Confidence: {{ level | capitalize }}</span>
 {%- endmacro %}
+
+
+{#- Review status of an extracted value, in the plain labels of the design. -#}
+{% macro value_status(v) -%}
+{%- if v.review_status in ("approved", "edited") -%}
+<span class="badge badge--approved">{{ icon("check") }}{{ "Approved" if v.review_status == "approved" else "Edited" }}</span>
+{%- elif v.review_status == "rejected" -%}
+<span class="badge badge--sample">Rejected</span>
+{%- else -%}
+<span class="badge badge--review">{{ icon("warning") }}Needs review</span>
+{%- endif -%}
+{%- endmacro %}
+
+{#- How a value was found: method, rule and source. Every value shows this. -#}
+{% macro provenance(v) -%}
+<span class="value-row__source">
+  {{ v.source_file }}, {{ "sheet" if v.source_document == "schematic" else "page" }} <span class="mono">{{ v.page }}</span>
+  · method <span class="mono">{{ v.method }}</span>{% if v.rule %} (<span class="mono">{{ v.rule }}</span>){% endif %}
+</span>
+{%- endmacro %}
+
+{#- Tabs for the screens of one project; the active tab has the red underline. -#}
+{% macro project_tabs(project, active) -%}
+<nav class="tabs project-tabs" aria-label="Project screens">
+  {%- for key, label, href in [("upload", "Documents", "/upload"), ("analysis", "Analysis", "/analysis"),
+                                ("review", "Review", "/review"), ("estimate", "Estimate", "/estimate"),
+                                ("audit", "Audit log", "/audit")] %}
+  <a class="tab" href="/projects/{{ project.id }}{{ href }}"{% if key == active %} aria-current="page"{% endif %}>{{ label }}</a>
+  {%- endfor %}
+</nav>
+{%- endmacro %}
+
+{#- Size in plain units. -#}
+{% macro filesize(n) -%}
+{%- if n >= 1000000 %}{{ "%.1f"|format(n / 1000000) }} MB{% else %}{{ (n / 1000)|round(0)|int }} kB{% endif -%}
+{%- endmacro %}

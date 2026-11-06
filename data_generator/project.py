@@ -34,7 +34,7 @@ from data_generator import degrade
 from data_generator import geometry as g
 from data_generator.catalogue import Part, build_catalogue
 from data_generator.design import random_design
-from data_generator.estimate import estimate_lines
+from data_generator.estimate import affected_fields, estimate_lines
 from data_generator.planted import EXPECTED, Plan, apply_plan
 from data_generator.requirements_doc import build_letter
 from data_generator.schematic import SHEET_H, DrawingLayout, build_schematic
@@ -168,7 +168,10 @@ def build_project(project_id: str, seed: int, purpose: str, out_dir: Path, plan:
             document=DocumentKind.REQUIREMENTS, file=letter_file, page=m.page, source_text=m.text)))
 
     problems: list[PlantedProblem] = []
+    affected: dict[str, set[str]] = {}
     for i, p in enumerate(views.problems, start=1):
+        affected[f"{project_id}-P{i}"] = affected_fields(design, p.field,
+                                                         [getattr(views, d.value).design for d in p.documents])
         if p.kind.value == "prompt_injection":
             assert injection is not None
             sources = [SourceRef(document=DocumentKind.SPECIFICATION, file=spec_file, page=injection[0],
@@ -187,7 +190,7 @@ def build_project(project_id: str, seed: int, purpose: str, out_dir: Path, plan:
     ]
     key = AnswerKey(project_id=project_id, origin="synthetic", purpose=purpose, seed=seed, documents=documents,
                     drawings=drawings, values=values, planted=problems,
-                    estimate=estimate_lines(design, parts, problems))
+                    estimate=estimate_lines(design, parts, problems, affected))
     write_answers(key, out_dir / "answers.json")
     return key
 

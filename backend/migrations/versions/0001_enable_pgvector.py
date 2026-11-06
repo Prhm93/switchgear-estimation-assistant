@@ -15,10 +15,17 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+def _is_postgres() -> bool:
+    # The local test suite also runs the migrations on SQLite, which has no extensions.
+    return op.get_bind().dialect.name == "postgresql"
+
+
 def upgrade() -> None:
     # pgvector stores embeddings for note search (Stage 9).
-    op.execute("CREATE EXTENSION IF NOT EXISTS vector")
+    if _is_postgres():
+        op.execute("CREATE EXTENSION IF NOT EXISTS vector")
 
 
 def downgrade() -> None:
-    op.execute("DROP EXTENSION IF EXISTS vector")
+    if _is_postgres():
+        op.execute("DROP EXTENSION IF EXISTS vector")
