@@ -23,6 +23,8 @@ DATA = REPO / "data"
 
 SHOWCASE_ID, SHOWCASE_SEED, SHOWCASE_WAYS = "SHOWCASE", 63, 8
 TEST_COUNT, TEST_SEED_BASE = 20, 1000
+# Held-out reworded set (Stage 3): seeds 2001 to 2020, fixed; the same planted-problem plans as T01 to T20.
+REWORDED_COUNT, REWORDED_SEED_BASE = 20, 2000
 TRAINING_COUNT, TRAINING_SEED_BASE = 300, 900_000
 
 
@@ -35,6 +37,7 @@ class Job:
     purpose: str = "test"
     plan: tuple = ()
     n_ways: int | None = None
+    reword: bool = False
 
 
 def testset_id(i: int) -> str:
@@ -51,6 +54,16 @@ def testset_jobs(root: Path = DATA, count: int = TEST_COUNT) -> list[Job]:
                 tuple(TEST_PLAN[i])) for i in range(1, count + 1)]
 
 
+def reworded_id(i: int) -> str:
+    return f"R{i:02d}"
+
+
+def reworded_jobs(root: Path = DATA, count: int = REWORDED_COUNT) -> list[Job]:
+    """The reworded set: same kinds of facts and problems as the test set, in other words."""
+    return [Job("project", reworded_id(i), REWORDED_SEED_BASE + i, root / "projects" / "reworded" / reworded_id(i),
+                "test", tuple(TEST_PLAN[i]), reword=True) for i in range(1, count + 1)]
+
+
 def training_jobs(root: Path = DATA, count: int = TRAINING_COUNT) -> list[Job]:
     return [Job("training", f"TR{i:04d}", TRAINING_SEED_BASE + i, root / "training" / f"TR{i:04d}")
             for i in range(1, count + 1)]
@@ -58,7 +71,8 @@ def training_jobs(root: Path = DATA, count: int = TRAINING_COUNT) -> list[Job]:
 
 def run_job(job: Job) -> str:
     if job.kind == "project":
-        build_project(job.item_id, job.seed, job.purpose, job.out, list(job.plan), n_ways=job.n_ways)
+        build_project(job.item_id, job.seed, job.purpose, job.out, list(job.plan), n_ways=job.n_ways,
+                      reword=job.reword)
     else:
         build_training_drawing(job.item_id, job.seed, job.out)
     return job.item_id

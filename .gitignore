@@ -10,6 +10,8 @@ __pycache__/
 # The test-set list of planted problems is committed; the projects are not.
 data/projects/test/*
 !data/projects/test/PLANTED.md
+# The reworded set (Stage 3) is rebuilt with: python -m data_generator build --set reworded
+data/projects/reworded/
 data/training/
 
 # Real drawings and the local real-name denylist: never committed.

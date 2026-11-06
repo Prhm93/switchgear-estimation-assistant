@@ -126,14 +126,22 @@ def _regions(box_mm, sheet: int, hs: dict[V, np.ndarray], sizes: dict[V, tuple[i
 
 
 def build_project(project_id: str, seed: int, purpose: str, out_dir: Path, plan: Plan,
-                  n_ways: int | None = None, parts: list[Part] | None = None, dpi: float = CLEAN_DPI) -> AnswerKey:
-    """Write every file of one enquiry into ``out_dir`` and return its answer key."""
+                  n_ways: int | None = None, parts: list[Part] | None = None, dpi: float = CLEAN_DPI,
+                  reword: bool = False) -> AnswerKey:
+    """Write every file of one enquiry into ``out_dir`` and return its answer key.
+
+    With ``reword`` the documents state the same kinds of facts in other words
+    (data_generator.wording): the held-out reworded test set of Stage 3.
+    """
     parts = parts if parts is not None else build_catalogue()
     if out_dir.exists():
         shutil.rmtree(out_dir)
     out_dir.mkdir(parents=True)
     design = random_design(seed_for(seed, "design"), project_id, n_ways)
     views = apply_plan(design, plan, random.Random(seed_for(seed, "planted")))
+    if reword:
+        for name in ("specification", "schematic", "requirements"):
+            getattr(views, name).reword = seed_for(seed, f"reword-{name}")
 
     spec_file, letter_file = "specification.pdf", "requirements.docx"
     dxf_file, pdf_file = "drawing/schematic.dxf", "drawing/schematic.pdf"
