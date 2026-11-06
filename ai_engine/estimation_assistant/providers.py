@@ -9,8 +9,8 @@
   rather than answered with an old reply.
 - ``ollama``: live calls to an Ollama server (Colab, or any machine with a GPU).
 - ``ollama-local``: the same client with settings for a laptop with 8 GB of
-  RAM and no GPU: a small context window, the model unloaded after each
-  document, and a long timeout.
+  RAM and no GPU: a small context window, the model unloaded two minutes
+  after its last call (so it stays loaded through one document), and a long timeout.
 
 Only the Python standard library is used (``urllib``), so no extra package is
 needed and nothing has to be installed on a laptop that never calls a model.
@@ -132,9 +132,9 @@ class OllamaProvider:
 
 
 def ollama_local(url: str, model: str) -> OllamaProvider:
-    """Laptop settings: a 4k context and small batches to save memory; the model is unloaded after each call."""
+    """Laptop settings: a 4k context and small batches to save memory; unloaded 2 minutes after the last call."""
     return OllamaProvider(url, model, mode="ollama-local", options={"num_ctx": 4096, "num_batch": 64},
-                          keep_alive="0", timeout_s=900.0)
+                          keep_alive="2m", timeout_s=900.0)
 
 
 # --- recorded ------------------------------------------------------------------------------------

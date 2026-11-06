@@ -51,8 +51,14 @@ services:
       STORAGE_DIR: /app/storage
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-25}
       MAX_PDF_PAGES: ${MAX_PDF_PAGES:-60}
+      # Model mode (Stage 3): rules by default; "recorded" replays data/recorded/ (mounted below).
+      MODEL_MODE: ${MODEL_MODE:-rules}
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma4:e2b}
+      RECORDED_DIR: /app/data/recorded
     volumes:
       - app-storage:/app/storage  # uploaded originals, unchanged
+      - ../data/recorded:/app/data/recorded:ro  # recorded model runs, read only
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:

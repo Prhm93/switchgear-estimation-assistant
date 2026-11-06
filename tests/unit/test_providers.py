@@ -60,7 +60,7 @@ def test_modes() -> None:
     assert make_provider("rules") is None
     assert make_provider("ollama").mode == "ollama"
     local = make_provider("ollama-local")
-    assert local.mode == "ollama-local" and local.options["num_ctx"] == 4096 and local.keep_alive == "0"
+    assert local.mode == "ollama-local" and local.options["num_ctx"] == 4096 and local.keep_alive == "2m"
     with pytest.raises(RecordingMismatch):
         make_provider("recorded")  # never without a recording checked by hash
     with pytest.raises(ValueError):

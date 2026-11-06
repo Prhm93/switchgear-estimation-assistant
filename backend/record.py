@@ -34,20 +34,24 @@ import time
 import zipfile
 from pathlib import Path
 
+from backend.app.paths import REPO_ROOT
 from backend.app.llm.prompt import PROMPT_TEMPLATE, PROMPT_VERSION, SYSTEM_PROMPT
 from backend.app.pipeline import analyse_file
 from backend.app.recordings import recording_path
 from backend.app.storage import EXTENSIONS
-from data_generator.sets import DATA, REWORDED_COUNT, TEST_COUNT, build_info, reworded_id, testset_id
 from estimation_assistant.providers import (ModelProvider, RecordingMismatch, RecordingProvider, make_provider,
                                             save_recording, sha256_bytes)
 
+DATA = REPO_ROOT / "data"
 READ_FILES = ["specification.pdf", "requirements.docx", "drawing/schematic.dxf"]
 FIXED_TIME = (2026, 1, 1, 0, 0, 0)  # zip entry time, so the same files give the same zip
 
 
 def set_folders(sets: list[str]) -> list[tuple[str, str, Path]]:
     """(set, project id, folder) for the chosen sets."""
+    # The generator is needed only to pack on the laptop; "run" on Colab needs the app requirements only.
+    from data_generator.sets import REWORDED_COUNT, TEST_COUNT, reworded_id, testset_id
+
     out = []
     if "showcase" in sets:
         out.append(("showcase", "SHOWCASE", DATA / "projects" / "showcase"))
@@ -61,6 +65,8 @@ def set_folders(sets: list[str]) -> list[tuple[str, str, Path]]:
 
 def pack(out: Path, sets: list[str]) -> dict:
     """Zip the read files of the sets with a manifest of their SHA-256."""
+    from data_generator.sets import build_info
+
     entries = []
     with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as z:
         for set_name, project, folder in set_folders(sets):
