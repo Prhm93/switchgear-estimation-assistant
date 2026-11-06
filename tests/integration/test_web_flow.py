@@ -119,7 +119,7 @@ def showcase_flow(client: TestClient) -> None:
         assert client.get(f"/projects/{pid}/{screen}", headers=HTML).status_code == 200
     with sessions(client)() as session:
         count = len(session.scalars(select(ExtractedValueRow).where(ExtractedValueRow.project_id == pid)).all())
-    dashboard = client.get("/").text
+    dashboard = client.get("/projects").text
     assert f"0 / {count}" in dashboard and "built-in method" not in dashboard
     review = client.get(f"/projects/{pid}/review").text
     assert "Conflict" in review and "No text layer" in review
@@ -330,12 +330,50 @@ def test_document_text_with_markup_is_escaped_on_analysis_and_review(client: Tes
         assert "&lt;b&gt;Ignore the specification&lt;/b&gt;" in html
 
 
+# --- design v2: home, project dashboard and sidebar ---------------------------------------------------
+
+def test_project_dashboard_shows_the_projects_own_numbers(client: TestClient) -> None:
+    pid = new_project(client)
+    upload_showcase(client, pid)
+    rows = values(client, pid)
+    page = client.get(f"/projects/{pid}", headers=HTML)
+    assert page.status_code == 200
+    html = page.text
+    assert f"0 of {len(rows)} values approved" in html  # the ring gauge
+    assert "Conflict · Way Q2 · rating" in html  # the first conflict, side by side
+    assert "250 A" in html and "200 A" in html
+    assert html.index(">Compare<") < html.index('aria-label="Approve ')  # conflicts come first in the table
+    pending = sum(1 for r in rows if r.review_status == "extracted")
+    assert f'<span class="nav__count mono" aria-label="{pending} to review">{pending}</span>' in html
+    assert "Environment: test" in html
+    # Approving from the dashboard uses the review route and lands on the review screen.
+    q1 = values(client, pid, field="way.Q1.rating")[0]
+    response = client.post(f"/values/{q1.id}/approve", follow_redirects=False)
+    assert response.status_code == 303 and response.headers["location"].startswith(f"/projects/{pid}/review")
+    approved = client.get(f"/projects/{pid}?show=approved").text
+    assert "1 of " in approved and f"/values/{q1.id}/approve" not in approved
+
+
+def test_home_page_links_to_the_showcase_project(client: TestClient) -> None:
+    assert 'href="/projects/new"' in client.get("/").text  # no showcase project yet
+    pid = new_project(client, "Showcase MSB-2")
+    upload_showcase(client, pid)
+    html = client.get("/").text
+    assert f'href="/projects/{pid}"' in html and "Open the showcase project" in html
+    assert "Live counts appear" not in html  # the hero card now counts the real values
+
+
+def test_unknown_project_dashboard_is_404(client: TestClient) -> None:
+    assert client.get("/projects/999", headers=HTML).status_code == 404
+
+
 # --- without a database --------------------------------------------------------------------------------
 
 def test_screens_explain_a_missing_database(tmp_path: Path) -> None:
     settings = Settings(database_url=None, storage_dir=tmp_path / "storage", environment="test")
     with TestClient(create_app(settings)) as c:
-        page = c.get("/", headers=HTML)
+        page = c.get("/projects", headers=HTML)
         assert page.status_code == 503 and "DATABASE_URL" in page.text and "System check" in page.text
-        assert c.get("/").json() == {"detail": "The database is not configured (DATABASE_URL)."}
-        assert c.get("/system").status_code == 200
+        assert c.get("/projects").json() == {"detail": "The database is not configured (DATABASE_URL)."}
+        assert c.get("/health").status_code == 200
+        assert c.get("/").status_code == 200  # the home page needs no database

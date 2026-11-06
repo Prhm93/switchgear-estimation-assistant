@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Switchgear Estimation Assistant – Home</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Serif:wght@400&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0A1630}
+a{color:#9CC0FF;text-decoration:none}a:hover{color:#F4F7FB}
+.grid-bg{background-color:#0A1630;background-image:linear-gradient(rgba(156,192,255,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(156,192,255,0.06) 1px,transparent 1px);background-size:56px 56px}
+.btn-red{transition:background-color 150ms ease,box-shadow 150ms ease}
+.btn-red:hover{background-color:#C8161C}
+.btn-glass{transition:background-color 150ms ease}
+.btn-glass:hover{background-color:rgba(156,192,255,0.16)}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #9CC0FF;outline-offset:3px}
+</style>
+</helmet>
+<div class="grid-bg" style="min-height: 100vh; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #F4F7FB; position: relative; overflow: hidden">
+
+<div aria-hidden="true" style="position: absolute; top: -260px; left: 50%; width: 1100px; height: 700px; transform: translateX(-50%); background: radial-gradient(closest-side, rgba(28,95,209,0.38), rgba(10,22,48,0)); pointer-events: none"></div>
+
+<header style="position: relative; border-bottom: 1px solid rgba(156,192,255,0.10); background: rgba(10,22,48,0.72)">
+<div style="max-width: 1280px; margin: 0 auto; padding: 18px 32px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px">
+<a href="#top" style="display: flex; align-items: center; gap: 12px; color: #F4F7FB">
+<svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect x="3" y="12" width="4" height="13" rx="2" fill="#1C5FD1"/><rect x="12" y="7" width="4" height="18" rx="2" fill="#9CC0FF"/><rect x="21" y="3" width="4" height="22" rx="2" fill="#E31E24"/></svg>
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 24px; letter-spacing: 0.2px">Switchgear Estimation Assistant</span>
+</a>
+<nav aria-label="Main" style="display: flex; flex-wrap: wrap; gap: 28px; font-size: 15px">
+<a href="#how" style="color: #D3DDEE">How it works</a>
+<a href="#accuracy" style="color: #D3DDEE">Accuracy</a>
+<a href="#trust" style="color: #D3DDEE">Trust &amp; safety</a>
+<a href="Dashboard.dc.html" style="color: #D3DDEE">Dashboard</a>
+</nav>
+<div style="display: flex; gap: 10px">
+<a href="#signin" class="btn-glass" style="padding: 11px 20px; border-radius: 999px; background: rgba(156,192,255,0.08); color: #F4F7FB; font-size: 15px; font-weight: 500">Sign in</a>
+<a href="Dashboard.dc.html" class="btn-red" style="padding: 11px 20px; border-radius: 999px; background: #E31E24; color: #FFFFFF; font-size: 15px; font-weight: 600; box-shadow: 0 8px 24px rgba(227,30,36,0.28)">Open workspace</a>
+</div>
+</div>
+<div aria-hidden="true" style="height: 2px; background: #E31E24; opacity: 0.85"></div>
+</header>
+
+<main id="top" style="position: relative; max-width: 1280px; margin: 0 auto; padding: 72px 32px 0">
+
+<section style="display: flex; flex-wrap: wrap; gap: 32px; align-items: center">
+
+<div style="flex: 1 1 250px; display: flex; flex-direction: column; gap: 22px; min-width: 0; transform: perspective(1000px) rotateY(24deg) rotateX(6deg); transform-origin: right center">
+<div style="background: linear-gradient(135deg, rgba(156,192,255,0.14), rgba(16,34,74,0.92) 45%); border: 1px solid rgba(156,192,255,0.18); border-radius: 18px; padding: 20px; box-shadow: -28px 36px 70px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)">
+<div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #A9B8D3"><span>Value found</span><span style="padding: 3px 10px; border-radius: 999px; background: rgba(46,160,110,0.18); color: #7EE2B4; font-size: 12px; font-weight: 600">High</span></div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 20px; margin-top: 10px">MCCB 250A 4P 36kA</div>
+<div style="font-size: 13px; color: #A9B8D3; margin-top: 6px">Specification · page 4 · way Q2</div>
+<div style="margin-top: 14px; height: 6px; border-radius: 999px; background: rgba(156,192,255,0.12)"><div style="width: 88%; height: 6px; border-radius: 999px; background: #2EA06E"></div></div>
+</div>
+<div style="margin-left: 28px; background: linear-gradient(135deg, rgba(156,192,255,0.14), rgba(16,34,74,0.92) 45%); border: 1px solid rgba(156,192,255,0.18); border-radius: 18px; padding: 20px; box-shadow: -28px 36px 70px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)">
+<div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #A9B8D3"><span>Conflict · Q2 rating</span><span style="padding: 3px 10px; border-radius: 999px; background: rgba(227,30,36,0.18); color: #FF8A8E; font-size: 12px; font-weight: 600">Needs review</span></div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px">
+<div style="background: rgba(10,22,48,0.7); border-radius: 12px; padding: 12px"><div style="font-size: 12px; color: #A9B8D3">Drawing</div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 18px; margin-top: 4px">200 A</div></div>
+<div style="background: rgba(10,22,48,0.7); border-radius: 12px; padding: 12px"><div style="font-size: 12px; color: #A9B8D3">Specification</div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 18px; margin-top: 4px">250 A</div></div>
+</div>
+</div>
+</div>
+
+<div style="flex: 2 1 560px; text-align: center; min-width: 0">
+<div style="display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; background: rgba(156,192,255,0.08); color: #C9D6EC; font-size: 13px">
+<span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 50%; background: #E31E24"></span>
+Local-first · every value traceable
+</div>
+<h1 style="font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 84px; line-height: 0.98; letter-spacing: -1px; margin: 24px 0 0">Turn enquiries into <span style="font-style: italic; color: #9CC0FF">checked</span> estimates</h1>
+<p style="font-size: 19px; line-height: 1.6; color: #C9D6EC; max-width: 600px; margin: 24px auto 0">Upload the specification, drawing and customer letter. Every rating, quantity and price shows where it came from, and nothing reaches the estimate until an engineer approves it.</p>
+
+<form style="margin: 36px auto 0; max-width: 620px; padding: 2px; border-radius: 999px; background: linear-gradient(90deg, #E31E24, #1C5FD1 55%, #9CC0FF)">
+<div style="display: flex; align-items: center; gap: 12px; border-radius: 999px; background: #0D1C3D; padding: 8px 8px 8px 24px">
+<label for="upload-hint" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Project name</label>
+<input id="upload-hint" type="text" placeholder="Name the enquiry, e.g. MSB-2 main switchboard" style="flex: 1 1 auto; min-width: 0; background: transparent; border: 0; color: #F4F7FB; font-family: 'IBM Plex Sans', sans-serif; font-size: 16px; padding: 12px 0">
+<a href="Dashboard.dc.html" class="btn-red" style="flex: 0 0 auto; padding: 14px 22px; border-radius: 999px; background: #E31E24; color: #FFFFFF; font-weight: 600; font-size: 15px; box-shadow: 0 8px 24px rgba(227,30,36,0.30)">Start a project →</a>
+</div>
+</form>
+<div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 22px; margin-top: 20px; font-size: 13px; color: #A9B8D3">
+<span>PDF · DXF · DOCX · PNG</span>
+<span>SHA-256 fingerprint on every upload</span>
+<span>Prices only from your catalogue</span>
+</div>
+</div>
+
+<div style="flex: 1 1 250px; display: flex; flex-direction: column; gap: 22px; min-width: 0; transform: perspective(1000px) rotateY(-24deg) rotateX(6deg); transform-origin: left center">
+<div style="background: linear-gradient(225deg, rgba(156,192,255,0.14), rgba(16,34,74,0.92) 45%); border: 1px solid rgba(156,192,255,0.18); border-radius: 18px; padding: 20px; box-shadow: 28px 36px 70px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)">
+<div style="font-size: 13px; color: #A9B8D3">Values approved</div>
+<div style="display: flex; align-items: baseline; gap: 8px; margin-top: 8px"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 34px">18</span><span style="color: #A9B8D3; font-size: 15px">of 24</span></div>
+<div style="display: flex; gap: 4px; margin-top: 14px">
+<div style="flex: 18 1 0; height: 8px; border-radius: 999px; background: #2EA06E"></div>
+<div style="flex: 4 1 0; height: 8px; border-radius: 999px; background: #E0A93B"></div>
+<div style="flex: 1 1 0; height: 8px; border-radius: 999px; background: #E31E24"></div>
+<div style="flex: 1 1 0; height: 8px; border-radius: 999px; background: rgba(156,192,255,0.25)"></div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; font-size: 12px; color: #A9B8D3"><span>● Approved</span><span>● Review</span><span>● Conflict</span><span>● Missing</span></div>
+</div>
+<div style="margin-right: 28px; background: linear-gradient(225deg, rgba(156,192,255,0.14), rgba(16,34,74,0.92) 45%); border: 1px solid rgba(156,192,255,0.18); border-radius: 18px; padding: 20px; box-shadow: 28px 36px 70px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)">
+<div style="font-size: 13px; color: #A9B8D3">Missing information</div>
+<div style="font-size: 17px; margin-top: 8px">Prospective fault level</div>
+<div style="font-size: 13px; color: #A9B8D3; margin-top: 4px">Specification says "TBC"</div>
+<a href="#request" class="btn-glass" style="display: inline-block; margin-top: 14px; padding: 9px 14px; border-radius: 999px; background: rgba(156,192,255,0.10); color: #F4F7FB; font-size: 13px; font-weight: 500">Request from customer</a>
+</div>
+</div>
+
+</section>
+
+<section aria-label="Product preview" style="margin-top: 88px; border-radius: 22px; padding: 10px; background: rgba(156,192,255,0.06); border: 1px solid rgba(156,192,255,0.12); box-shadow: 0 40px 120px rgba(0,0,0,0.5)">
+<div style="border-radius: 16px; overflow: hidden; background: #0C1A3A">
+<div style="display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid rgba(156,192,255,0.08); font-size: 13px; color: #A9B8D3">
+<span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 50%; background: rgba(156,192,255,0.25)"></span>
+<span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 50%; background: rgba(156,192,255,0.25)"></span>
+<span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 50%; background: rgba(156,192,255,0.25)"></span>
+<span style="margin-left: 12px">Analysis · MSB-2 main switchboard</span>
+</div>
+<div style="display: flex; flex-wrap: wrap">
+<div style="flex: 1 1 200px; max-width: 220px; padding: 20px 14px; border-right: 1px solid rgba(156,192,255,0.08); display: flex; flex-direction: column; gap: 4px; font-size: 14px">
+<div style="padding: 9px 12px; border-radius: 10px; color: #A9B8D3">Dashboard</div>
+<div style="padding: 9px 12px; border-radius: 10px; background: rgba(28,95,209,0.22); color: #F4F7FB">Analysis</div>
+<div style="padding: 9px 12px; border-radius: 10px; color: #A9B8D3">Review</div>
+<div style="padding: 9px 12px; border-radius: 10px; color: #A9B8D3">Estimate</div>
+<div style="padding: 9px 12px; border-radius: 10px; color: #A9B8D3">Audit log</div>
+</div>
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-wrap: wrap; gap: 20px; padding: 24px">
+<div style="flex: 1 1 320px; min-width: 0; background: #F4F7FB; color: #1B2740; border-radius: 12px; padding: 22px; font-family: 'IBM Plex Serif', Georgia, serif; font-size: 14px; line-height: 1.7">
+<div style="font-family: 'IBM Plex Sans', sans-serif; font-size: 12px; color: #5A6B88; margin-bottom: 8px">specification.pdf · page 4</div>
+<p style="margin: 0">3.2 Outgoing ways. Way Q2 shall be fitted with a moulded case circuit breaker rated <mark style="background: rgba(28,95,209,0.18); color: #0E2C66; padding: 1px 4px; border-radius: 4px">250 A, 4 pole, 36 kA</mark> serving the workshop distribution board.</p>
+<p style="margin: 10px 0 0">3.3 The assembly shall achieve Form of separation <mark style="background: rgba(28,95,209,0.18); color: #0E2C66; padding: 1px 4px; border-radius: 4px">Form 4a</mark> and degree of protection <mark style="background: rgba(28,95,209,0.18); color: #0E2C66; padding: 1px 4px; border-radius: 4px">IP54</mark>.</p>
+</div>
+<div style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; justify-content: space-between; align-items: center; background: rgba(16,34,74,0.9); border-radius: 12px; padding: 14px 16px"><div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 15px">Q2 · MCCB 250A 4P 36kA</div><div style="font-size: 12px; color: #A9B8D3; margin-top: 3px">Spec p.4 · rules</div></div><span style="padding: 3px 10px; border-radius: 999px; background: rgba(227,30,36,0.18); color: #FF8A8E; font-size: 12px; font-weight: 600">Conflict</span></div>
+<div style="display: flex; justify-content: space-between; align-items: center; background: rgba(16,34,74,0.9); border-radius: 12px; padding: 14px 16px"><div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 15px">Form of separation · 4a</div><div style="font-size: 12px; color: #A9B8D3; margin-top: 3px">Spec p.4 · rules</div></div><span style="padding: 3px 10px; border-radius: 999px; background: rgba(46,160,110,0.18); color: #7EE2B4; font-size: 12px; font-weight: 600">High</span></div>
+<div style="display: flex; justify-content: space-between; align-items: center; background: rgba(16,34,74,0.9); border-radius: 12px; padding: 14px 16px"><div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 15px">IP rating · IP54</div><div style="font-size: 12px; color: #A9B8D3; margin-top: 3px">Spec p.4 · rules</div></div><span style="padding: 3px 10px; border-radius: 999px; background: rgba(46,160,110,0.18); color: #7EE2B4; font-size: 12px; font-weight: 600">High</span></div>
+<div style="display: flex; justify-content: space-between; align-items: center; background: rgba(16,34,74,0.9); border-radius: 12px; padding: 14px 16px"><div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 15px">Fault level · TBC</div><div style="font-size: 12px; color: #A9B8D3; margin-top: 3px">Spec p.2 · rules</div></div><span style="padding: 3px 10px; border-radius: 999px; background: rgba(224,169,59,0.18); color: #F2C66D; font-size: 12px; font-weight: 600">Missing</span></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<section id="how" style="margin-top: 110px">
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; letter-spacing: 2px; color: #9CC0FF">HOW IT WORKS</div>
+<h2 style="font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 52px; margin: 12px 0 0; line-height: 1.05">From three documents to one checked estimate</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-top: 40px">
+<div style="background: rgba(16,34,74,0.72); border-radius: 18px; padding: 26px"><div style="font-family: 'IBM Plex Mono', monospace; color: #E31E24; font-size: 14px">01</div><h3 style="font-size: 20px; font-weight: 600; margin: 14px 0 8px">Upload</h3><p style="margin: 0; color: #C9D6EC; line-height: 1.6; font-size: 15px">Specification, drawing and letter are stored unchanged, each with its own fingerprint.</p></div>
+<div style="background: rgba(16,34,74,0.72); border-radius: 18px; padding: 26px"><div style="font-family: 'IBM Plex Mono', monospace; color: #E31E24; font-size: 14px">02</div><h3 style="font-size: 20px; font-weight: 600; margin: 14px 0 8px">Read</h3><p style="margin: 0; color: #C9D6EC; line-height: 1.6; font-size: 15px">Ratings, poles, quantities and part types are found with the exact sentence or drawing region they came from.</p></div>
+<div style="background: rgba(16,34,74,0.72); border-radius: 18px; padding: 26px"><div style="font-family: 'IBM Plex Mono', monospace; color: #E31E24; font-size: 14px">03</div><h3 style="font-size: 20px; font-weight: 600; margin: 14px 0 8px">Cross-check</h3><p style="margin: 0; color: #C9D6EC; line-height: 1.6; font-size: 15px">Where the drawing and specification disagree, both sources are shown side by side. Nothing is chosen quietly.</p></div>
+<div style="background: rgba(16,34,74,0.72); border-radius: 18px; padding: 26px"><div style="font-family: 'IBM Plex Mono', monospace; color: #E31E24; font-size: 14px">04</div><h3 style="font-size: 20px; font-weight: 600; margin: 14px 0 8px">Approve &amp; export</h3><p style="margin: 0; color: #C9D6EC; line-height: 1.6; font-size: 15px">Only approved values reach the estimate. Prices come from the catalogue, and every action is logged.</p></div>
+</div>
+</section>
+
+<section id="accuracy" style="margin-top: 110px; display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start">
+<div style="flex: 1 1 360px; min-width: 0">
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; letter-spacing: 2px; color: #9CC0FF">MEASURED, NOT PROMISED</div>
+<h2 style="font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 52px; margin: 12px 0 0; line-height: 1.05">Every step is scored against an answer key</h2>
+<p style="color: #C9D6EC; font-size: 17px; line-height: 1.6; margin-top: 18px">Results are reported separately for clean, scanned, photographed and real drawings, so you can see exactly where each method is strong and where it struggles.</p>
+</div>
+<div style="flex: 1 1 520px; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+<div style="background: rgba(16,34,74,0.72); border-radius: 18px; padding: 24px"><div style="font-family: 'IBM Plex Mono', monospace; font-size: 40px">20</div><div style="color: #C9D6EC; font-size: 15px; margin-top: 6px">test enquiries with exact answer keys</div></div>
+<div style="background: rgba(16,34,74,0.72); border-radius: 18px; padding: 24px"><div style="font-family: 'IBM Plex Mono', monospace; font-size: 40px">17</div><div style="color: #C9D6EC; font-size: 15px; margin-top: 6px">planted problems to catch, plus 4 clean controls</div></div>
+<div style="background: rgba(16,34,74,0.72); border-radius: 18px; padding: 24px"><div style="font-family: 'IBM Plex Mono', monospace; font-size: 40px">0.486</div><div style="color: #C9D6EC; font-size: 15px; margin-top: 6px">rules recall without the CAD file: the gap the vision models must close</div></div>
+<div style="background: rgba(16,34,74,0.72); border-radius: 18px; padding: 24px"><div style="font-family: 'IBM Plex Mono', monospace; font-size: 40px">4</div><div style="color: #C9D6EC; font-size: 15px; margin-top: 6px">drawing conditions scored apart: clean, scanned, photo, real</div></div>
+</div>
+</section>
+
+<section id="trust" style="margin-top: 110px; border-radius: 24px; padding: 48px; background: linear-gradient(135deg, rgba(28,95,209,0.22), rgba(16,34,74,0.6)); display: flex; flex-wrap: wrap; gap: 32px; align-items: center; justify-content: space-between">
+<div style="flex: 1 1 420px; min-width: 0">
+<h2 style="font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 44px; margin: 0; line-height: 1.08">The engineer decides. The system shows its work.</h2>
+<p style="color: #C9D6EC; font-size: 16px; line-height: 1.6; margin: 14px 0 0">Runs locally. No documents leave the machine. Model answers must quote their source, and prices never come from a model.</p>
+</div>
+<a href="Dashboard.dc.html" class="btn-red" style="padding: 16px 26px; border-radius: 999px; background: #E31E24; color: #FFFFFF; font-weight: 600; font-size: 16px; box-shadow: 0 10px 28px rgba(227,30,36,0.32)">Open the showcase project →</a>
+</section>
+
+</main>
+
+<footer style="position: relative; max-width: 1280px; margin: 96px auto 0; padding: 28px 32px 40px; border-top: 1px solid rgba(156,192,255,0.10); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; font-size: 13px; color: #A9B8D3">
+<span>Independent personal project. Synthetic data only. Not affiliated with or endorsed by any company.</span>
+<span style="font-family: 'IBM Plex Mono', monospace">v0.2 · rules + recorded mode</span>
+</footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2050}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -16,7 +16,7 @@ Needs Docker Desktop. On an 8 GB laptop, cap the Docker memory first ([steps](do
 docker compose up --build
 ```
 
-Then open <http://127.0.0.1:8000/> for the projects dashboard (a walk-through of the showcase is in [docs/stage-2.md](docs/stage-2.md#how-to-run-it)), <http://127.0.0.1:8000/system> for the design system and health-check page, or <http://127.0.0.1:8000/healthz> for the JSON status. Stop with `Ctrl+C`, or `docker compose down` (add `-v` to delete the database volume).
+Then open <http://127.0.0.1:8000/> for the home page, <http://127.0.0.1:8000/projects> for the projects (a walk-through of the showcase is in [docs/stage-2.md](docs/stage-2.md#how-to-run-it)), <http://127.0.0.1:8000/health> for the design system and health-check page, or <http://127.0.0.1:8000/healthz> for the JSON status. Stop with `Ctrl+C`, or `docker compose down` (add `-v` to delete the database volume).
 
 ## Local development
 
@@ -37,7 +37,7 @@ $env:DATABASE_URL = "sqlite:///./storage/dev.sqlite"
 uvicorn backend.app.main:app --reload
 ```
 
-Without `DATABASE_URL` the app still starts: `/system` shows the database as "Not configured" and the product screens explain that a database is needed.
+Without `DATABASE_URL` the app still starts: the home page works, `/health` shows the database as "Not configured" and the product screens explain that a database is needed.
 
 Run the database tests against the Docker database:
 
@@ -72,6 +72,7 @@ Remove-Item Env:DATABASE_URL
 | 0 Setup | Repo structure, Docker stack (Postgres + pgvector, app), design system health-check page, CI | Done: [report](docs/stage-0.md) |
 | 1 Synthetic data | Enquiry generator, showcase project, 20 test projects, 300 training drawings, parts catalogue, real-drawing format | Done: [report](docs/stage-1.md) |
 | 2 Thin slice (rules mode) | Upload to DOCX report with audit log | Done: [report](docs/stage-2.md) |
+| Design v2 | Home page, sidebar app layout, project dashboard, glass design system (look only) | Done: [report](docs/design-v2.md) |
 | 3 LLM extraction | Ollama and recorded modes, quote check, rules vs LLM scores | Not started |
 | 4 Drawing understanding | OCR, vision reading, symbol detector | Not started |
 | 5 Cross-document checks | Conflicts and missing information | Not started |
@@ -173,6 +174,7 @@ Only permissive licences are used. AGPL libraries (for example PyMuPDF and Ultra
 | PostgreSQL | 16 | PostgreSQL Licence | Database (Docker image) |
 | pgvector | 0.8.7 | PostgreSQL Licence | Vector search extension |
 | IBM Plex Sans, IBM Plex Mono | 1.1.0 | SIL OFL 1.1 | Fonts, self-hosted (`frontend/static/fonts/OFL.txt`) |
+| Instrument Serif (regular, italic) | woff2 from @fontsource/instrument-serif 5.3.0, Latin subset | SIL OFL 1.1 | Page titles and big headings, self-hosted (`frontend/static/fonts/OFL-InstrumentSerif.txt`) |
 | IBM Plex Sans Condensed, IBM Plex Serif, IBM Plex Mono (TTF) | from the Google Fonts repository | SIL OFL 1.1 | Drawing and specification text in generated documents (`data_generator/fonts/OFL-IBMPlex.txt`) |
 | Caveat | variable font, Google Fonts repository | SIL OFL 1.1 | Handwritten-style note on scanned and photo drawings (`data_generator/fonts/OFL-Caveat.txt`) |
 | Icons | n/a | This repo | Drawn for this project |

@@ -74,4 +74,32 @@
   <symbol id="i-arrow-right" viewBox="0 0 24 24">
     <path d="M4.5 12h15M14 6.5l5.5 5.5-5.5 5.5"/>
   </symbol>
+
+  <!-- Sidebar (design v2): dashboard tiles, analysis page, review check, estimate sheet, audit clock,
+       edit pencil, chevrons for the project switcher. -->
+  <symbol id="i-dashboard" viewBox="0 0 24 24">
+    <rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/>
+    <rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/>
+  </symbol>
+  <symbol id="i-analysis" viewBox="0 0 24 24">
+    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>
+  </symbol>
+  <symbol id="i-review" viewBox="0 0 24 24">
+    <path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>
+  </symbol>
+  <symbol id="i-estimate" viewBox="0 0 24 24">
+    <rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h4"/>
+  </symbol>
+  <symbol id="i-audit" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+  </symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24">
+    <path d="M4 20h4L19 9l-4-4L4 16z"/>
+  </symbol>
+  <symbol id="i-chevrons" viewBox="0 0 24 24">
+    <path d="M8 9l4-4 4 4M8 15l4 4 4-4"/>
+  </symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24">
+    <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+  </symbol>
 </svg>

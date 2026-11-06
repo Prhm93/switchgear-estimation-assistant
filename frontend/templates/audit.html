@@ -1,18 +1,16 @@
-{%- extends "base.html" -%}
-{%- from "macros.html" import project_tabs with context -%}
+{%- extends "layout_app.html" -%}
+{%- from "macros.html" import project_crumbs, project_heading with context -%}
+{%- set nav = "audit" -%}
 
 {%- block title %}Audit log · {{ project.name }} · {{ app_name }}{% endblock -%}
 
+{%- block crumbs %}{{ project_crumbs(project, "Audit log") }}{% endblock -%}
+{%- block heading %}{{ project_heading(project, "Audit log") }}{% endblock -%}
+
 {%- block content %}
-<div class="page-header">
-  <div>
-    <p class="eyebrow">{{ project.reference or "Project" }}</p>
-    <h1>{{ project.name }}</h1>
-  </div>
-</div>
-{{ project_tabs(project, "audit") }}
-<section class="panel section-gap" aria-labelledby="audit-title">
-  <div class="panel__title"><h2 id="audit-title">Every action, newest first</h2><span class="small muted">{{ events | length }} events</span></div>
+<section class="glass gap-top-lg" aria-labelledby="audit-title">
+  <div class="card-head"><h2 id="audit-title" class="card-title">Every action, newest first</h2><span class="small muted">{{ events | length }} events</span></div>
+  <div class="table-wrap">
   <table class="data-table">
     <caption class="visually-hidden">Audit events</caption>
     <thead><tr><th scope="col">When (UTC)</th><th scope="col">Who</th><th scope="col">Action</th><th scope="col">What</th><th scope="col">Detail</th></tr></thead>
@@ -28,5 +26,6 @@
       {%- endfor %}
     </tbody>
   </table>
+  </div>
 </section>
 {% endblock -%}

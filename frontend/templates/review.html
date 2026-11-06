@@ -1,18 +1,17 @@
-{%- extends "base.html" -%}
-{%- from "macros.html" import icon, project_tabs with context -%}
+{%- extends "layout_app.html" -%}
+{%- from "macros.html" import icon, project_crumbs, project_heading with context -%}
+{%- set nav = "review" -%}
 
 {%- block title %}Review · {{ project.name }} · {{ app_name }}{% endblock -%}
 
+{%- block crumbs %}{{ project_crumbs(project, "Review") }}{% endblock -%}
+{%- block actions %}
+<form method="post" action="/projects/{{ project.id }}/estimate">
+  <button class="btn btn--primary" type="submit">Build draft estimate{{ icon("arrow-right", "sm") }}</button>
+</form>
+{%- endblock -%}
+{%- block heading %}{{ project_heading(project, "Review") }}{% endblock -%}
+
 {%- block content %}
-<div class="page-header">
-  <div>
-    <p class="eyebrow">{{ project.reference or "Project" }}</p>
-    <h1>{{ project.name }}</h1>
-  </div>
-  <form method="post" action="/projects/{{ project.id }}/estimate">
-    <button class="btn btn--primary" type="submit">Build draft estimate{{ icon("arrow-right", "sm") }}</button>
-  </form>
-</div>
-{{ project_tabs(project, "review") }}
 {% include "partials/review_body.html" %}
 {% endblock -%}
