@@ -52,6 +52,11 @@ jobs:
           name: showcase-diagnostics
           path: showcase-diagnostics.json
 
+      # Migrate the service database first (this also creates the pgvector extension), so the
+      # database tests do not depend on another test having started the app.
+      - name: Apply database migrations
+        run: python -m alembic -c backend/alembic.ini upgrade head
+
       # DATABASE_URL points at the service above; the accuracy tests run a two-project subset only.
       - name: Run tests
         run: python -m pytest -ra

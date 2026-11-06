@@ -117,7 +117,7 @@ The Postgres tests (`test_database.py`, the Postgres migration check and the Pos
 | `tests/integration/test_migrations.py` | 2 | The migrations produce exactly the models' schema (SQLite; Postgres when available) |
 | `tests/accuracy/test_rules_accuracy.py` | 2 | Rules accuracy on two test projects built on the fly (T01, T08). This is the small subset CI runs |
 
-CI now has a `pgvector/pgvector:pg16` service and sets `DATABASE_URL`, so the database tests and the Postgres web flow run on GitHub.
+CI now has a `pgvector/pgvector:pg16` service and sets `DATABASE_URL`, so the database tests and the Postgres web flow run on GitHub. A workflow step applies the Alembic migrations (which create the pgvector extension) before pytest, so the database tests do not depend on test order. The first CI run lacked this step and failed `test_pgvector_extension_is_installed`.
 
 ## Rules-mode baseline
 
