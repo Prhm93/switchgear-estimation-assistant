@@ -157,10 +157,12 @@ Only permissive licences are used. AGPL libraries (for example PyMuPDF and Ultra
 | ollama (Python client) | 0.6.3 | MIT | Model calls in live mode |
 | pytest | 9.2.0 | MIT | Tests (development only) |
 | httpx2, httpcore2 | 2.16.0 | BSD-3-Clause | Test client (development only); replaces httpx for Starlette's TestClient |
-| ezdxf | 1.4.5 | MIT | Writes the schematic DXF and renders it through its matplotlib backend (the PyMuPDF backend is not used) |
+| ezdxf | 1.4.5 | MIT | App: reads the text entities of uploaded DXF drawings. Generator: writes the schematic DXF and renders it through its matplotlib backend (the PyMuPDF backend is not used) |
 | matplotlib | 3.11.2 | Matplotlib licence (PSF-based, BSD-style) | Vector PDF of the schematic |
 | reportlab | 5.1.0 | BSD-3-Clause | Specification PDF |
-| python-docx | 1.2.0 | MIT | Requirements letter (DOCX) |
+| python-docx | 1.2.0 | MIT | App: reads letters, exports the DOCX report. Generator: requirements letter |
+| pdfplumber, pdfminer.six | 0.11.10, 20260107 | MIT | App: PDF text and tables per page |
+| python-multipart | 0.0.33 | Apache-2.0 | App: file uploads |
 | pypdfium2 (PDFium) | 5.14.0 | Apache-2.0 or BSD-3-Clause (PDFium: BSD-3-Clause) | PDF to image, PDF text in tests |
 | Pillow | 13.0.0 | MIT-CMU | Scan and photo effects |
 | numpy | 2.5.4 | BSD-3-Clause | Scan and photo effects, homographies |
@@ -173,7 +175,7 @@ Only permissive licences are used. AGPL libraries (for example PyMuPDF and Ultra
 | Gemma 4 E2B (`gemma4:e2b`) | n/a | Apache-2.0 ([model card](https://huggingface.co/google/gemma-4-E2B-it)) | Chat and vision model, on Colab only |
 | mxbai-embed-large | v1 | Apache-2.0 ([model card](https://huggingface.co/mixedbread-ai/mxbai-embed-large-v1)) | Embedding model, on Colab only |
 
-Transitive dependencies (for example AnyIO, Click, MarkupSafe, Mako, scramp, typing-extensions, fontTools, lxml, contourpy, kiwisolver, cycler, pyparsing, python-dateutil, truststore) are MIT, BSD, Apache-2.0, MIT-0 or PSF-2.0. Drawings for `data/external/` may be made in QElectroTech or LibreCAD (both GPL-2.0); those tools are not dependencies and none of their code is in the repo. Model licences are from the Hugging Face model cards (checked 5 Nov 2026).
+Transitive dependencies (for example AnyIO, Click, MarkupSafe, Mako, scramp, typing-extensions, fontTools, lxml, contourpy, kiwisolver, cycler, pyparsing, python-dateutil, truststore, charset-normalizer, cryptography, cffi, pycparser) are MIT, BSD, Apache-2.0, Apache-2.0 OR BSD-3-Clause (cryptography), MIT-0 or PSF-2.0. Drawings for `data/external/` may be made in QElectroTech or LibreCAD (both GPL-2.0); those tools are not dependencies and none of their code is in the repo. Model licences are from the Hugging Face model cards (checked 5 Nov 2026).
 
 ## Limits
 

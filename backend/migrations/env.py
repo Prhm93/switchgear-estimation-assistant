@@ -1,16 +1,18 @@
 """Alembic migration environment.
 
 Reads the database URL from the app settings (DATABASE_URL), so migrations
-and the app always target the same database. Table metadata is added here
-when the first models arrive in Stage 2.
+and the app always target the same database. A caller (the tests, or the app
+at start-up) may instead pass an open connection in
+``config.attributes["connection"]``.
 """
 
 from alembic import context
 from sqlalchemy import create_engine, pool
 
 from backend.app.config import Settings
+from backend.app.models import Base
 
-target_metadata = None  # set to the SQLAlchemy MetaData once models exist
+target_metadata = Base.metadata
 
 
 def _database_url() -> str:
@@ -29,6 +31,12 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """Connect to the database and apply migrations."""
+    given = context.config.attributes.get("connection")
+    if given is not None:
+        context.configure(connection=given, target_metadata=target_metadata, render_as_batch=True)
+        with context.begin_transaction():
+            context.run_migrations()
+        return
     engine = create_engine(_database_url(), poolclass=pool.NullPool)
     with engine.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)

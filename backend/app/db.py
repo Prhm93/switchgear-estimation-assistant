@@ -1,8 +1,8 @@
 """Database access and the database health check.
 
-Stage 0 only needs to know whether PostgreSQL is reachable and whether the
-pgvector extension is installed. Tables arrive with Alembic migrations in
-later stages.
+The app runs on PostgreSQL with pgvector (Docker, CI). The fast local test
+suite runs the same migrations on SQLite, so the engine factory accepts both.
+Tables are created only by the Alembic migrations (:func:`migrate`).
 """
 
 from functools import lru_cache
@@ -11,6 +11,10 @@ from typing import Literal
 from pydantic import BaseModel
 from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
+
+from .paths import REPO_ROOT
 
 DatabaseState = Literal["ok", "unavailable", "not_configured"]
 
@@ -35,6 +39,10 @@ SOCKET_TIMEOUT_SECONDS = 10
 @lru_cache(maxsize=4)
 def get_engine(database_url: str) -> Engine:
     """Return one pooled engine per URL. A small pool keeps memory low."""
+    if database_url.startswith("sqlite"):
+        in_memory = database_url in ("sqlite://", "sqlite:///:memory:")
+        return create_engine(database_url, connect_args={"check_same_thread": False},
+                             poolclass=StaticPool if in_memory else None)
     return create_engine(
         database_url,
         pool_size=2,
@@ -55,9 +63,26 @@ def check_database(database_url: str | None) -> DatabaseStatus:
     try:
         with get_engine(database_url).connect() as connection:
             connection.execute(text("SELECT 1"))
+            if connection.dialect.name != "postgresql":
+                return DatabaseStatus(state="ok", detail=connection.dialect.name)
             version = connection.execute(
                 text("SELECT extversion FROM pg_extension WHERE extname = 'vector'")
             ).scalar_one_or_none()
     except (SQLAlchemyError, OSError) as error:
         return DatabaseStatus(state="unavailable", detail=type(error).__name__)
     return DatabaseStatus(state="ok", pgvector=version)
+
+
+def migrate(database_url: str) -> None:
+    """Apply every Alembic migration (``alembic upgrade head``) to the database."""
+    from alembic import command
+    from alembic.config import Config
+
+    config = Config(str(REPO_ROOT / "backend" / "alembic.ini"))
+    with get_engine(database_url).begin() as connection:
+        config.attributes["connection"] = connection
+        command.upgrade(config, "head")
+
+
+def session_factory(database_url: str) -> sessionmaker[Session]:
+    return sessionmaker(bind=get_engine(database_url), expire_on_commit=False)

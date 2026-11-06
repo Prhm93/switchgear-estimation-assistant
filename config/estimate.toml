@@ -1,0 +1,28 @@
+# Estimate rules for the rules mode. All rates and sizing rules are invented
+# for this demo; change them here, not in code. Prices come only from the
+# catalogue (data/catalogue/catalogue.csv).
+
+currency = "GBP"
+labour_rate_per_hour = "48.00"   # invented workshop rate, GBP per hour
+margin_percent = "18"            # invented margin on materials plus labour
+
+[current_transformers]
+per_incomer = 3                  # one per phase
+
+[breakers]
+# MCB ways may be cascade protected by the upstream device, so an MCB needs only
+# its own stated breaking capacity; MCCBs need at least the prospective fault level.
+mcb_cascade = true
+
+[sections]
+incomer_width_mm = 800
+outgoing_width_mm = 600
+units_per_outgoing_section = 4   # mounting units in one outgoing section
+units_above_400a = 2             # a way above 400 A takes two units
+forms_with_kit = ["3b", "4a", "4b"]   # Form 2b needs no separation kit
+
+[glands]
+# Cable gland thread by the largest conductor size of a single armoured cable (mm2).
+# A parallel cable ("2x ...") takes two glands of the parallel size.
+by_conductor_mm2 = [[6, "M20"], [16, "M25"], [50, "M32"], [120, "M40"], [240, "M50"]]
+parallel = "M63"
