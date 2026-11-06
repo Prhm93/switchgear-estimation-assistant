@@ -73,7 +73,7 @@ Remove-Item Env:DATABASE_URL
 | 1 Synthetic data | Enquiry generator, showcase project, 20 test projects, 300 training drawings, parts catalogue, real-drawing format | Done: [report](docs/stage-1.md) |
 | 2 Thin slice (rules mode) | Upload to DOCX report with audit log | Done: [report](docs/stage-2.md) |
 | Design v2 | Home page, sidebar app layout, project dashboard, glass design system (look only) | Done: [report](docs/design-v2.md) |
-| 3 LLM extraction | Ollama and recorded modes, quote check, rules vs LLM scores | Not started |
+| 3 LLM extraction | Ollama and recorded modes, quote check, rules vs LLM scores | Part A done (reworded test set, provider modes, quote check, recorded and combined modes; rules scored on both sets). Part B (Colab run, LLM scores) not run yet: [report](docs/stage-3.md) |
 | 4 Drawing understanding | OCR, vision reading, symbol detector | Not started |
 | 5 Cross-document checks | Conflicts and missing information | Not started |
 | 6 Confidence and review | Approve, edit, reject; approved values only | Not started |
@@ -92,6 +92,7 @@ Remove-Item Env:DATABASE_URL
 | `run_agent` | Built | Real model on Colab (notebook 02, 3 Nov 2026) |
 | `retrieval.py`, `search_notes` | Built | Real model on Colab (notebook 02, 3 Nov 2026) |
 | Move to `ai_engine/` (Stage 0) | Done | pytest (all 37 engine tests pass); notebooks not re-run on Colab since the move |
+| `providers.py` (Stage 3): modes rules, recorded, ollama, ollama-local | Built | pytest, with a local stand-in for the Ollama server and fake recordings; no real model call yet |
 
 ## AI engine
 
