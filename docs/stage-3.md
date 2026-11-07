@@ -191,7 +191,7 @@ Full suite: see the report at the end.
 
 ## 6. Known limits
 
-- No model output exists yet; all LLM behaviour is tested with scripted fakes only.
+- The tests use scripted fakes only; the real model output is the recordings scored in section 8.
 - The schema allows way references Q1 to Q99 and the 16 project fields; anything else is rejected, even if true.
 - The quote check proves the quote is on the page and holds the value's numbers. It cannot prove that a
   text value (a device type, a load name) means what the model says; a wrong but quoted device type passes.
@@ -205,6 +205,9 @@ Full suite: see the report at the end.
 - Some correct values are scored as extras (false positives) when they appear on pages the answer key
   does not list, for example `incomer.device` "acb" on the requirements letter (T01 to T03) or on drawing
   sheet 2 (T03). The answer key and the scoring rules are unchanged.
+- The model results in section 8 are a single run of one small model (gemma4:e2b) on 20 projects per set.
+  The parser and the prompt were changed after seeing test results. All scores are on synthetic data from
+  one generator and are probably optimistic.
 
 ## 7. Report (Part A)
 
@@ -273,60 +276,61 @@ explains the single rejection seen in every specification and drawing recording.
 
 The answer key, the scoring rules and the frozen rule files are unchanged.
 
-### Results (real runs on the laptop, 7 Nov 2026, v1 recordings)
+### Results (real runs on the laptop, 7 Nov 2026, v1 and v2 recordings)
 
-`python -m backend.evaluate --set test|reworded --mode llm|combined`. F1 over all fields (TP/FP/FN):
+`python -m backend.evaluate --set test|reworded --mode llm|combined`. F1 over all fields (TP/FP/FN); precision (P) and recall (R) for v2:
 
-| Set | Mode | Upload | v1, old parser | v1, new parser | v2 |
-|---|---|---|---|---|---|
-| test | LLM | with DXF | 0.186 (322/39/2783) | 0.506 (1093/120/2012) | NOT RUN YET |
-| test | LLM | without DXF | 0.171 (293/31/2812) | 0.347 (664/55/2441) | NOT RUN YET |
-| test | combined | with DXF | 0.994 (3105/39/0) | 0.981 (3105/120/0) | NOT RUN YET |
-| test | combined | without DXF | 0.649 (1508/31/1597) | 0.646 (1508/55/1597) | NOT RUN YET |
-| reworded | LLM | with DXF | 0.229 (397/38/2634) | 0.483 (1007/132/2024) | NOT RUN YET |
-| reworded | LLM | without DXF | 0.204 (347/30/2684) | 0.314 (574/51/2457) | NOT RUN YET |
-| reworded | combined | with DXF | 0.501 (1067/161/1964) | 0.642 (1553/255/1478) | NOT RUN YET |
-| reworded | combined | without DXF | 0.204 (348/30/2683) | 0.314 (575/51/2456) | NOT RUN YET |
+| Set | Mode | Upload | v1, old parser | v1, new parser | v2 | v2 P | v2 R |
+|---|---|---|---|---|---|---|---|
+| test | LLM | with DXF | 0.186 (322/39/2783) | 0.506 (1093/120/2012) | 0.778 (2214/371/891) | 0.856 | 0.713 |
+| test | LLM | without DXF | 0.171 (293/31/2812) | 0.347 (664/55/2441) | 0.561 (1241/79/1864) | 0.940 | 0.400 |
+| test | combined | with DXF | 0.994 (3105/39/0) | 0.981 (3105/120/0) | 0.944 (3105/371/0) | 0.893 | 1.000 |
+| test | combined | without DXF | 0.649 (1508/31/1597) | 0.646 (1508/55/1597) | 0.643 (1508/79/1597) | 0.950 | 0.486 |
+| reworded | LLM | with DXF | 0.229 (397/38/2634) | 0.483 (1007/132/2024) | 0.727 (1914/318/1117) | 0.858 | 0.631 |
+| reworded | LLM | without DXF | 0.204 (347/30/2684) | 0.314 (574/51/2457) | 0.497 (1040/112/1991) | 0.903 | 0.343 |
+| reworded | combined | with DXF | 0.501 (1067/161/1964) | 0.642 (1553/255/1478) | 0.760 (2128/441/903) | 0.828 | 0.702 |
+| reworded | combined | without DXF | 0.204 (348/30/2683) | 0.314 (575/51/2456) | 0.497 (1040/112/1991) | 0.903 | 0.343 |
 
-Cut-off replies in the v1 recordings (the same for both parsers; `done_reason` was not recorded in v1):
+Cut-off replies (v1: the same for both parsers, `done_reason` not recorded; v2: every cut-off reply has
+`done_reason` "length", every other reply "stop"):
 
-| Set | Upload | Replies | Cut off | of them empty | Invalid otherwise |
-|---|---|---|---|---|---|
-| test | with DXF | 266 | 40 | 1 | 0 |
-| test | without DXF | 226 | 20 | 0 | 0 |
-| reworded | with DXF | 256 | 37 | 2 | 0 |
-| reworded | without DXF | 216 | 18 | 2 | 0 |
+| Set | Upload | Replies | v1 cut off | of them empty | v1 invalid otherwise | v2 cut off | of them empty | v2 invalid otherwise |
+|---|---|---|---|---|---|---|---|---|
+| test | with DXF | 266 | 40 | 1 | 0 | 9 | 0 | 0 |
+| test | without DXF | 226 | 20 | 0 | 0 | 5 | 0 | 0 |
+| reworded | with DXF | 256 | 37 | 2 | 0 | 11 | 0 | 0 |
+| reworded | without DXF | 216 | 18 | 2 | 0 | 5 | 0 | 0 |
 
-The empty replies are the T09 drawing (page 1), R07 specification page 4 and R18 specification page 3.
+The v1 empty replies are the T09 drawing (page 1), R07 specification page 4 and R18 specification page 3.
 
 Per field, LLM only, with DXF, F1 (TP/FP/FN):
 
-| Field | test, v1 old parser | test, v1 new parser | reworded, v1 old parser | reworded, v1 new parser | v2 |
-|---|---|---|---|---|---|
-| `busbar.rating` | 0.400 (10/0/30) | 0.987 (39/0/1) | 0.596 (17/0/23) | 0.865 (32/2/8) | NOT RUN YET |
-| `enclosure.cable_entry` | 0.719 (32/0/25) | 0.964 (53/0/4) | 0.643 (27/0/30) | 0.882 (45/0/12) | NOT RUN YET |
-| `enclosure.form` | 0.705 (31/0/26) | 0.954 (52/0/5) | 0.690 (30/0/27) | 0.882 (45/0/12) | NOT RUN YET |
-| `enclosure.ip_rating` | 0.719 (32/0/25) | 0.964 (53/0/4) | 0.705 (31/0/26) | 0.954 (52/0/5) | NOT RUN YET |
-| `enclosure.sections` | 0.824 (14/0/6) | 0.824 (14/0/6) | 0.519 (7/0/13) | 0.519 (7/0/13) | NOT RUN YET |
-| `enclosure.width` | 0.652 (15/11/5) | 0.625 (15/13/5) | 0.485 (8/5/12) | 0.457 (8/7/12) | NOT RUN YET |
-| `incomer.device` | 0.260 (10/27/30) | 0.736 (39/27/1) | 0.430 (17/22/23) | 0.720 (36/24/4) | NOT RUN YET |
-| `incomer.poles` | 0.400 (10/0/30) | 0.987 (39/0/1) | 0.596 (17/0/23) | 0.974 (38/0/2) | NOT RUN YET |
-| `incomer.rating` | 0.667 (30/0/30) | 0.992 (59/0/1) | 0.763 (37/0/23) | 0.949 (56/2/4) | NOT RUN YET |
-| `metering.ct_ratio` | 0.400 (10/0/30) | 0.909 (35/2/5) | 0.509 (14/1/26) | 0.935 (36/1/4) | NOT RUN YET |
-| `metering.meter` | 0.462 (18/0/42) | 0.750 (36/0/24) | 0.512 (21/1/39) | 0.755 (37/1/23) | NOT RUN YET |
-| `system.earthing` | 0.621 (18/0/22) | 0.914 (37/4/3) | 0.596 (17/0/23) | 0.933 (35/0/5) | NOT RUN YET |
-| `system.fault_level` | 0.593 (16/1/21) | 0.657 (22/8/15) | 0.566 (15/1/22) | 0.800 (26/2/11) | NOT RUN YET |
-| `system.frequency` | 0.621 (18/0/22) | 0.987 (39/0/1) | 0.596 (17/0/23) | 0.974 (38/0/2) | NOT RUN YET |
-| `system.voltage` | 0.776 (38/0/22) | 0.992 (59/0/1) | 0.763 (37/0/23) | 0.983 (58/0/2) | NOT RUN YET |
-| `way.*.breaking_capacity` | n/a (0/0/309) | 0.300 (57/14/252) | 0.054 (9/3/314) | 0.262 (52/22/271) | NOT RUN YET |
-| `way.*.cable` | n/a (0/0/376) | 0.351 (80/0/296) | 0.070 (13/0/347) | 0.371 (82/0/278) | NOT RUN YET |
-| `way.*.cable_length` | n/a (0/0/188) | 0.231 (26/11/162) | 0.043 (4/1/176) | 0.356 (40/5/140) | NOT RUN YET |
-| `way.*.description` | n/a (0/0/376) | 0.279 (61/0/315) | 0.022 (4/0/356) | 0.269 (56/0/304) | NOT RUN YET |
-| `way.*.device` | n/a (0/0/376) | 0.393 (92/0/284) | 0.064 (12/1/348) | 0.329 (73/11/287) | NOT RUN YET |
-| `way.*.poles` | n/a (0/0/376) | 0.372 (88/9/288) | 0.064 (12/1/348) | 0.308 (69/19/291) | NOT RUN YET |
-| `way.*.rating` | n/a (0/0/376) | 0.266 (62/28/314) | 0.049 (9/2/351) | 0.224 (50/36/310) | NOT RUN YET |
-| `ways.count` | 0.500 (20/0/40) | 0.720 (36/4/24) | 0.537 (22/0/38) | 0.750 (36/0/24) | NOT RUN YET |
-| **all fields** | **0.186** | **0.506** | **0.229** | **0.483** | NOT RUN YET |
+| Field | test, v1 old parser | test, v1 new parser | test, v2 | reworded, v1 old parser | reworded, v1 new parser | reworded, v2 |
+|---|---|---|---|---|---|---|
+| `busbar.rating` | 0.400 (10/0/30) | 0.987 (39/0/1) | 0.987 (39/0/1) | 0.596 (17/0/23) | 0.865 (32/2/8) | 0.827 (31/4/9) |
+| `enclosure.cable_entry` | 0.719 (32/0/25) | 0.964 (53/0/4) | 0.973 (54/0/3) | 0.643 (27/0/30) | 0.882 (45/0/12) | 0.964 (53/0/4) |
+| `enclosure.form` | 0.705 (31/0/26) | 0.954 (52/0/5) | 0.889 (48/3/9) | 0.690 (30/0/27) | 0.882 (45/0/12) | 0.906 (48/1/9) |
+| `enclosure.ip_rating` | 0.719 (32/0/25) | 0.964 (53/0/4) | 0.973 (54/0/3) | 0.705 (31/0/26) | 0.954 (52/0/5) | 0.982 (55/0/2) |
+| `enclosure.sections` | 0.824 (14/0/6) | 0.824 (14/0/6) | 0.824 (14/0/6) | 0.519 (7/0/13) | 0.519 (7/0/13) | 0.606 (10/3/10) |
+| `enclosure.width` | 0.652 (15/11/5) | 0.625 (15/13/5) | 0.778 (14/2/6) | 0.485 (8/5/12) | 0.457 (8/7/12) | 0.513 (10/9/10) |
+| `incomer.device` | 0.260 (10/27/30) | 0.736 (39/27/1) | 0.765 (39/23/1) | 0.430 (17/22/23) | 0.720 (36/24/4) | 0.727 (36/23/4) |
+| `incomer.poles` | 0.400 (10/0/30) | 0.987 (39/0/1) | 0.987 (39/0/1) | 0.596 (17/0/23) | 0.974 (38/0/2) | 0.937 (37/2/3) |
+| `incomer.rating` | 0.667 (30/0/30) | 0.992 (59/0/1) | 0.992 (59/0/1) | 0.763 (37/0/23) | 0.949 (56/2/4) | 0.933 (56/4/4) |
+| `metering.ct_ratio` | 0.400 (10/0/30) | 0.909 (35/2/5) | 0.850 (34/6/6) | 0.509 (14/1/26) | 0.935 (36/1/4) | 0.975 (39/1/1) |
+| `metering.meter` | 0.462 (18/0/42) | 0.750 (36/0/24) | 0.763 (37/0/23) | 0.512 (21/1/39) | 0.755 (37/1/23) | 0.788 (41/3/19) |
+| `system.earthing` | 0.621 (18/0/22) | 0.914 (37/4/3) | 0.909 (35/2/5) | 0.596 (17/0/23) | 0.933 (35/0/5) | 0.935 (36/1/4) |
+| `system.fault_level` | 0.593 (16/1/21) | 0.657 (22/8/15) | 0.687 (23/7/14) | 0.566 (15/1/22) | 0.800 (26/2/11) | 0.877 (32/4/5) |
+| `system.frequency` | 0.621 (18/0/22) | 0.987 (39/0/1) | 1.000 (40/0/0) | 0.596 (17/0/23) | 0.974 (38/0/2) | 0.988 (40/1/0) |
+| `system.voltage` | 0.776 (38/0/22) | 0.992 (59/0/1) | 0.992 (60/1/0) | 0.763 (37/0/23) | 0.983 (58/0/2) | 0.992 (60/1/0) |
+| `way.*.breaking_capacity` | n/a (0/0/309) | 0.300 (57/14/252) | 0.576 (165/99/144) | 0.054 (9/3/314) | 0.262 (52/22/271) | 0.535 (138/55/185) |
+| `way.*.cable` | n/a (0/0/376) | 0.351 (80/0/296) | 0.930 (327/0/49) | 0.070 (13/0/347) | 0.371 (82/0/278) | 0.848 (266/1/94) |
+| `way.*.cable_length` | n/a (0/0/188) | 0.231 (26/11/162) | 0.810 (151/34/37) | 0.043 (4/1/176) | 0.356 (40/5/140) | 0.758 (124/23/56) |
+| `way.*.description` | n/a (0/0/376) | 0.279 (61/0/315) | 0.809 (256/1/120) | 0.022 (4/0/356) | 0.269 (56/0/304) | 0.761 (221/0/139) |
+| `way.*.device` | n/a (0/0/376) | 0.393 (92/0/284) | 0.866 (287/0/89) | 0.064 (12/1/348) | 0.329 (73/11/287) | 0.768 (240/25/120) |
+| `way.*.poles` | n/a (0/0/376) | 0.372 (88/9/288) | 0.665 (224/74/152) | 0.064 (12/1/348) | 0.308 (69/19/291) | 0.586 (167/43/193) |
+| `way.*.rating` | n/a (0/0/376) | 0.266 (62/28/314) | 0.532 (178/115/198) | 0.049 (9/2/351) | 0.224 (50/36/310) | 0.441 (134/114/226) |
+| `ways.count` | 0.500 (20/0/40) | 0.720 (36/4/24) | 0.733 (37/4/23) | 0.537 (22/0/38) | 0.750 (36/0/24) | 0.800 (40/0/20) |
+| **all fields** | **0.186** | **0.506** | **0.778** | **0.229** | **0.483** | **0.727** |
 
 What these show:
 
@@ -340,6 +344,25 @@ What these show:
   0.367 there.
 - `enclosure.width` is not helped by the parser (0.652 to 0.625 on test): the extra items include more
   height and transport-limit misreadings. That is what the prompt change in v2 targets.
+
+What v2 adds (same answer key, same scoring, new parser in both v1 new-parser and v2 columns):
+
+- LLM only, with DXF: F1 0.506 to 0.778 on the test set and 0.483 to 0.727 on the reworded set. Most of
+  the gain is in the per-way fields (for example `way.*.cable` 0.351 to 0.930 on test), because far fewer
+  way-table replies stop part-way (9 of 266 cut off on test with DXF, against 40 in v1).
+- `enclosure.width` with the new wording: false positives fall from 13 to 2 on test (F1 0.625 to 0.778)
+  and the reworded F1 goes from 0.457 to 0.513, with 9 false positives against 7.
+- Combined mode on the original wording with the DXF is lower than rules alone: 0.944 against 1.000.
+  The rules already find every true value there (3105/0/0), so everything the model adds is an extra
+  value (371 false positives), and none of it can raise recall.
+- The 123 extras in `way.*.description` in combined mode on the reworded set with the DXF are the same in
+  all three columns (v1 old parser, v1 new parser, v2), and the rules alone give 123 false positives on
+  that set. They come from the rules, not from the model.
+- Without the DXF, combined equals LLM-only on the reworded set (0.497 in v2): the frozen rules find
+  almost nothing in the reworded text (rules alone 0.011), so the model's values are all there is.
+- The reworded set is no longer fully held out. It was used to find the cut-off bug and to tune the
+  `enclosure.width` wording, so its numbers are no longer an unseen-wording result. Final numbers need a
+  fresh set with new seeds (Stage 7).
 
 ### Re-running on Colab (v2)
 
@@ -361,6 +384,86 @@ already recorded in `--out` for the same bytes and prompt version and records th
 The evaluation is slow: each run can make six passes over the 20 projects (three columns, with and without
 the DXF). The four runs above took 22.5 minutes in total on the laptop. A column with no recording at all
 (v2 until the Colab run) is now skipped without reading any file and reads NOT RUN YET.
+
+### The v2 run (Colab T4, 7 Nov 2026)
+
+- Prompt `llm-extract-2`, gemma4:e2b (`b37049369adf`), `num_ctx` 8192, `num_predict` 6144, temperature 0,
+  seed 42; all 123 files recorded (`data/recorded/`, not committed).
+- Model time 6,113 s, 49.7 s per document on average (v1: 4,405 s, 35.8 s per document). Measured from
+  the `seconds` stored in each call of the recordings.
+- Full test suite on the laptop with the Docker database running (`DATABASE_URL` set as in the README):
+  472 passed, 0 skipped.
+
+### Cut-offs and rejections in the v2 recordings
+
+Read from the recordings with the current parser (read-only scripts, not part of the repo). Reply classes
+are the parser's own; `done_reason` and `eval_count` are what Ollama returned.
+
+| Set | Document | Replies | ok | cut off | empty | invalid | `done_reason` stop / length | Largest `eval_count` | Rejections |
+|---|---|---|---|---|---|---|---|---|---|
+| test | specification | 206 | 201 | 5 | 0 | 0 | 201 / 5 | 6144 | 179 |
+| test | letter | 20 | 20 | 0 | 0 | 0 | 20 / 0 | 1306 | 0 |
+| test | drawing (DXF) | 40 | 36 | 4 | 0 | 0 | 36 / 4 | 6144 | 223 |
+| reworded | specification | 196 | 191 | 5 | 0 | 0 | 191 / 5 | 6144 | 297 |
+| reworded | letter | 20 | 20 | 0 | 0 | 0 | 20 / 0 | 1415 | 0 |
+| reworded | drawing (DXF) | 40 | 34 | 6 | 0 | 0 | 34 / 6 | 6144 | 386 |
+| showcase | specification | 8 | 8 | 0 | 0 | 0 | 8 / 0 | 4710 | 0 |
+| showcase | letter | 1 | 1 | 0 | 0 | 0 | 1 / 0 | 1241 | 0 |
+| showcase | drawing (DXF) | 2 | 2 | 0 | 0 | 0 | 2 / 0 | 4316 | 2 |
+
+Rejections by reason, all 123 files (1,087 in total):
+
+| Reason | Count |
+|---|---|
+| quote not found on the page | 676 |
+| value is null ("no value") | 217 |
+| a number of the value is not in the quote | 135 |
+| schema failure (24 empty quotes, 14 unknown field names such as `way.Q1.way_description`, 1 both) | 39 |
+| page-level: reply cut off (its complete items are still checked) | 20 |
+| invalid JSON | 0 |
+
+The 676 "quote not found" rejections, sorted by a simple word test against the page text the model was
+shown: 498 have every word on the page but joined or reordered (on drawings, labels from separate DXF
+text entities written as one quote, such as "MCCB 36kA"); 130 are table rows re-joined with " | " where
+each cell is on the page but the row is not, such as "Q2 AHU 2 | MCCB | 200 | 4 | 36 | 4C 95 mm2 SWA";
+32 are placeholders such as "N/A", "TBC" or "[No value found]"; 16 contain words that are not on the page.
+
+Main cause of rejections: the model builds its quote from pieces of the page instead of copying one
+continuous span, and the quote check (correctly, as designed) refuses that. Evidence: 628 of the 676
+quote failures have every word or cell present on the page. Confidence: high that the words are present;
+medium on the exact mechanism, because the word test does not check order. The second cause is items
+with a null value (217), which are rejected by design.
+
+All 20 cut-off replies stopped at `num_predict` (`eval_count` 6144, `done_reason` "length"); none is
+empty and none repeats an item, so the model was still working through the way table. The prompt took
+1,313 to 1,843 tokens, so 6,349 to 6,879 tokens were left in the 8,192-token context. A rough linear
+estimate from how far each reply got (last way written against the project's way count) puts the need at
+about 6,400 to 9,400 tokens. On that estimate 5 replies would have fitted with a larger `num_predict`
+alone (T07 specification page 6, R01, R03 and R19 drawings, R08 specification page 3); the other 15 would
+also need a larger `num_ctx`. This is an estimate, not a measurement.
+
+| File | Page | Ways reached / ways | Prompt tokens | Estimated reply tokens needed |
+|---|---|---|---|---|
+| test/T06 drawing | 1 | 10 / 14 | 1574 | 9054 |
+| test/T07 specification | 6 | 11 / 11 | 1556 | 6437 |
+| test/T07 drawing | 1 | 8 / 11 | 1353 | 9011 |
+| test/T09 specification | 5 | 12 / 14 | 1741 | 7480 |
+| test/T09 drawing | 1 | 13 / 14 | 1567 | 6881 |
+| test/T11 specification | 5 | 10 / 12 | 1753 | 7761 |
+| test/T17 specification | 4 | 12 / 14 | 1689 | 7480 |
+| test/T17 drawing | 1 | 13 / 14 | 1577 | 6881 |
+| test/T20 specification | 6 | 12 / 14 | 1723 | 7480 |
+| reworded/R01 drawing | 1 | 11 / 11 | 1414 | 6437 |
+| reworded/R03 drawing | 1 | 9 / 9 | 1313 | 6505 |
+| reworded/R06 specification | 3 | 11 / 14 | 1843 | 8192 |
+| reworded/R06 drawing | 1 | 12 / 14 | 1594 | 7480 |
+| reworded/R07 specification | 4 | 11 / 12 | 1752 | 7022 |
+| reworded/R08 specification | 3 | 11 / 11 | 1619 | 6437 |
+| reworded/R11 drawing | 1 | 8 / 10 | 1374 | 8192 |
+| reworded/R12 specification | 3 | 11 / 12 | 1664 | 7022 |
+| reworded/R12 drawing | 1 | 10 / 12 | 1451 | 7761 |
+| reworded/R18 specification | 3 | 9 / 13 | 1828 | 9397 |
+| reworded/R19 drawing | 1 | 13 / 13 | 1536 | 6390 |
 
 ### Changes that would invalidate recordings
 
