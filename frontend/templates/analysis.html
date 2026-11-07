@@ -1,5 +1,5 @@
 {%- extends "layout_app.html" -%}
-{%- from "macros.html" import icon, confidence, value_status, provenance, project_crumbs, project_heading, instruction_flags with context -%}
+{%- from "macros.html" import icon, confidence, value_status, value_checks, provenance, project_crumbs, project_heading, instruction_flags with context -%}
 {%- set nav = "analysis" -%}
 
 {%- block title %}Analysis · {{ project.name }} · {{ app_name }}{% endblock -%}
@@ -52,6 +52,7 @@
         {{ value_status(v) }}
         <a class="value-row__value mono" href="#src-{{ v.id }}">{{ display(v.value, v.unit) }}</a>
         {{ confidence(v.confidence) }}
+        {{ value_checks(v) }}
         <span class="value-row__quote">"{{ v.source_text }}"</span>
         {{ provenance(v) }}
         {%- if v.derivation %}<span class="value-row__source">{{ v.derivation }}</span>{% endif %}

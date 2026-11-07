@@ -18,6 +18,7 @@ from backend.app import normalise as norm
 from backend.app.catalogue import CatalogueItem, load_catalogue
 from backend.app.config import Settings
 from backend.app.estimate import ApprovedValue, Draft, build, load_rules
+from backend.app.llm.quote import QuoteCheckMode
 from backend.app.models import (AuditEvent, CatalogueItemRow, Document, Estimate, EstimateLineRow,
                                 ExtractedValueRow, Match, Page, Project, Review)
 from backend.app.pipeline import analyse_file
@@ -133,7 +134,9 @@ def process_document(sessions: sessionmaker[Session], storage: Storage, document
         try:
             data = storage.read(doc.storage_key)
             provider, model_note = model_provider(settings, data)
-            analysis = analyse_file(FileType(doc.file_type), data, doc.original_name, provider)
+            quote_check = QuoteCheckMode(settings.quote_check if settings else QuoteCheckMode.RELAXED)
+            analysis = analyse_file(FileType(doc.file_type), data, doc.original_name, provider,
+                                    quote_check=quote_check)
             del data  # the original stays in storage; keep memory low
             doc.status = DocumentStatus.EXTRACTING.value
             doc.kind = analysis.kind.value
@@ -150,7 +153,9 @@ def process_document(sessions: sessionmaker[Session], storage: Storage, document
                     source_document=v.source.document.value, source_file=v.source.file, page=v.source.page,
                     source_text=v.source.source_text, regions=[r.model_dump() for r in v.source.regions],
                     method=v.method.value, confidence=v.confidence.value, review_status=v.review_status.value,
-                    rule=v.rule, derivation=v.derivation, agreement=v.agreement.value if v.agreement else None))
+                    rule=v.rule, derivation=v.derivation, agreement=v.agreement.value if v.agreement else None,
+                    quote_match=v.quote_match.value if v.quote_match else None,
+                    flags=[f.value for f in v.flags]))
             doc.status = analysis.read.status.value
             audit(session, "extract", "document", doc.id, doc.project_id, kind=doc.kind, status=doc.status,
                   values=len(analysis.values), method="rules+llm" if analysis.llm else "rules",

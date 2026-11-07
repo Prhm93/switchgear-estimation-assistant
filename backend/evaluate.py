@@ -18,7 +18,7 @@ Each project is scored twice, as two upload sets:
 In ``llm`` and ``combined`` mode each read file (specification, letter, DXF)
 needs its recording; a recording made for other bytes is refused. Files
 without a recording count as not run, and each column says how many files had
-one. The output has three result columns, side by side:
+one. The output has four result columns, side by side:
 
 - **v1, old parser**: the Stage 3 Part A recordings (``data/recorded-v1/``,
   prompt ``llm-extract-1``) scored as in Part A: a reply that is not valid
@@ -26,7 +26,13 @@ one. The output has three result columns, side by side:
 - **v1, new parser**: the same recordings, keeping every complete item of a
   reply that was cut off;
 - **v2**: the current recordings (``data/recorded/``, prompt
-  :data:`backend.app.llm.prompt.PROMPT_VERSION`), with the new parser.
+  :data:`backend.app.llm.prompt.PROMPT_VERSION`), with the new parser and the
+  strict quote check (the fixed baseline);
+- **v2 relaxed (tuned on this set)**: the same recordings with the relaxed
+  quote check (Stage 3c, the app default). It was designed after looking at
+  these sets' rejections, so it is not a held-out result.
+
+The first three columns use the strict quote check (one continuous span).
 
 A column with no recording at all reads NOT RUN YET. Above the table, each
 column reports its replies: how many were cut off (empty replies counted
@@ -50,10 +56,11 @@ from pydantic import BaseModel
 from backend.app.evaluation import Score, score, total
 from backend.app.llm.extract import ReplyInfo, ReplyStatus
 from backend.app.llm.prompt import PROMPT_VERSION
+from backend.app.llm.quote import QuoteCheckMode
 from backend.app.paths import REPO_ROOT
 from backend.app.pipeline import analyse_file
 from backend.app.recordings import named_recording, recording_path
-from backend.app.schemas import ExtractedValue
+from backend.app.schemas import ExtractedValue, QuoteMatch, ValueFlag
 from backend.app.storage import EXTENSIONS
 from data_generator.project import load_answers
 from data_generator.sets import DATA, REWORDED_COUNT, TEST_COUNT, reworded_id, testset_id
@@ -77,13 +84,17 @@ class Column(BaseModel):
     salvage: bool  # False: the Part A parser (a reply that is not valid JSON loses its whole page)
     own_prompt: bool  # True: replay with the recording's own system prompt (an older prompt version)
     prompt_version: str | None = None  # only recordings made with this prompt version count
+    quote_check: QuoteCheckMode = QuoteCheckMode.STRICT  # strict: the v2 baseline; relaxed: Stage 3c
 
 
 def columns(recorded: Path = RECORDED_DIR, recorded_v1: Path = RECORDED_V1_DIR) -> list[Column]:
-    """The three result columns: Part A recordings with the old and the new parser, and the current recordings."""
+    """The four result columns: Part A recordings with the old and the new parser, and the current recordings
+    with the strict (baseline) and the relaxed quote check."""
     return [Column(label="v1, old parser", recorded_dir=recorded_v1, salvage=False, own_prompt=True),
             Column(label="v1, new parser", recorded_dir=recorded_v1, salvage=True, own_prompt=True),
-            Column(label="v2", recorded_dir=recorded, salvage=True, own_prompt=False, prompt_version=PROMPT_VERSION)]
+            Column(label="v2", recorded_dir=recorded, salvage=True, own_prompt=False, prompt_version=PROMPT_VERSION),
+            Column(label="v2 relaxed (tuned on this set)", recorded_dir=recorded, salvage=True, own_prompt=False,
+                   prompt_version=PROMPT_VERSION, quote_check=QuoteCheckMode.RELAXED)]
 
 
 class Coverage:
@@ -93,6 +104,13 @@ class Coverage:
         self.files = 0
         self.recorded = 0
         self.replies: list[ReplyInfo] = []
+        self.rescued = 0  # values kept as words_on_page (relaxed quote check)
+        self.guard_removed = 0  # stitched quotes refused by the rating guard
+        self.poles_flagged = 0  # values kept with poles taken from cable cores
+
+    def relaxed_counts(self) -> str:
+        return (f"relaxed check: {self.rescued} values rescued (words on page), {self.guard_removed} removed by "
+                f"the rating guard, {self.poles_flagged} flagged as poles taken from cable cores")
 
     def reply_counts(self) -> str:
         """For example "266 replies: 41 cut off (3 of them empty), 0 invalid; done_reason: length 41, stop 225"."""
@@ -133,7 +151,8 @@ def has_recordings(column: Column, folders: list[Path], set_name: str) -> bool:
 
 def project_values(folder: Path, with_dxf: bool, mode: str = "rules", set_name: str = "test",
                    recorded_dir: Path = RECORDED_DIR, coverage: Coverage | None = None, *, salvage: bool = True,
-                   own_prompt: bool = False, prompt_version: str | None = None) -> list[ExtractedValue]:
+                   own_prompt: bool = False, prompt_version: str | None = None,
+                   quote_check: QuoteCheckMode = QuoteCheckMode.STRICT) -> list[ExtractedValue]:
     values: list[ExtractedValue] = []
     for name in UPLOAD:
         if name.endswith(".dxf") and not with_dxf:
@@ -152,9 +171,12 @@ def project_values(folder: Path, with_dxf: bool, mode: str = "rules", set_name: 
             provider = make_provider("recorded", recording=recording) if recording else None
         system_prompt = recording.system_prompt if (recording is not None and own_prompt) else None
         analysis = analyse_file(EXTENSIONS[path.suffix.lower()], data, name, provider, system_prompt=system_prompt,
-                                salvage=salvage)
+                                salvage=salvage, quote_check=quote_check)
         if coverage is not None and analysis.llm is not None:
             coverage.replies += analysis.llm.replies
+            coverage.rescued += sum(v.quote_match == QuoteMatch.WORDS_ON_PAGE for v in analysis.llm.values)
+            coverage.guard_removed += sum(r.reason.startswith("rating guard:") for r in analysis.llm.rejected)
+            coverage.poles_flagged += sum(ValueFlag.POLES_FROM_CABLE_CORES in v.flags for v in analysis.llm.values)
         if mode == "llm":
             values += analysis.llm.values if analysis.llm else []
         else:
@@ -170,7 +192,7 @@ def run(folders: list[Path], with_dxf: bool, mode: str = "rules", set_name: str 
     if column is not None:
         recorded_dir = column.recorded_dir
         options = {"salvage": column.salvage, "own_prompt": column.own_prompt,
-                   "prompt_version": column.prompt_version}
+                   "prompt_version": column.prompt_version, "quote_check": column.quote_check}
     start = time.perf_counter()
     for folder in folders:
         key = load_answers(folder / "answers.json")
@@ -207,6 +229,10 @@ def compare_table(results: list[tuple[Column, dict[str, Score] | None]]) -> str:
         lines.append(f"| `{group}` | " + " | ".join(cells) + " |")
     cells = ["NOT RUN YET" if grouped is None else f"**{_cell(total(grouped))}**" for _, grouped in results]
     lines.append("| **all fields** | " + " | ".join(cells) + " |")
+    cells = ["NOT RUN YET" if grouped is None else
+             f"P {_f(total(grouped).precision)}, R {_f(total(grouped).recall)}, F1 {_f(total(grouped).f1)}"
+             for _, grouped in results]
+    lines.append("| **precision, recall, F1** | " + " | ".join(cells) + " |")
     return "\n".join(lines)
 
 
@@ -253,8 +279,9 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"- {column.label}: NOT RUN YET (no recording in {where})")
                 results.append((column, None))
                 continue
+            extra = f"; {coverage.relaxed_counts()}" if column.quote_check == QuoteCheckMode.RELAXED else ""
             print(f"- {column.label}: recordings for {coverage.recorded} of {coverage.files} read files ({where}); "
-                  f"{coverage.reply_counts()}")
+                  f"{coverage.reply_counts()}{extra}")
             results.append((column, grouped))
         print("\n" + compare_table(results) + "\n")
     return 0

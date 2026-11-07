@@ -474,3 +474,92 @@ Replay refuses a recording when any of these changes:
 The output schema, the Ollama options, the parser and the new optional recording fields do not invalidate
 recordings. The v1 recordings cannot be replayed by the app any more (their system prompt differs); the
 evaluation scores them with their own stored prompt.
+
+## 9. Stage 3c: relaxed quote check (branch `stage-3c-quote-check`)
+
+### Why
+
+The strict quote check (one continuous span of the page) rejected 676 v2 values as "quote not found on the
+page". A read-only replay of the v2 recordings, scored with the evaluation's own matching, showed that 628
+of them have every quote word on the page: the model builds its quote from pieces (DXF labels joined, table
+cells re-joined) instead of copying one span. Kept, those 628 would give 488 right values, 94 wrong, 25 on a
+page the answer key does not list for that field, and 21 still rejected for another reason (mostly a null
+value). The wrong ones are mostly per-way ratings and poles on drawings: a breaking capacity (36 kA) or a
+cable size (185 mm2) taken as a rating, "TBC" taken as a value, a number from another way's row, and poles
+4 taken from "4C" (a cable core count).
+
+### What changed
+
+| Change | Where | What it does |
+|---|---|---|
+| Relaxed check | `backend/app/llm/quote.py` (`check_quote_relaxed`) | Runs the strict check first; an exact quote is judged by it alone. A quote that is not one span is kept only if it is not a placeholder (bracketed, "N/A", "TBC" and similar, or 3 characters or fewer), every word is on the page (or, with " \| ", every table cell), and the number check passes |
+| Rating guard (reject-only) | same file | For a rescued `*.rating` value only: rejected when it is not a number ("TBC") or when the quote gives the number only as kA or mm2. A bare "200" from a specification table row passes |
+| Poles from cable cores | same file and `extract.py` | A rescued poles value supported only by a core count ("4C", "4 core") is kept with confidence low and the flag `poles_from_cable_cores` |
+| Marking | `schemas.py`, `models.py`, migration `0004_quote_match` | Every model value stores `quote_match` ("exact" or "words_on_page") and `flags`. Two new columns on `extracted_values` |
+| Review | `web.py`, templates | Chips "Quote pieces on page, needs review" and "Poles taken from cable cores, check" on the analysis and review screens. Rescued values are at most medium confidence; "Approve all" skips every `words_on_page` value whatever its confidence. The estimate uses approved values only, as before |
+| Setting | `config.py` | `QUOTE_CHECK=relaxed` (default) or `strict`. Strict gives exactly the v2 behaviour; `llm_extract` and `analyse_file` default to strict, and only the app passes the setting |
+| Evaluation | `backend/evaluate.py` | A fourth column, "v2 relaxed (tuned on this set)", with the counts of rescued values, rating-guard rejections and poles flags |
+
+Unchanged: the frozen rules (`extraction.py`, `normalise.py`), the prompts, `page_material()`, the reading
+output and the recordings. The v2 recordings still pass the SHA-256 and prompt checks (tested on all 123).
+
+### Guard counts (Step 0, before building)
+
+Measured on the 606 values the relaxed check would build from the 628 all-words-on-page quotes (test and
+reworded, with DXF): 488 right, 94 wrong, 24 page not listed.
+
+| Rule | Wrong removed | Right removed | Built? |
+|---|---|---|---|
+| Number check (existing rule, applied to rescued values too) | 11 of 94 | 3 of 488 | Yes |
+| Rating guard as first specified (rating must be written with A or amps) | 38 of 41 ratings | 14 of 54 ratings | No: table rows give bare numbers |
+| Rating guard, reject-only (kA, mm2 or not a number) | 32 of 41 ratings | 0 of 54 ratings | Yes |
+| Poles only from "4P", "4 pole", "four-pole" | 9 of 14 poles | 47 of 85 poles | No |
+| Poles rejected when only a core count supports them | 0 of 14 poles | 20 of 85 poles | No: kept with confidence low and a flag instead |
+| Placeholder rule (relaxed path only) | 1 wrong; 31 would have had no value anyway | 0 | Yes |
+
+The 20 poles values supported only by "4C" match the answer key because the core count equals the poles
+in this data, not because the quote shows the poles.
+
+### Strict (v2 baseline) against relaxed
+
+Real runs on the laptop, 8 Nov 2026, `python -m backend.evaluate --mode llm|combined --set test|reworded`
+(300 to 423 s per run). P, R, F1 (TP/FP/FN) over all fields. The strict column reproduces the v2 numbers
+exactly. The relaxed column was tuned on these sets.
+
+| Set | Mode | Upload | Strict (v2 baseline) | Relaxed (tuned on this set) |
+|---|---|---|---|---|
+| test | LLM | with DXF | 0.856, 0.713, 0.778 (2214/371/891) | 0.861, 0.770, 0.813 (2390/387/715) |
+| test | LLM | without DXF | 0.940, 0.400, 0.561 (1241/79/1864) | 0.939, 0.428, 0.588 (1330/87/1775) |
+| test | combined | with DXF | 0.893, 1.000, 0.944 (3105/371/0) | 0.889, 1.000, 0.941 (3105/387/0) |
+| test | combined | without DXF | 0.950, 0.486, 0.643 (1508/79/1597) | 0.945, 0.486, 0.642 (1508/87/1597) |
+| reworded | LLM | with DXF | 0.858, 0.631, 0.727 (1914/318/1117) | 0.855, 0.733, 0.790 (2223/377/808) |
+| reworded | LLM | without DXF | 0.903, 0.343, 0.497 (1040/112/1991) | 0.896, 0.411, 0.563 (1245/144/1786) |
+| reworded | combined | with DXF | 0.828, 0.702, 0.760 (2128/441/903) | 0.826, 0.782, 0.803 (2370/500/661) |
+| reworded | combined | without DXF | 0.903, 0.343, 0.497 (1040/112/1991) | 0.896, 0.411, 0.563 (1245/144/1786) |
+
+Relaxed-check counts in the same runs:
+
+| Set | Upload | Values rescued | Removed by the rating guard | Flagged: poles from cable cores |
+|---|---|---|---|---|
+| test | with DXF | 192 | 16 | 7 |
+| test | without DXF | 97 | 1 | 0 |
+| reworded | with DXF | 368 | 19 | 13 |
+| reworded | without DXF | 237 | 0 | 0 |
+
+What these show: recall rises in every LLM row with precision nearly unchanged (within 0.007). On the
+original wording with the DXF, combined mode falls slightly (0.944 to 0.941): the rules already find every
+true value there, so rescued values can only add extras. Every rescued value still waits for the engineer:
+none is approved in bulk.
+
+### Known limits (Stage 3c)
+
+- The relaxed check, its rating guard and its poles flag were designed after looking at these two sets'
+  rejections. The relaxed numbers are therefore tuned on these sets and are not a held-out result; the fair
+  number comes from the fresh set with new seeds in Stage 7.
+- "All words on the page" does not check word order or that the words are near each other, so a quote can
+  combine words from different rows; the 94 wrong values above are of this kind.
+- The relaxed check does not test word order or that the quote words sit near each other, which is why
+  rescued values always need engineer approval.
+- The rating guard looks only at the quote's wording; a wrong rating written in amps (another way's
+  "400A") still passes.
+- Scores are from one run of one small model on synthetic data from one generator.

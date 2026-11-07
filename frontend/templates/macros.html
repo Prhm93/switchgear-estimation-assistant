@@ -32,6 +32,13 @@
 <span class="conf conf--{{ level }}">Confidence: {{ level | capitalize }}</span>
 {%- endmacro %}
 
+{#- What the engineer should check about a model value (Stage 3c): a quote stitched from words on the
+    page, and poles that only a cable core count supports. Nothing is shown for other values. -#}
+{% macro value_checks(v) -%}
+{%- if v.quote_match == "words_on_page" %}<span class="chip chip--review" title="Every word of the quote is on the page, but not as one continuous span">{{ icon("warning") }}Quote pieces on page, needs review</span>{% endif %}
+{%- if v.flags and "poles_from_cable_cores" in v.flags %}<span class="chip chip--review" title="The number of poles matches only a cable core count such as 4C">{{ icon("warning") }}Poles taken from cable cores, check</span>{% endif %}
+{%- endmacro %}
+
 {#- Confidence as a filled chip, as in the dashboard table. -#}
 {% macro level_chip(level) -%}
 {%- if level == "conflict" %}<span class="chip chip--conflict">Conflict</span>

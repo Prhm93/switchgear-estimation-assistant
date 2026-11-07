@@ -24,6 +24,7 @@ from backend.app.extraction import extract
 from backend.app.injection import InstructionFlag, find_instructions
 from backend.app.llm.combine import combine
 from backend.app.llm.extract import LlmResult, llm_extract
+from backend.app.llm.quote import QuoteCheckMode
 from backend.app.reading import ReadResult, classify, read_document
 from backend.app.schemas import DocumentKind, DocumentStatus, ExtractedValue
 from backend.app.storage import FileType
@@ -51,12 +52,13 @@ def run_label(provider: ModelProvider) -> str:
 
 def analyse_file(file_type: FileType, data: bytes, display_name: str,
                  provider: ModelProvider | None = None, *, system_prompt: str | None = None,
-                 salvage: bool = True) -> Analysis:
+                 salvage: bool = True, quote_check: QuoteCheckMode = QuoteCheckMode.STRICT) -> Analysis:
     """Read, classify and extract. Files that cannot be read yet give no values.
 
     ``system_prompt`` and ``salvage`` are for the evaluation only (scoring an
     older recording with its own prompt, and with the Part A parser); the app
-    always uses the defaults.
+    always uses the defaults. ``quote_check`` is strict here (the v2 baseline); the app passes its
+    QUOTE_CHECK setting (relaxed by default).
     """
     result = read_document(file_type, data)
     kind = classify(file_type, result)
@@ -68,7 +70,8 @@ def analyse_file(file_type: FileType, data: bytes, display_name: str,
         return analysis
     try:
         options = {"system_prompt": system_prompt} if system_prompt is not None else {}
-        llm = llm_extract(kind, result.pages, display_name, provider, salvage=salvage, **options)
+        llm = llm_extract(kind, result.pages, display_name, provider, salvage=salvage, quote_check=quote_check,
+                          **options)
     except (ModelUnavailable, RecordingMismatch) as error:
         analysis.llm_error = str(error)
         return analysis
