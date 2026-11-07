@@ -89,36 +89,36 @@ value and unit after normalising; one extracted value matches at most one answer
 Time: 1.78 s per project on the test set and 1.92 s on the reworded set (with DXF; everything is read
 both times).
 
-### Per field, with DXF: rules, LLM and combined
+### Per field, with DXF: rules
 
 "n/a" means the rules found no value for that field at all (recall 0.000, precision undefined).
 
-| Field | Rules F1, test | Rules F1, reworded | LLM F1, test | LLM F1, reworded | Combined F1, test | Combined F1, reworded |
-|---|---|---|---|---|---|---|
-| `busbar.rating` | 1.000 | n/a | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
-| `enclosure.cable_entry` | 1.000 | n/a | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
-| `enclosure.form` | 1.000 | n/a | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
-| `enclosure.ip_rating` | 1.000 | 0.219 | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
-| `enclosure.sections` | 1.000 | 1.000 | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
-| `enclosure.width` | 1.000 | 1.000 | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
-| `incomer.device` | 1.000 | n/a | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
-| `incomer.poles` | 1.000 | n/a | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
-| `incomer.rating` | 1.000 | n/a | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
-| `metering.ct_ratio` | 1.000 | n/a | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
-| `metering.meter` | 1.000 | 0.571 | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
-| `system.earthing` | 1.000 | n/a | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
-| `system.fault_level` | 1.000 | n/a | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
-| `system.frequency` | 1.000 | n/a | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
-| `system.voltage` | 1.000 | n/a | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
-| `way.*.breaking_capacity` | 1.000 | 0.106 | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
-| `way.*.cable` | 1.000 | 0.667 | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
-| `way.*.cable_length` | 1.000 | 1.000 | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
-| `way.*.description` | 1.000 | 0.523 | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
-| `way.*.device` | 1.000 | 0.235 | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
-| `way.*.poles` | 1.000 | 0.065 | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
-| `way.*.rating` | 1.000 | 0.033 | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
-| `ways.count` | 1.000 | 0.554 | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
-| **all fields** | 1.000 | 0.367 | NOT RUN YET | NOT RUN YET | NOT RUN YET | NOT RUN YET |
+| Field | Rules F1, test | Rules F1, reworded |
+|---|---|---|
+| `busbar.rating` | 1.000 | n/a |
+| `enclosure.cable_entry` | 1.000 | n/a |
+| `enclosure.form` | 1.000 | n/a |
+| `enclosure.ip_rating` | 1.000 | 0.219 |
+| `enclosure.sections` | 1.000 | 1.000 |
+| `enclosure.width` | 1.000 | 1.000 |
+| `incomer.device` | 1.000 | n/a |
+| `incomer.poles` | 1.000 | n/a |
+| `incomer.rating` | 1.000 | n/a |
+| `metering.ct_ratio` | 1.000 | n/a |
+| `metering.meter` | 1.000 | 0.571 |
+| `system.earthing` | 1.000 | n/a |
+| `system.fault_level` | 1.000 | n/a |
+| `system.frequency` | 1.000 | n/a |
+| `system.voltage` | 1.000 | n/a |
+| `way.*.breaking_capacity` | 1.000 | 0.106 |
+| `way.*.cable` | 1.000 | 0.667 |
+| `way.*.cable_length` | 1.000 | 1.000 |
+| `way.*.description` | 1.000 | 0.523 |
+| `way.*.device` | 1.000 | 0.235 |
+| `way.*.poles` | 1.000 | 0.065 |
+| `way.*.rating` | 1.000 | 0.033 |
+| `ways.count` | 1.000 | 0.554 |
+| **all fields** | 1.000 | 0.367 |
 
 What the reworded numbers show:
 
@@ -137,16 +137,13 @@ The detector was run on the specification, letter and DXF text of the showcase, 
 else. Caveat: the same person wrote the patterns and the planted lines, so this says little about
 instructions phrased in new ways.
 
-### Model results: NOT RUN YET
+### Model results
 
-| Measure | Value |
-|---|---|
-| LLM precision, recall, F1 on test and reworded sets | NOT RUN YET |
-| Combined precision, recall, F1 on test and reworded sets | NOT RUN YET |
-| Values rejected by the quote check (count and reasons) | NOT RUN YET |
-| Does gemma4:e2b obey the planted instruction line? | NOT RUN YET (the code rejects any value quoted from it, tested with a fake obedient model) |
-| Seconds per document on a Colab T4 | NOT RUN YET |
-| Memory and seconds per document with ollama-local on the laptop | NOT RUN YET (see docs/ollama-laptop.md) |
+The LLM and combined results (precision, recall and F1 per field, cut-off replies, and rejections by
+reason) and the seconds per document on a Colab T4 are now in section 8 (Stage 3b). Still NOT RUN YET:
+whether gemma4:e2b obeys the planted instruction line (the code rejects any value quoted from it, tested
+with a fake obedient model), and memory and seconds per document with ollama-local on the laptop (see
+docs/ollama-laptop.md).
 
 ## 4. How to run it
 
