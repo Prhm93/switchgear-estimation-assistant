@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     ollama_url: str = Field(default="http://127.0.0.1:11434", description="OLLAMA_URL")
     ollama_model: str = Field(default="gemma4:e2b", description="OLLAMA_MODEL")
     recorded_dir: Path = Field(default=REPO_ROOT / "data" / "recorded", description="RECORDED_DIR")
+    # Quote check for model values (Stage 3c): "relaxed" also keeps a quote whose words are all on the page
+    # (marked, medium confidence at most, never approved in bulk); "strict" is the v2 baseline (one span only).
+    quote_check: Literal["relaxed", "strict"] = Field(default="relaxed", description="QUOTE_CHECK")
 
     @property
     def max_upload_bytes(self) -> int:

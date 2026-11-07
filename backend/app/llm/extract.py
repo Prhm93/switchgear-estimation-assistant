@@ -10,11 +10,14 @@ cut off, N items kept". An empty reply is recorded as such. Then, per value:
 1. schema check (known field name, a quote present), else rejected;
 2. the value is brought to the answer key's form (``"250"`` -> 250,
    ``"Moulded case circuit breaker"`` -> ``mccb``, ``"ip 54"`` -> ``IP54``);
-3. quote check (:mod:`backend.app.llm.quote`), else rejected;
+3. quote check (:mod:`backend.app.llm.quote`), else rejected: strict (one continuous span, the v2
+   baseline and the default here) or relaxed (every word on the page; the app default since Stage 3c);
 4. a quote inside a flagged instruction-like sentence is rejected (this reason wins over the others).
 
 Kept values have method ``llm`` and confidence ``medium`` (Stage 6 sets
-confidence from method agreement). Rejected values are logged and returned
+confidence from method agreement), and record how their quote matched
+(``exact`` or ``words_on_page``). A value whose poles come only from a cable
+core count is kept with confidence ``low`` and a flag for the engineer. Rejected values are logged and returned
 with their reason, so the caller can audit them; they never become
 extracted values.
 """
@@ -32,10 +35,10 @@ from pydantic import BaseModel, ValidationError
 from backend.app import normalise as norm
 from backend.app.injection import find_instructions, inside_flag
 from backend.app.llm.prompt import SYSTEM_PROMPT, page_material, page_prompt
-from backend.app.llm.quote import NUMBER_WORDS, check_quote
+from backend.app.llm.quote import NUMBER_WORDS, QuoteCheckMode, check_quote, check_quote_relaxed
 from backend.app.llm.schema import LlmValue, output_schema
 from backend.app.reading import PageText
-from backend.app.schemas import Confidence, DocumentKind, ExtractedValue, Method, SourceRef
+from backend.app.schemas import Confidence, DocumentKind, ExtractedValue, Method, SourceRef, ValueFlag
 
 log = logging.getLogger(__name__)
 
@@ -185,11 +188,14 @@ def canonical(field: str, value: object, unit: str | None) -> tuple[object, str 
 
 
 def llm_extract(kind: DocumentKind, pages: list[PageText], file: str, provider: ModelProvider, *,
-                system_prompt: str = SYSTEM_PROMPT, salvage: bool = True) -> LlmResult:
+                system_prompt: str = SYSTEM_PROMPT, salvage: bool = True,
+                quote_check: QuoteCheckMode = QuoteCheckMode.STRICT) -> LlmResult:
     """Ask the model about every page and keep only the values whose quotes check out.
 
     ``system_prompt`` is the current prompt; only the evaluation passes another
     one (an older recording's own prompt, to score it with the new parser).
+    ``quote_check`` is strict here (the v2 baseline); the app passes its
+    QUOTE_CHECK setting, which is relaxed by default.
     """
     values: list[ExtractedValue] = []
     rejected: list[Rejection] = []
@@ -223,7 +229,10 @@ def llm_extract(kind: DocumentKind, pages: list[PageText], file: str, provider: 
                                           reason="schema: " + "; ".join(e["msg"] for e in error.errors())))
                 continue
             value, unit = canonical(v.field, v.value, v.unit)
-            check = check_quote(v.value, v.quote, material)
+            if quote_check == QuoteCheckMode.RELAXED:
+                check = check_quote_relaxed(v.field, v.value, v.quote, material)
+            else:
+                check = check_quote(v.value, v.quote, material)
             reason = check.reason if not check.ok else None
             if inside_flag(v.quote, flags):
                 reason = "quote is inside instruction-like text"
@@ -234,8 +243,9 @@ def llm_extract(kind: DocumentKind, pages: list[PageText], file: str, provider: 
                                           reason=reason))
                 continue
             values.append(ExtractedValue(
-                field=v.field, value=value, unit=unit, method=Method.LLM, confidence=Confidence.MEDIUM,
-                rule=f"llm:{provider.model}",
+                field=v.field, value=value, unit=unit, method=Method.LLM,
+                confidence=Confidence.LOW if ValueFlag.POLES_FROM_CABLE_CORES in check.flags else Confidence.MEDIUM,
+                rule=f"llm:{provider.model}", quote_match=check.match, flags=check.flags,
                 source=SourceRef(document=kind, file=file, page=page.number, source_text=check.source_text)))
     for r in rejected:
         log.info("LLM value rejected: page %s field %s value %r quote %r: %s", r.page, r.field, r.value, r.quote,

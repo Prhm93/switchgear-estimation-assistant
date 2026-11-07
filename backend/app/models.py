@@ -94,6 +94,8 @@ class ExtractedValueRow(Base):
     rule: Mapped[str | None] = mapped_column(String(60))
     derivation: Mapped[str | None] = mapped_column(Text)
     agreement: Mapped[str | None] = mapped_column(String(20))  # combined mode: agree, disagree, rules_only, llm_only
+    quote_match: Mapped[str | None] = mapped_column(String(20))  # model values: exact or words_on_page
+    flags: Mapped[list[Any] | None] = mapped_column(JSON, default=list)  # e.g. poles_from_cable_cores
     # Set only by an engineer's approve or edit; the estimate reads these, never ``value``.
     approved_value: Mapped[Any] = mapped_column(JSON, nullable=True)
     approved_unit: Mapped[str | None] = mapped_column(String(20))

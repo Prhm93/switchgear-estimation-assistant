@@ -18,7 +18,7 @@ from data_generator.schemas import DocumentKind, SourcedValue, SourceRef
 
 __all__ = [
     "Agreement", "Confidence", "DocumentKind", "DocumentStatus", "ExtractedValue", "MatchStatus", "Method",
-    "ReviewStatus", "SourceRef",
+    "QuoteMatch", "ReviewStatus", "SourceRef", "ValueFlag",
 ]
 
 
@@ -72,6 +72,24 @@ class DocumentStatus(StrEnum):
     FAILED = "failed"
 
 
+class QuoteMatch(StrEnum):
+    """How a model value's quote was found on its page (Stage 3c). ``None`` for rules values.
+
+    ``exact``: the quote is one continuous span of the page (the strict v2 check).
+    ``words_on_page``: every word of the quote is on the page, but not as one span (the relaxed check);
+    such a value is never more than medium confidence and is never approved in bulk.
+    """
+
+    EXACT = "exact"
+    WORDS_ON_PAGE = "words_on_page"
+
+
+class ValueFlag(StrEnum):
+    """Something the engineer should check about a value, shown as a chip on the review screen."""
+
+    POLES_FROM_CABLE_CORES = "poles_from_cable_cores"  # poles supported only by a core count such as "4C"
+
+
 class ExtractedValue(SourcedValue):
     """A value found in a document by one method, with its confidence and review status.
 
@@ -88,6 +106,8 @@ class ExtractedValue(SourcedValue):
     rule: str | None = None  # name of the rule that produced it, for traceability
     derivation: str | None = None
     agreement: Agreement | None = None  # combined mode only
+    quote_match: QuoteMatch | None = None  # model values only: how the quote was found on the page
+    flags: list[ValueFlag] = Field(default_factory=list)
 
 
 class MatchStatus(StrEnum):

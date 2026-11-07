@@ -1,4 +1,4 @@
-"""The evaluation's three result columns and its cut-off counts, on FAKE recordings made by this test.
+"""The evaluation's four result columns and its cut-off counts, on FAKE recordings made by this test.
 
 No model is called. A scripted provider answers the showcase specification
 truthfully, except that its way-table reply is cut off part-way (the shape
@@ -101,4 +101,4 @@ def test_column_without_recordings_is_skipped_without_reading_any_file(recorded,
     code = evaluate.main(["--mode", "llm", "--root", str(project.parent), "--count", "1",
                           "--recorded", str(empty), "--recorded-v1", str(empty)])
     assert code == 0 and calls == []  # nothing was read or replayed
-    assert capsys.readouterr().out.count("NOT RUN YET (no recording in") == 6  # 3 columns, with and without DXF
+    assert capsys.readouterr().out.count("NOT RUN YET (no recording in") == 8  # 4 columns, with and without DXF
