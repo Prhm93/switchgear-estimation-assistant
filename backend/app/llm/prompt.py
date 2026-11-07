@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from backend.app.reading import PageText
 
-PROMPT_VERSION = "llm-extract-1"
+PROMPT_VERSION = "llm-extract-2"  # 2: enclosure.width is the overall width only
 
 SYSTEM_PROMPT = """You read one page of a customer enquiry for low-voltage switchgear and list the values it states.
 
@@ -35,7 +35,8 @@ system.earthing (e.g. TN-S, TN-C-S, TT; no unit)
 - busbar.rating (number, A)
 - metering.ct_ratio (e.g. 1250/5, unit A); metering.meter (kWh or MFM)
 - enclosure.form (e.g. 4a, 3b, 2b; lower case); enclosure.ip_rating (e.g. IP54); \
-enclosure.cable_entry (top or bottom); enclosure.width (number, mm); enclosure.sections (number)
+enclosure.cable_entry (top or bottom); enclosure.width (overall width of the assembly, number, mm; never a \
+height, depth, or a transport-section or shipping limit); enclosure.sections (number)
 - ways.count (number of outgoing ways)
 - For each outgoing way, with its reference such as Q3: way.Q3.rating (number, A); way.Q3.poles (number); \
 way.Q3.device (mccb, mcb or switch_disconnector); way.Q3.breaking_capacity (number, kA); \
