@@ -39,6 +39,7 @@ The scoring rules are in :mod:`backend.app.evaluation`.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import time
 from collections import Counter
@@ -51,7 +52,7 @@ from backend.app.llm.extract import ReplyInfo, ReplyStatus
 from backend.app.llm.prompt import PROMPT_VERSION
 from backend.app.paths import REPO_ROOT
 from backend.app.pipeline import analyse_file
-from backend.app.recordings import named_recording
+from backend.app.recordings import named_recording, recording_path
 from backend.app.schemas import ExtractedValue
 from backend.app.storage import EXTENSIONS
 from data_generator.project import load_answers
@@ -107,6 +108,27 @@ class Coverage:
         if empty:
             text += "; done_reason of the empty replies: " + ", ".join(f"{k} {n}" for k, n in sorted(empty.items()))
         return text
+
+
+def has_recordings(column: Column, folders: list[Path], set_name: str) -> bool:
+    """True if at least one read file of these projects has a recording for this column.
+
+    Only the files' names and prompt versions are looked at (nothing is read or
+    replayed), so a column without recordings costs nothing.
+    """
+    for folder in folders:
+        for name in READ_FILES:
+            path = recording_path(column.recorded_dir, set_name, folder.name, name)
+            if not path.exists():
+                continue
+            if column.prompt_version is None:
+                return True
+            try:
+                if json.loads(path.read_text(encoding="utf-8")).get("prompt_version") == column.prompt_version:
+                    return True
+            except (OSError, json.JSONDecodeError, AttributeError):
+                continue
+    return False
 
 
 def project_values(folder: Path, with_dxf: bool, mode: str = "rules", set_name: str = "test",
@@ -219,10 +241,14 @@ def main(argv: list[str] | None = None) -> int:
         print(f"## {title[args.mode]}, {what}\n")
         results: list[tuple[Column, dict[str, Score] | None]] = []
         for column in columns(args.recorded, args.recorded_v1):
-            grouped, _, coverage = run(folders, with_dxf, args.mode, args.set_name, column=column)
             folder = column.recorded_dir.resolve()
             shown = folder.relative_to(REPO_ROOT).as_posix() if folder.is_relative_to(REPO_ROOT) else folder.as_posix()
             where = shown + (f", prompt {column.prompt_version}" if column.prompt_version else "")
+            if not has_recordings(column, folders, args.set_name):  # skipped: no file is read for this column
+                print(f"- {column.label}: NOT RUN YET (no recording in {where})")
+                results.append((column, None))
+                continue
+            grouped, _, coverage = run(folders, with_dxf, args.mode, args.set_name, column=column)
             if coverage.recorded == 0:
                 print(f"- {column.label}: NOT RUN YET (no recording in {where})")
                 results.append((column, None))

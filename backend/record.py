@@ -25,8 +25,11 @@ run ``python -m backend.evaluate --mode llm`` and ``--mode combined``. Older
 recordings (another prompt version) belong in ``data/recorded-v1/``; the
 evaluation reports both.
 
-``run`` records every file of the zip each time; it does not skip files that
-already have a recording.
+``run`` records every file of the zip. With ``--resume`` it skips a file whose
+recording already exists in ``--out`` for the same bytes (SHA-256) and the
+current prompt version, so an interrupted run can carry on where it stopped.
+A recording that is unreadable, for other bytes or for another prompt version
+is recorded again.
 """
 
 from __future__ import annotations
@@ -44,8 +47,8 @@ from backend.app.llm.prompt import PROMPT_TEMPLATE, PROMPT_VERSION, SYSTEM_PROMP
 from backend.app.pipeline import analyse_file
 from backend.app.recordings import recording_path
 from backend.app.storage import EXTENSIONS
-from estimation_assistant.providers import (ModelProvider, RecordingMismatch, RecordingProvider, make_provider,
-                                            save_recording, sha256_bytes)
+from estimation_assistant.providers import (ModelProvider, RecordingMismatch, RecordingProvider, load_recording,
+                                            make_provider, save_recording, sha256_bytes)
 
 DATA = REPO_ROOT / "data"
 READ_FILES = ["specification.pdf", "requirements.docx", "drawing/schematic.dxf"]
@@ -110,8 +113,20 @@ def record_file(set_name: str, project: str, file: str, data: bytes, provider: M
     return path, len(analysis.llm.values), len(analysis.llm.rejected), seconds
 
 
-def run(zip_path: Path, mode: str, out_dir: Path, url: str, model: str, sets: list[str]) -> int:
-    provider = make_provider(mode, url=url, model=model)
+def already_recorded(path: Path, data: bytes) -> bool:
+    """True if ``path`` holds a recording of exactly these bytes made with the current prompt version."""
+    if not path.exists():
+        return False
+    try:
+        return load_recording(path, data).prompt_version == PROMPT_VERSION
+    except (RecordingMismatch, ValueError, OSError):  # other bytes, unreadable or invalid: record again
+        return False
+
+
+def run(zip_path: Path, mode: str, out_dir: Path, url: str, model: str, sets: list[str], *, resume: bool = False,
+        provider: ModelProvider | None = None) -> int:
+    """Record every file of the zip; ``provider`` is for tests only (a scripted fake instead of a server)."""
+    provider = provider or make_provider(mode, url=url, model=model)
     if provider is None:
         print("rules mode calls no model; nothing to record", file=sys.stderr)
         return 2
@@ -126,6 +141,10 @@ def run(zip_path: Path, mode: str, out_dir: Path, url: str, model: str, sets: li
             if sha256_bytes(data) != entry["sha256"]:
                 print(f"REFUSED {name}: SHA-256 differs from the manifest", file=sys.stderr)
                 failures += 1
+                continue
+            if resume and already_recorded(recording_path(out_dir, entry["set"], entry["project"], entry["file"]),
+                                           data):
+                print(f"SKIPPED {name}: already recorded with prompt {PROMPT_VERSION}")
                 continue
             try:
                 path, kept, rejected, seconds = record_file(entry["set"], entry["project"], entry["file"], data,
@@ -152,12 +171,14 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--url", default="http://127.0.0.1:11434")
     r.add_argument("--model", default="gemma4:e2b")
     r.add_argument("--sets", nargs="+", default=["showcase", "test", "reworded"])
+    r.add_argument("--resume", action="store_true",
+                   help="skip files already recorded in --out for the same bytes and the current prompt version")
     args = parser.parse_args(argv)
     if args.command == "pack":
         manifest = pack(args.out, args.sets)
         print(f"{len(manifest['files'])} files -> {args.out}")
         return 0
-    return run(args.zip, args.mode, args.out, args.url, args.model, args.sets)
+    return run(args.zip, args.mode, args.out, args.url, args.model, args.sets, resume=args.resume)
 
 
 if __name__ == "__main__":

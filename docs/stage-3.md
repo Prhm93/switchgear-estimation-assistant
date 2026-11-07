@@ -354,11 +354,13 @@ What these show:
 
 Time: the v1 run took 4,405 s of model time (showcase 299 s, test 2,111 s, reworded 1,995 s), not counting
 setup and uploads. With complete way-table replies the run will take longer; 2 to 2.5 hours is an
-estimate, not a measurement. `backend.record run` does not skip files that are already recorded, so an
-interrupted run starts again from the beginning.
+estimate, not a measurement. If the run is interrupted, `backend.record run --resume` skips every file
+already recorded in `--out` for the same bytes and prompt version and records the rest. This helps only if
+`data/recorded` on Colab survives the interruption (for example, copied to Google Drive).
 
-The evaluation is slow now: each run makes six passes over the 20 projects (three columns, with and without
-the DXF). The four runs above took 22.5 minutes in total on the laptop.
+The evaluation is slow: each run can make six passes over the 20 projects (three columns, with and without
+the DXF). The four runs above took 22.5 minutes in total on the laptop. A column with no recording at all
+(v2 until the Colab run) is now skipped without reading any file and reads NOT RUN YET.
 
 ### Changes that would invalidate recordings
 

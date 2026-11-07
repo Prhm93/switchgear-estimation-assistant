@@ -19,7 +19,8 @@ import pytest
 
 from backend.app.llm.extract import ReplyInfo, ReplyStatus
 from backend.app.llm.prompt import PROMPT_VERSION
-from backend.evaluate import Column, Coverage, compare_table, run
+from backend import evaluate
+from backend.evaluate import Column, Coverage, compare_table, has_recordings, run
 from backend.record import record_file
 from data_generator import sets
 from data_generator.project import load_answers
@@ -81,3 +82,23 @@ def test_column_without_recordings_reads_not_run_yet(tmp_path: Path) -> None:
     assert cov.recorded == 0
     table = compare_table([(_column(tmp_path, False), {}), (_column(tmp_path, True), None)])
     assert "NOT RUN YET" in table.splitlines()[-1]
+
+
+def test_column_without_recordings_is_skipped_without_reading_any_file(recorded, tmp_path: Path, monkeypatch,
+                                                                       capsys) -> None:
+    folder, _ = recorded
+    project = tmp_path / "projects" / "T01"
+    project.mkdir(parents=True)
+    (project / "answers.json").write_text("{}", encoding="utf-8")  # only its presence is checked
+    assert not has_recordings(_column(tmp_path, True), [project], "test")
+    assert has_recordings(_column(folder, True), [SHOWCASE], "showcase")
+    assert has_recordings(_column(folder, True, PROMPT_VERSION), [SHOWCASE], "showcase")
+    assert not has_recordings(_column(folder, True, "llm-extract-1"), [SHOWCASE], "showcase")
+
+    calls = []
+    monkeypatch.setattr(evaluate, "run", lambda *a, **k: calls.append(a))
+    empty = tmp_path / "none"
+    code = evaluate.main(["--mode", "llm", "--root", str(project.parent), "--count", "1",
+                          "--recorded", str(empty), "--recorded-v1", str(empty)])
+    assert code == 0 and calls == []  # nothing was read or replayed
+    assert capsys.readouterr().out.count("NOT RUN YET (no recording in") == 6  # 3 columns, with and without DXF
