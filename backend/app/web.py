@@ -430,8 +430,9 @@ def approve_agreed(request: Request, project_id: int, session: SessionDep) -> Re
     """Approve every unreviewed high-confidence value whose field has no conflict; each is audited.
 
     Left for the engineer: a way missing from one of the documents that list ways, a field
-    that one document leaves open (for example "TBC") while another gives a value, and every
-    model value whose quote was stitched from words on the page (``words_on_page``, Stage 3c).
+    that one document leaves open (for example "TBC") while another gives a value, every
+    model value whose quote was stitched from words on the page (``words_on_page``, Stage 3c),
+    and every value read by OCR from a drawing (Stage 4).
     """
     project = project_or_404(session, project_id)
     approved = 0
@@ -441,6 +442,8 @@ def approve_agreed(request: Request, project_id: int, session: SessionDep) -> Re
         for v in g["values"]:
             if v.quote_match == "words_on_page":
                 continue  # a stitched quote is never approved in bulk, whatever its confidence
+            if v.method == "ocr":
+                continue  # OCR values are approved one by one, whatever their confidence
             if v.review_status == "extracted" and v.confidence == "high" and v.value is not None:
                 services.review_value(session, v.id, "approve", reason="approved with all agreeing values")
                 approved += 1

@@ -24,6 +24,8 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql+pg8000://sea:sea-ci-only@127.0.0.1:5432/sea
+      # OCR tests must run here: a missing Tesseract fails the build instead of skipping (laptop only may skip).
+      REQUIRE_TESSERACT: "1"
     steps:
       - uses: actions/checkout@v4
 
@@ -35,6 +37,12 @@ jobs:
             requirements.txt
             requirements-dev.txt
             requirements-data.txt
+
+      - name: Install Tesseract OCR
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng
+          tesseract --version
 
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
