@@ -8,6 +8,7 @@ Usage (PowerShell, from the repo folder, after
     .venv\\Scripts\\python.exe -m backend.evaluate --set reworded  # the held-out reworded set, R01 to R20
     .venv\\Scripts\\python.exe -m backend.evaluate --mode llm       # recorded LLM values only (data/recorded/)
     .venv\\Scripts\\python.exe -m backend.evaluate --mode combined  # rules and recorded LLM together
+    .venv\\Scripts\\python.exe -m backend.evaluate --drawing-reading ocr --drawing-version scanned  # Stage 4
 
 Each project is scored twice, as two upload sets:
 
@@ -38,6 +39,14 @@ A column with no recording at all reads NOT RUN YET. Above the table, each
 column reports its replies: how many were cut off (empty replies counted
 among them), how many were otherwise invalid, and Ollama's ``done_reason``
 where the recording has it (schema 1.1).
+
+Drawing reading (Stage 4) is off by default, so every number above is
+exactly the Stage 3 / 3c number. With ``--drawing-reading ocr`` only the
+"without DXF" upload set is scored, and its drawing files are one version
+only (``--drawing-version``: the clean PDF, the two scans, or the two photos),
+read by OCR at ``--ocr-dpi``; the specification and letter are read as before.
+One version at a time, because three readings of the same drawing would count
+each value up to three times.
 
 The scoring rules are in :mod:`backend.app.evaluation`.
 """
@@ -74,6 +83,9 @@ READ_FILES = ["specification.pdf", "requirements.docx", "drawing/schematic.dxf"]
 RECORDED_DIR = DATA / "recorded"  # current recordings (prompt PROMPT_VERSION)
 RECORDED_V1_DIR = DATA / "recorded-v1"  # Stage 3 Part A recordings (prompt llm-extract-1), kept for comparison
 SETS = {"test": (TEST_COUNT, testset_id), "reworded": (REWORDED_COUNT, reworded_id)}
+DRAWING_FILES = {"clean": ("drawing/schematic.pdf",),  # the drawing files of each version (Stage 4)
+                 "scanned": ("drawing/schematic_sheet1_scanned.png", "drawing/schematic_sheet2_scanned.png"),
+                 "photo": ("drawing/schematic_sheet1_photo.png", "drawing/schematic_sheet2_photo.png")}
 
 
 class Column(BaseModel):
@@ -152,11 +164,14 @@ def has_recordings(column: Column, folders: list[Path], set_name: str) -> bool:
 def project_values(folder: Path, with_dxf: bool, mode: str = "rules", set_name: str = "test",
                    recorded_dir: Path = RECORDED_DIR, coverage: Coverage | None = None, *, salvage: bool = True,
                    own_prompt: bool = False, prompt_version: str | None = None,
-                   quote_check: QuoteCheckMode = QuoteCheckMode.STRICT) -> list[ExtractedValue]:
+                   quote_check: QuoteCheckMode = QuoteCheckMode.STRICT, drawing_reading: str = "off",
+                   drawing_version: str = "clean", ocr_dpi: int = 300) -> list[ExtractedValue]:
     values: list[ExtractedValue] = []
     for name in UPLOAD:
         if name.endswith(".dxf") and not with_dxf:
             continue
+        if drawing_reading == "ocr" and name.startswith("drawing/") and name not in DRAWING_FILES[drawing_version]:
+            continue  # with OCR on, one drawing version per run (see the module docstring)
         path = folder / name
         data = path.read_bytes()
         provider = None
@@ -171,7 +186,8 @@ def project_values(folder: Path, with_dxf: bool, mode: str = "rules", set_name: 
             provider = make_provider("recorded", recording=recording) if recording else None
         system_prompt = recording.system_prompt if (recording is not None and own_prompt) else None
         analysis = analyse_file(EXTENSIONS[path.suffix.lower()], data, name, provider, system_prompt=system_prompt,
-                                salvage=salvage, quote_check=quote_check)
+                                salvage=salvage, quote_check=quote_check, drawing_reading=drawing_reading,
+                                ocr_dpi=ocr_dpi)
         if coverage is not None and analysis.llm is not None:
             coverage.replies += analysis.llm.replies
             coverage.rescued += sum(v.quote_match == QuoteMatch.WORDS_ON_PAGE for v in analysis.llm.values)
@@ -185,14 +201,15 @@ def project_values(folder: Path, with_dxf: bool, mode: str = "rules", set_name: 
 
 
 def run(folders: list[Path], with_dxf: bool, mode: str = "rules", set_name: str = "test",
-        recorded_dir: Path = RECORDED_DIR, column: Column | None = None) -> tuple[dict[str, Score], float, Coverage]:
+        recorded_dir: Path = RECORDED_DIR, column: Column | None = None,
+        drawing: dict | None = None) -> tuple[dict[str, Score], float, Coverage]:
     grouped: dict[str, Score] = {}
     coverage = Coverage()
-    options: dict = {}
+    options: dict = dict(drawing or {})
     if column is not None:
         recorded_dir = column.recorded_dir
-        options = {"salvage": column.salvage, "own_prompt": column.own_prompt,
-                   "prompt_version": column.prompt_version, "quote_check": column.quote_check}
+        options |= {"salvage": column.salvage, "own_prompt": column.own_prompt,
+                    "prompt_version": column.prompt_version, "quote_check": column.quote_check}
     start = time.perf_counter()
     for folder in folders:
         key = load_answers(folder / "answers.json")
@@ -247,7 +264,13 @@ def main(argv: list[str] | None = None) -> int:
                         help="folder of the current recordings (the v2 column)")
     parser.add_argument("--recorded-v1", type=Path, default=RECORDED_V1_DIR,
                         help="folder of the Stage 3 Part A recordings (the two v1 columns)")
+    parser.add_argument("--drawing-reading", choices=["off", "ocr"], default="off",
+                        help="Stage 4: read drawing PDFs and images by OCR (default off: the Stage 3 numbers)")
+    parser.add_argument("--drawing-version", choices=sorted(DRAWING_FILES), default="clean")
+    parser.add_argument("--ocr-dpi", type=int, choices=[150, 300], default=300)
     args = parser.parse_args(argv)
+    drawing = {"drawing_reading": args.drawing_reading, "drawing_version": args.drawing_version,
+               "ocr_dpi": args.ocr_dpi} if args.drawing_reading == "ocr" else {}
     root = args.root or DATA / "projects" / args.set_name
     full_count, ids = SETS[args.set_name]
     folders = [root / ids(i) for i in range(1, (args.count or full_count) + 1)]
@@ -257,10 +280,12 @@ def main(argv: list[str] | None = None) -> int:
               file=sys.stderr)
         return 2
     title = {"rules": "Rules mode", "llm": "LLM (recorded)", "combined": "Combined rules + LLM (recorded)"}
-    for with_dxf in (True, False):
+    for with_dxf in (False,) if drawing else (True, False):
         what = f"{args.set_name} set, {'with' if with_dxf else 'without'} DXF, {len(folders)} projects"
+        if drawing:
+            what += f", drawing {args.drawing_version} read by OCR at {args.ocr_dpi} dpi"
         if args.mode == "rules":
-            grouped, per_project, _ = run(folders, with_dxf, args.mode, args.set_name)
+            grouped, per_project, _ = run(folders, with_dxf, args.mode, args.set_name, drawing=drawing)
             print(f"## {title[args.mode]}, {what} ({per_project:.2f} s per project)\n")
             print(table(grouped) + "\n")
             continue
@@ -274,7 +299,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"- {column.label}: NOT RUN YET (no recording in {where})")
                 results.append((column, None))
                 continue
-            grouped, _, coverage = run(folders, with_dxf, args.mode, args.set_name, column=column)
+            grouped, _, coverage = run(folders, with_dxf, args.mode, args.set_name, column=column, drawing=drawing)
             if coverage.recorded == 0:
                 print(f"- {column.label}: NOT RUN YET (no recording in {where})")
                 results.append((column, None))

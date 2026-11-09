@@ -38,8 +38,9 @@ HTML = {"accept": "text/html"}
 
 @pytest.fixture
 def client(tmp_path: Path) -> Iterator[TestClient]:
+    # The Stage 2 rules-mode flow: drawings without a text layer stay "not read yet" (no OCR).
     settings = Settings(database_url=f"sqlite:///{(tmp_path / 'app.sqlite').as_posix()}",
-                        storage_dir=tmp_path / "storage", environment="test")
+                        storage_dir=tmp_path / "storage", environment="test", drawing_reading="off")
     with TestClient(create_app(settings)) as test_client:
         yield test_client
 
@@ -94,7 +95,8 @@ def test_showcase_upload_to_docx_on_postgres(tmp_path: Path) -> None:
     url = os.environ.get("DATABASE_URL")
     if not url or check_database(url).state != "ok":
         pytest.skip("DATABASE_URL not set or database not reachable")
-    settings = Settings(database_url=url, storage_dir=tmp_path / "storage", environment="test")
+    settings = Settings(database_url=url, storage_dir=tmp_path / "storage", environment="test",
+                        drawing_reading="off")
     with TestClient(create_app(settings)) as pg_client:
         showcase_flow(pg_client)
 

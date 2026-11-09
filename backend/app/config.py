@@ -46,6 +46,12 @@ class Settings(BaseSettings):
     # Quote check for model values (Stage 3c): "relaxed" also keeps a quote whose words are all on the page
     # (marked, medium confidence at most, never approved in bulk); "strict" is the v2 baseline (one span only).
     quote_check: Literal["relaxed", "strict"] = Field(default="relaxed", description="QUOTE_CHECK")
+    # Drawing reading (Stage 4): "ocr" reads drawing PDFs without a text layer and drawing images with
+    # Tesseract (values: method ocr, medium confidence at most, always reviewed); "off" leaves them
+    # "not read yet", exactly as in Stage 3. OCR_DPI is the resolution the page is read at.
+    drawing_reading: Literal["off", "ocr"] = Field(default="ocr", description="DRAWING_READING")
+    ocr_dpi: Literal[150, 300] = Field(default=300, description="OCR_DPI")
+    tesseract_cmd: str | None = Field(default=None, description="TESSERACT_CMD: the Tesseract program if not on PATH")
 
     @property
     def max_upload_bytes(self) -> int:

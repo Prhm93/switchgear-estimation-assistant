@@ -12,6 +12,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Tesseract OCR (Apache-2.0) for reading drawing PDFs and images (Stage 4), English data only.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng \
+    && rm -rf /var/lib/apt/lists/*
+
 # Dependencies first, so code changes do not reinstall them.
 COPY requirements.txt .
 RUN pip install -r requirements.txt

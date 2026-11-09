@@ -74,7 +74,7 @@ Remove-Item Env:DATABASE_URL
 | 2 Thin slice (rules mode) | Upload to DOCX report with audit log | Done: [report](docs/stage-2.md) |
 | Design v2 | Home page, sidebar app layout, project dashboard, glass design system (look only) | Done: [report](docs/design-v2.md) |
 | 3 LLM extraction | Ollama and recorded modes, quote check, rules vs LLM scores | Done: Part A, 3b (cut-off fix, v2 Colab run and LLM scores) and 3c (relaxed quote check, the app default; strict v2 check kept as the baseline): [report](docs/stage-3.md) |
-| 4 Drawing understanding | OCR, vision reading, symbol detector | Not started |
+| 4 Drawing understanding | OCR, vision reading, symbol detector | In progress: Part A (Tesseract OCR of drawing PDFs and images, 300 dpi default; values marked for review) built and measured per clean, scanned and photo version. Parts B (vision model), C (symbol detector) and D (boxes in the UI) not started: [report](docs/stage-4.md) |
 | 5 Cross-document checks | Conflicts and missing information | Not started |
 | 6 Confidence and review | Approve, edit, reject; approved values only | Not started |
 | 7 Evaluation | One-command evaluation of all test projects | Not started (CI already runs the tests) |
@@ -169,8 +169,10 @@ Only permissive licences are used. AGPL libraries (for example PyMuPDF and Ultra
 | pdfplumber, pdfminer.six | 0.11.10, 20260107 | MIT | App: PDF text and tables per page |
 | htmx | 2.0.4 | Zero-Clause BSD | Partial page updates, vendored (`frontend/static/js/htmx.LICENSE.txt`) |
 | python-multipart | 0.0.33 | Apache-2.0 | App: file uploads |
-| pypdfium2 (PDFium) | 5.14.0 | Apache-2.0 or BSD-3-Clause (PDFium: BSD-3-Clause) | PDF to image, PDF text in tests |
-| Pillow | 13.0.0 | MIT-CMU | Scan and photo effects |
+| pypdfium2 (PDFium) | 5.14.0 | Apache-2.0 or BSD-3-Clause (PDFium: BSD-3-Clause) | PDF to image (generator; app: drawing PDF pages for OCR), PDF text in tests |
+| Pillow | 13.0.0 | MIT-CMU | Scan and photo effects; app: drawing images for OCR |
+| pytesseract | 0.3.13 | Apache-2.0 | App: calls Tesseract for drawing OCR (Stage 4). Declares Python up to 3.12 only; tested working on 3.14.4 |
+| Tesseract OCR (with the `eng` data) | 5.4.0 on the laptop (UB Mannheim build); Debian's `tesseract-ocr` package in Docker and CI | Apache-2.0 | App: drawing OCR, a separate program, not a Python package |
 | numpy | 2.5.4 | BSD-3-Clause | Scan and photo effects, homographies |
 | PostgreSQL | 16 | PostgreSQL Licence | Database (Docker image) |
 | pgvector | 0.8.7 | PostgreSQL Licence | Vector search extension |
@@ -186,7 +188,7 @@ Transitive dependencies (for example AnyIO, Click, MarkupSafe, Mako, scramp, typ
 
 ## Limits
 
-- **Rules mode only.** Extraction uses rules written for the generator's wording, so the baseline (F1 1.000 with the DXF) measures template coverage, not generalisation. Drawings are read from the DXF only; drawing PDFs and images are marked "not read yet" until OCR in Stage 4. See [docs/stage-2.md](docs/stage-2.md#known-limits).
+- **Rules mode only.** Extraction uses rules written for the generator's wording, so the baseline (F1 1.000 with the DXF) measures template coverage, not generalisation. Drawing PDFs and images are read by OCR since Stage 4 Part A; OCR values are medium confidence at most and always need the engineer's review, and reworded rating styles are not read yet. See [docs/stage-2.md](docs/stage-2.md#known-limits) and [docs/stage-4.md](docs/stage-4.md#6-known-limits).
 - **Synthetic data is cleaner than real data.** See [docs/stage-1.md](docs/stage-1.md#limits) for how it differs.
 - **Engine, small tests.** Real-model results come from a few questions on four notes. They show the parts work, not how often.
 - **Engine, refusal gap.** The search always returns the nearest note, even when no note fits.

@@ -135,8 +135,10 @@ def process_document(sessions: sessionmaker[Session], storage: Storage, document
             data = storage.read(doc.storage_key)
             provider, model_note = model_provider(settings, data)
             quote_check = QuoteCheckMode(settings.quote_check if settings else QuoteCheckMode.RELAXED)
+            drawing = {"drawing_reading": settings.drawing_reading, "ocr_dpi": settings.ocr_dpi,
+                       "tesseract_cmd": settings.tesseract_cmd} if settings else {}
             analysis = analyse_file(FileType(doc.file_type), data, doc.original_name, provider,
-                                    quote_check=quote_check)
+                                    quote_check=quote_check, **drawing)
             del data  # the original stays in storage; keep memory low
             doc.status = DocumentStatus.EXTRACTING.value
             doc.kind = analysis.kind.value
@@ -158,7 +160,8 @@ def process_document(sessions: sessionmaker[Session], storage: Storage, document
                     flags=[f.value for f in v.flags]))
             doc.status = analysis.read.status.value
             audit(session, "extract", "document", doc.id, doc.project_id, kind=doc.kind, status=doc.status,
-                  values=len(analysis.values), method="rules+llm" if analysis.llm else "rules",
+                  values=len(analysis.values),
+                  method="ocr" if analysis.drawings else ("rules+llm" if analysis.llm else "rules"),
                   model_run=analysis.model_run)
             if analysis.llm and analysis.llm.rejected:
                 # Every rejected model value is logged with its reason; none of them is stored as a value.
