@@ -11,16 +11,17 @@ import logging
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
+from backend.app import enquiry, labels
 from backend.app import normalise as norm
 from backend.app.catalogue import CatalogueItem, load_catalogue
 from backend.app.config import Settings
 from backend.app.estimate import ApprovedValue, Draft, build, load_rules
 from backend.app.llm.quote import QuoteCheckMode
 from backend.app.models import (AuditEvent, CatalogueItemRow, Document, Estimate, EstimateLineRow,
-                                ExtractedValueRow, Match, Page, Project, Review)
+                                ExtractedValueRow, Match, Page, Project, Review, utcnow)
 from backend.app.pipeline import analyse_file
 from backend.app.recordings import RecordingMismatch, find_recording
 from backend.app.schemas import DocumentStatus, MatchStatus, ReviewStatus
@@ -29,6 +30,9 @@ from estimation_assistant.providers import ModelProvider, make_provider
 
 log = logging.getLogger(__name__)
 DEFAULT_ACTOR = "engineer"
+DEFAULT_NAME = "New enquiry"  # until the engineer names it or its specification gives a title
+SAMPLE_NAME = "Sample enquiry"
+SAMPLE_FILES = ["specification.pdf", "requirements.docx", "drawing/schematic.dxf", "drawing/schematic.pdf"]
 
 
 class ReviewError(ValueError):
@@ -39,6 +43,8 @@ def audit(session: Session, action: str, entity: str, entity_id: Any = None, pro
           actor: str = DEFAULT_ACTOR, **detail: Any) -> None:
     session.add(AuditEvent(project_id=project_id, actor=actor, action=action, entity=entity,
                            entity_id=None if entity_id is None else str(entity_id), detail=detail))
+    if project_id is not None:  # every logged action moves the enquiry's "last updated"
+        session.execute(update(Project).where(Project.id == project_id).values(updated_at=utcnow()))
 
 
 # --- catalogue --------------------------------------------------------------------------------
@@ -67,16 +73,106 @@ def catalogue_items(session: Session) -> list[CatalogueItem]:
 
 # --- projects and uploads -----------------------------------------------------------------------
 
-def create_project(session: Session, name: str, reference: str | None = None) -> Project:
-    name = " ".join(name.split())
-    if not name:
-        raise ValueError("A project needs a name.")
-    project = Project(name=name[:200], reference=(reference or "").strip()[:100] or None)
+def create_project(session: Session, name: str = "", reference: str | None = None,
+                   is_sample: bool = False) -> Project:
+    """A new enquiry. The name is optional: an unnamed one is named from its specification once read."""
+    name = " ".join((name or "").split()) or DEFAULT_NAME
+    project = Project(name=name[:200], reference=(reference or "").strip()[:100] or None, is_sample=is_sample)
     session.add(project)
     session.flush()
-    audit(session, "create", "project", project.id, project.id, name=project.name)
+    audit(session, "create", "project", project.id, project.id, name=project.name, sample=is_sample or None)
     session.commit()
     return project
+
+
+def rename_project(session: Session, project: Project, name: str, reference: str | None = None) -> Project:
+    name = " ".join((name or "").split())
+    if not name:
+        raise ValueError("Type a name for the enquiry.")
+    old = project.name
+    project.name = name[:200]
+    if reference is not None:
+        project.reference = reference.strip()[:100] or None
+    audit(session, "rename", "project", project.id, project.id, name=project.name, old_name=old,
+          reference=project.reference)
+    session.commit()
+    return project
+
+
+def archive_project(session: Session, project: Project, archived: bool = True) -> Project:
+    """Hide an enquiry from the list (or bring it back). Nothing is deleted."""
+    project.archived_at = utcnow() if archived else None
+    audit(session, "archive" if archived else "unarchive", "project", project.id, project.id)
+    session.commit()
+    return project
+
+
+def _delete_values(session: Session, value_ids: list[int]) -> None:
+    if value_ids:
+        session.execute(delete(Review).where(Review.value_id.in_(value_ids)))
+        session.execute(delete(ExtractedValueRow).where(ExtractedValueRow.id.in_(value_ids)))
+
+
+def delete_project(session: Session, storage: Storage, project: Project) -> None:
+    """Delete an enquiry with its files, values, quotes and decisions. The audit entry keeps what was removed.
+
+    The rows are deleted explicitly (not left to the database's cascade) so that it works the same on
+    PostgreSQL and SQLite. Past activity lines stay in the log, no longer tied to an enquiry.
+    """
+    pid, name, keys = project.id, project.name, [d.storage_key for d in project.documents]
+    counts = {"documents": len(keys), "values": len(project.values)}
+    session.execute(delete(Review).where(Review.project_id == pid))
+    estimates = list(session.scalars(select(Estimate.id).where(Estimate.project_id == pid)))
+    if estimates:
+        session.execute(delete(EstimateLineRow).where(EstimateLineRow.estimate_id.in_(estimates)))
+        session.execute(delete(Estimate).where(Estimate.id.in_(estimates)))
+    session.execute(delete(Match).where(Match.project_id == pid))
+    session.execute(update(AuditEvent).where(AuditEvent.project_id == pid).values(project_id=None))
+    session.delete(project)
+    audit(session, "delete", "project", pid, None, name=name, **counts)
+    session.commit()
+    for key in keys:  # after the commit: a failed delete leaves a stray file, never a row without its file
+        try:
+            storage.delete(key)
+        except OSError:
+            log.warning("stored file %s of deleted enquiry %s could not be removed", key, pid)
+
+
+def delete_document(session: Session, storage: Storage, doc: Document) -> None:
+    """Delete one file with its pages and values (and the decisions made on them)."""
+    key, pid = doc.storage_key, doc.project_id
+    ids = list(session.scalars(select(ExtractedValueRow.id).where(ExtractedValueRow.document_id == doc.id)))
+    _delete_values(session, ids)
+    audit(session, "document_delete", "document", doc.id, pid, name=doc.original_name, sha256=doc.sha256,
+          values=len(ids))
+    session.delete(doc)
+    session.commit()
+    try:
+        storage.delete(key)
+    except OSError:
+        log.warning("stored file %s could not be removed", key)
+
+
+def reset_document(session: Session, doc: Document) -> None:
+    """Prepare "Read again": drop the file's pages and values so it can be read with today's settings."""
+    ids = list(session.scalars(select(ExtractedValueRow.id).where(ExtractedValueRow.document_id == doc.id)))
+    _delete_values(session, ids)
+    session.execute(delete(Page).where(Page.document_id == doc.id))
+    doc.status, doc.note, doc.model_run, doc.read_method = DocumentStatus.UPLOADED.value, None, None, None
+    audit(session, "read_again", "document", doc.id, doc.project_id, name=doc.original_name, values_removed=len(ids))
+    session.commit()
+    session.expire_all()
+
+
+def create_sample(session: Session, storage: Storage, settings: Settings) -> tuple[Project, list[int]]:
+    """A fresh sample enquiry from the committed showcase files. Returns it and the ids of its files to read."""
+    missing = [n for n in SAMPLE_FILES if not (settings.sample_dir / n).is_file()]
+    if missing:
+        raise FileNotFoundError(f"Sample files not found: {', '.join(missing)}")
+    project = create_project(session, SAMPLE_NAME, is_sample=True)
+    ids = [add_document(session, storage, settings, project, name, (settings.sample_dir / name).read_bytes()).id
+           for name in SAMPLE_FILES]
+    return project, ids
 
 
 def add_document(session: Session, storage: Storage, settings: Settings, project: Project, filename: str,
@@ -102,13 +198,17 @@ def add_document(session: Session, storage: Storage, settings: Settings, project
     return doc
 
 
-def model_provider(settings: Settings | None, data: bytes) -> tuple[ModelProvider | None, str | None]:
+def model_provider(settings: Settings | None, data: bytes,
+                   sample: bool = False) -> tuple[ModelProvider | None, str | None]:
     """The provider for this file in the configured mode, and a note when the mode cannot be used.
 
     Recorded mode uses only a recording whose SHA-256 equals the uploaded bytes;
-    with none, the file is read by the rules alone and the note says why.
+    with none, the file is read by the rules alone and the note says why. A file of the sample
+    enquiry is read in recorded mode whatever MODEL_MODE says (normal uploads follow MODEL_MODE).
     """
     mode = settings.model_mode if settings else "rules"
+    if sample and settings is not None and mode == "rules":
+        mode = "recorded"
     if mode == "rules":
         return None, None
     if mode == "recorded":
@@ -133,8 +233,10 @@ def process_document(sessions: sessionmaker[Session], storage: Storage, document
         session.commit()
         try:
             data = storage.read(doc.storage_key)
-            provider, model_note = model_provider(settings, data)
-            quote_check = QuoteCheckMode(settings.quote_check if settings else QuoteCheckMode.RELAXED)
+            sample = bool(session.scalar(select(Project.is_sample).where(Project.id == doc.project_id)))
+            provider, model_note = model_provider(settings, data, sample=sample)
+            # The sample enquiry always shows the app's default, the relaxed quote check.
+            quote_check = QuoteCheckMode(settings.quote_check if settings and not sample else QuoteCheckMode.RELAXED)
             drawing = {"drawing_reading": settings.drawing_reading, "ocr_dpi": settings.ocr_dpi,
                        "tesseract_cmd": settings.tesseract_cmd} if settings else {}
             analysis = analyse_file(FileType(doc.file_type), data, doc.original_name, provider,
@@ -147,6 +249,10 @@ def process_document(sessions: sessionmaker[Session], storage: Storage, document
                      f"Model run failed, read by the rules only: {analysis.llm_error}" if analysis.llm_error else None]
             doc.note = " ".join(n for n in notes if n) or None
             doc.model_run = analysis.model_run
+            if analysis.read.status == DocumentStatus.DONE:
+                doc.read_method = "ocr" if analysis.drawings else ("rules+model" if analysis.llm else "rules")
+            if analysis.kind.value == "specification" and analysis.read.pages:
+                _name_from_specification(session, doc.project_id, analysis.read.pages[0].text)
             for page in analysis.read.pages:
                 session.add(Page(document_id=doc.id, number=page.number, text=page.text, tables=page.tables))
             for v in analysis.values:
@@ -172,6 +278,8 @@ def process_document(sessions: sessionmaker[Session], storage: Storage, document
                 audit(session, "instruction_text_flagged", "document", doc.id, doc.project_id,
                       flags=[f.model_dump() for f in analysis.flags])
             session.commit()
+            if settings is not None:
+                refresh_quote(session, doc.project_id, settings)
         except Exception as error:  # a broken file must not leave the card spinning
             session.rollback()
             doc = session.get(Document, document_id)
@@ -180,6 +288,18 @@ def process_document(sessions: sessionmaker[Session], storage: Storage, document
             audit(session, "extract_failed", "document", doc.id, doc.project_id, error=type(error).__name__)
             session.commit()
             log.exception("processing document %s failed", document_id)
+
+
+def _name_from_specification(session: Session, project_id: int, first_page: str) -> None:
+    """Name an enquiry the engineer left unnamed from its specification's title, and take its reference."""
+    project = session.get(Project, project_id)
+    if project is None or project.name not in (DEFAULT_NAME, SAMPLE_NAME):
+        return
+    name, reference = labels.title_from_specification(first_page)
+    if name:
+        project.name = f"{SAMPLE_NAME}: {name}"[:200] if project.is_sample else name
+    if reference and not project.reference:
+        project.reference = reference
 
 
 # --- review -------------------------------------------------------------------------------------
@@ -226,6 +346,57 @@ def review_value(session: Session, value_id: int, action: str, new_value: str | 
           old=old, new=new, reason=reason)
     session.commit()
     return row
+
+
+def resolve_field(session: Session, project_id: int, field: str, keep_value_id: int | None = None,
+                  typed_value: str | None = None, typed_unit: str | None = None, reason: str | None = None,
+                  actor: str = DEFAULT_ACTOR) -> None:
+    """Settle a conflict in one step: keep one source's value ("Use this") or a typed one.
+
+    The kept value (and any other source giving the same value) is approved; every other value of
+    the field is rejected with the reason. Each change is its own review and audit entry.
+    """
+    rows = [r for r in session.scalars(select(ExtractedValueRow).where(
+        ExtractedValueRow.project_id == project_id, ExtractedValueRow.field == field).order_by(ExtractedValueRow.id))
+        if r.review_status != ReviewStatus.REJECTED.value]
+    if not rows:
+        raise ReviewError("No such field.")
+    reason = (reason or "").strip() or None
+    if keep_value_id is not None:
+        keep = next((r for r in rows if r.id == keep_value_id), None)
+        if keep is None or keep.value is None:
+            raise ReviewError("That value cannot be used.")
+        kept_value, kept_unit = enquiry.shown(keep)
+        chosen = (norm.value_key(kept_value), norm.unit(kept_unit))
+        why = reason or f"Other source chosen: {labels.display(kept_value, kept_unit)}"
+        for r in rows:
+            value, unit = enquiry.shown(r)
+            if r.value is not None and (norm.value_key(value), norm.unit(unit)) == chosen:
+                if r.review_status == ReviewStatus.EXTRACTED.value:
+                    review_value(session, r.id, "approve", reason=reason, actor=actor)
+            else:
+                review_value(session, r.id, "reject", reason=why, actor=actor)
+        return
+    if parse_input(typed_value or "") is None:
+        raise ReviewError("Type a value, or choose one of the sources.")
+    first = rows[0]
+    review_value(session, first.id, "edit", typed_value, typed_unit, reason, actor)
+    typed = labels.display(first.approved_value, first.approved_unit)
+    for r in rows[1:]:
+        review_value(session, r.id, "reject", reason=reason or f"Engineer typed another value: {typed}", actor=actor)
+
+
+def accept_all(session: Session, project: Project, actor: str = DEFAULT_ACTOR) -> int:
+    """Approve every value "Accept all" may take (see :func:`backend.app.enquiry.bulk_acceptable`).
+
+    One review and one audit entry per value, each with the actor, plus one summary entry.
+    """
+    rows = enquiry.bulk_acceptable(enquiry.review_groups(project))
+    for v in rows:
+        review_value(session, v.id, "approve", reason="approved with all agreeing values", actor=actor)
+    audit(session, "approve_agreed", "project", project.id, project.id, actor=actor, approved=len(rows))
+    session.commit()
+    return len(rows)
 
 
 def approved_values(session: Session, project_id: int) -> list[ApprovedValue]:
@@ -311,6 +482,17 @@ def build_estimate(session: Session, project_id: int, settings: Settings, actor:
           pending_substitutes=len(draft.substitutes_to_review), approved_values=len(values))
     session.commit()
     return est
+
+
+def refresh_quote(session: Session, project_id: int, settings: Settings, actor: str = DEFAULT_ACTOR) -> Estimate | None:
+    """Rebuild the quote after anything it depends on changed. A failure is logged, never raised:
+    the decision that triggered it is already saved, and the Quote screen says it is out of date."""
+    try:
+        return build_estimate(session, project_id, settings, actor)
+    except Exception:
+        session.rollback()
+        log.exception("rebuilding the quote of enquiry %s failed", project_id)
+        return None
 
 
 def review_match(session: Session, match_id: int, action: str, reason: str | None = None,

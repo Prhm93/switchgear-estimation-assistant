@@ -1,74 +1,26 @@
-{#- The app: the sidebar on the left (a top bar below 900px) and the page on the right.
-    Child templates set `nav` (the active sidebar item) and fill the blocks
-    crumbs, actions, heading and content. The sidebar context (project switcher,
-    review count, environment) comes from web.render(). -#}
+{#- The app: a top bar with two links, the page, and a small footer.
+    Child templates set `nav` ("enquiries" or "new") and fill the blocks heading and content. -#}
 {%- extends "base.html" -%}
 {%- from "macros.html" import icon, brand_mark with context -%}
 
 {%- block body %}
-<div class="app">
-  <aside class="sidebar" aria-label="Workspace">
+<header class="topbar">
+  <div class="topbar__inner">
     <a class="brand" href="/">{{ brand_mark(24) }}<span class="brand__name">Estimation Assistant</span></a>
-
-    {%- if project is defined and project %}
-    <details class="switcher">
-      <summary aria-label="Switch project: {{ project.name }}">
-        <span class="switcher__badge" aria-hidden="true">{{ project_initials }}</span>
-        <span class="switcher__text">
-          <span class="switcher__name">{{ project.name }}</span>
-          <span class="switcher__sub">{{ project.reference or "No reference" }}</span>
-        </span>
-        {{ icon("chevrons", "sm") }}
-      </summary>
-      <nav class="switcher__menu" aria-label="Projects">
-        {%- for p in switch_projects %}
-        <a href="/projects/{{ p.id }}"{% if p.id == project.id %} aria-current="true"{% endif %}>{{ p.name }}</a>
-        {%- endfor %}
-        <a href="/projects">All projects</a>
-      </nav>
-    </details>
-    {%- endif %}
-
-    <nav class="nav" aria-label="Workspace">
-      <div class="nav__label">Workspace</div>
-      {%- if project is defined and project %}
-      {%- for key, label, glyph, href in [("dashboard", "Dashboard", "dashboard", ""), ("upload", "Documents", "folder", "/upload"),
-                                         ("analysis", "Analysis", "analysis", "/analysis"), ("review", "Review", "review", "/review"),
-                                         ("estimate", "Estimate", "estimate", "/estimate"), ("audit", "Audit log", "audit", "/audit")] %}
-      <a class="nav__item" href="/projects/{{ project.id }}{{ href }}"{% if nav == key %} aria-current="page"{% endif %}>
-        {{- icon(glyph) }}{{ label }}
-        {%- if key == "review" and review_count %}<span class="nav__count mono" aria-label="{{ review_count }} to review">{{ review_count }}</span>{% endif -%}
-      </a>
-      {%- endfor %}
-      {%- else %}
-      <a class="nav__item" href="/projects"{% if nav == "projects" %} aria-current="page"{% endif %}>{{ icon("dashboard") }}Projects</a>
-      <a class="nav__item" href="/projects/new"{% if nav == "new" %} aria-current="page"{% endif %}>{{ icon("upload") }}New project</a>
-      {%- endif %}
-      <a class="nav__item" href="/health"{% if nav == "health" %} aria-current="page"{% endif %}>{{ icon("check") }}System check</a>
+    <nav class="topbar__nav" aria-label="Main">
+      <a class="topbar__link" href="/enquiries"{% if nav is defined and nav == "enquiries" %} aria-current="page"{% endif %}>Enquiries</a>
+      <a class="btn btn--primary btn--sm" href="/enquiries/new"{% if nav is defined and nav == "new" %} aria-current="page"{% endif %}>{{ icon("plus", "sm") }}New enquiry</a>
     </nav>
+  </div>
+</header>
 
-    <div>
-      <div class="nav__label">Reading mode</div>
-      <div class="mode-panel">
-        <div class="mode-panel__row"><span>Rules</span><span class="mode-panel__live">&#9679; live</span></div>
-        {#- The real recorded (or live) run label when a document of this project was read with one. -#}
-        <div class="mode-panel__row"><span>Model run</span><span>{% if model_runs %}{{ model_runs | join("; ") }}{% else %}none{% endif %}</span></div>
-      </div>
-    </div>
+<main id="main" class="page{% block page_class %}{% endblock %}">
+  {% block heading %}{% endblock %}
+  {% block content %}{% endblock %}
+</main>
 
-    <div class="sidebar__foot">
-      <div class="sidebar__user"><span class="avatar" aria-hidden="true">EN</span>Engineer</div>
-      <div class="sidebar__env">Environment: {{ environment }}</div>
-    </div>
-  </aside>
-
-  <main id="main" class="app-main">
-    <div class="topline">
-      <nav class="crumbs" aria-label="Breadcrumb">{% block crumbs %}{% endblock %}</nav>
-      <div class="topline__actions">{% block actions %}{% endblock %}</div>
-    </div>
-    {% block heading %}{% endblock %}
-    {% block content %}{% endblock %}
-  </main>
-</div>
+<footer class="footer">
+  <span>Demonstration with synthetic data only.</span>
+  <a href="/health">System status</a>
+</footer>
 {% endblock -%}

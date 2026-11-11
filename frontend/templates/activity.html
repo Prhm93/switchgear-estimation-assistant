@@ -1,0 +1,35 @@
+{%- extends "layout_enquiry.html" -%}
+{%- from "macros.html" import pager with context -%}
+
+{%- block step %}
+<h2 class="block-title">Activity</h2>
+<div class="filters gap-top" role="group" aria-label="Filter activity">
+  {%- for key, label in filters.items() %}
+  <a href="?show={{ key }}"{% if key == show %} aria-current="true"{% endif %}>{{ label }}</a>
+  {%- endfor %}
+</div>
+<p class="small muted gap-top">{{ total }} entr{{ "ies" if total != 1 else "y" }}, newest first</p>
+<ol class="activity-list">
+  {%- for r in rows %}
+  {%- set e = r.event %}
+  <li class="activity-line">
+    <span class="activity-line__when mono">{{ short_date(e.at) }} {{ e.at.strftime("%H:%M") }}</span>
+    <span class="activity-line__what">{{ r.text }}</span>
+    <span class="activity-line__who small muted">{{ e.actor }}</span>
+    <details class="tech">
+      <summary class="small muted">Details</summary>
+      <dl class="tech__list small">
+        <div><dt>Action</dt><dd class="mono">{{ e.action }}</dd></div>
+        <div><dt>Record</dt><dd class="mono">{{ e.entity }}{% if e.entity_id %} {{ e.entity_id }}{% endif %}</dd></div>
+        {%- for key, value in e.detail.items() if value is not none and key not in ("rejected", "flags") %}
+        <div><dt>{{ key | replace("_", " ") }}</dt><dd class="mono">{{ value }}</dd></div>
+        {%- endfor %}
+      </dl>
+    </details>
+  </li>
+  {%- else %}
+  <li class="muted">Nothing here yet.</li>
+  {%- endfor %}
+</ol>
+{{ pager(page, pages, "?show=" ~ show ~ "&page=") }}
+{% endblock -%}

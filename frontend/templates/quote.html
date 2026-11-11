@@ -1,0 +1,103 @@
+{%- extends "layout_enquiry.html" -%}
+{%- from "macros.html" import icon with context -%}
+
+{%- block step %}
+{%- if out_of_date %}
+<form class="alert alert--warn row" method="post" action="/enquiries/{{ project.id }}/quote">
+  <span>This quote is out of date: something changed after it was built.</span>
+  <button class="btn btn--secondary btn--sm" type="submit">Rebuild now</button>
+</form>
+{%- endif %}
+
+{%- if not estimate %}
+<p class="lead">No quote yet. It is built from the values you approve on <a href="/enquiries/{{ project.id }}/check">Check</a>.</p>
+{%- else %}
+<section class="total" aria-label="Draft total">
+  <div>
+    <div class="total__label">Draft total</div>
+    <div class="total__value mono">{{ estimate.currency }} {{ money(estimate.total) }}</div>
+    <div class="small muted">Built {{ short_date(estimate.created_at) }} from approved values and catalogue prices only.</div>
+  </div>
+  <dl class="total__parts">
+    <div><dt>Materials</dt><dd class="mono">{{ money(estimate.materials) }}</dd></div>
+    <div><dt>Labour <span class="muted">({{ estimate.labour_hours.normalize() }} h at {{ money(estimate.labour_rate) }})</span></dt><dd class="mono">{{ money(estimate.labour) }}</dd></div>
+    <div><dt>Margin <span class="muted">({{ estimate.margin_percent.normalize() }} %)</span></dt><dd class="mono">{{ money(estimate.margin) }}</dd></div>
+  </dl>
+  <div class="total__actions">
+    <a class="btn btn--primary" href="/enquiries/{{ project.id }}/quote/report.docx">{{ icon("download", "sm") }}Export Word report</a>
+  </div>
+</section>
+
+{%- if blockers and found.approved %}
+<section class="section-block" aria-labelledby="blocked-title">
+  <h2 id="blocked-title" class="block-title">Not in the quote yet</h2>
+  <ul class="plain-list">
+    {%- for b in blockers %}
+    <li class="blocked"><strong>{{ b.line }}</strong>
+      {%- for w in b.waits %}
+      <a href="/enquiries/{{ project.id }}/check#f-{{ w.field }}">{{ "Waiting for your decision on" if w.kind == "conflict" else "Waiting for an approved" }} {{ w.label }}</a>{% if not loop.last %}; {% endif %}
+      {%- endfor %}
+    </li>
+    {%- endfor %}
+  </ul>
+</section>
+{%- endif %}
+
+{%- if estimate.pending %}
+<section class="section-block" aria-labelledby="subs-title">
+  <h2 id="subs-title" class="block-title">Substitute parts to approve</h2>
+  {%- for s in estimate.pending %}
+  <article class="decision">
+    <div class="decision__head"><h3 class="decision__title">{{ s.description }}</h3><span class="chip chip--review">Substitute, needs review</span></div>
+    <p class="small"><span class="mono">{{ s.code }}</span> <span class="muted">{{ s.reason }}</span></p>
+    <div class="row">
+      <form method="post" action="/matches/{{ s.match_id }}/approve"><button class="btn btn--tonal btn--sm" type="submit">Approve substitute</button></form>
+      <details class="action-form"><summary class="btn btn--ghost btn--sm">Reject</summary>
+        <form method="post" action="/matches/{{ s.match_id }}/reject" class="inline-form">
+          <label class="field field--inline"><span class="field__label">Why</span><input class="input" name="reason" required></label>
+          <button class="btn btn--secondary btn--sm" type="submit">Reject substitute</button>
+        </form></details>
+    </div>
+  </article>
+  {%- endfor %}
+</section>
+{%- endif %}
+
+{%- if estimate.unmatched %}
+<section class="section-block" aria-labelledby="unmatched-title">
+  <h2 id="unmatched-title" class="block-title">No catalogue part, not priced</h2>
+  <ul class="plain-list">{% for u in estimate.unmatched %}<li>{{ u.description }} <span class="small muted">{{ u.reason }}</span></li>{% endfor %}</ul>
+</section>
+{%- endif %}
+
+<section class="section-block" aria-labelledby="lines-title">
+  <h2 id="lines-title" class="block-title">Line items</h2>
+  {%- if estimate.lines %}
+  <div class="table-wrap">
+  <table class="data-table">
+    <caption class="visually-hidden">Quote lines</caption>
+    <thead><tr>
+      <th scope="col">Part</th><th scope="col">Description</th><th scope="col" class="num">Qty</th>
+      <th scope="col" class="num">Unit price</th><th scope="col" class="num">Materials</th><th scope="col" class="num">Labour h</th>
+    </tr></thead>
+    <tbody>
+      {%- for ln in estimate.lines %}
+      <tr>
+        <td class="mono">{{ ln.code }}</td>
+        <td>{{ ln.description }}
+          {%- for r in ln.substitute_reasons %}<span class="data-table__sub">Approved substitute: {{ r }}</span>{% endfor %}</td>
+        <td class="num">{{ ln.quantity.normalize() }}{% if ln.unit != "each" %} {{ ln.unit }}{% endif %}</td>
+        <td class="num">{{ money(ln.unit_price) }}</td>
+        <td class="num">{{ money(ln.materials) }}</td>
+        <td class="num">{{ ln.labour_hours.normalize() }}</td>
+      </tr>
+      {%- endfor %}
+    </tbody>
+  </table>
+  </div>
+  {%- else %}
+  <p class="muted">No line yet: nothing is approved. Start on <a href="/enquiries/{{ project.id }}/check">Check</a>.</p>
+  {%- endif %}
+</section>
+{%- endif %}
+{% endblock -%}

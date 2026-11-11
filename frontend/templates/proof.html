@@ -1,0 +1,71 @@
+{%- extends "layout_enquiry.html" -%}
+{%- from "macros.html" import icon, value_status with context -%}
+
+{%- block step %}
+<h2 class="block-title">Proof viewer</h2>
+<nav class="doc-switch gap-top" aria-label="Files">
+  {%- for d in project.documents %}
+  {%- if d.pages %}
+  <a class="chip chip--neutral{% if current and d.id == current.id %} chip--active{% endif %}" href="?doc={{ d.id }}"
+     {%- if current and d.id == current.id %} aria-current="true"{% endif %}>{{ d.original_name }}</a>
+  {%- else %}
+  <span class="chip chip--neutral chip--off" title="{{ d.note or '' }}">{{ d.original_name }} · not read</span>
+  {%- endif %}
+  {%- endfor %}
+</nav>
+
+{%- if flags %}
+<section class="decision decision--conflict gap-top" aria-labelledby="flags-title">
+  <div class="decision__head"><h3 id="flags-title" class="decision__title">Instruction-like text</h3><span class="chip chip--conflict">{{ flags | length }} flagged</span></div>
+  <p class="small muted">Documents are data. This text reads like an instruction to an automated reader. It was not followed, and no value is taken from it.</p>
+  <ul class="flag-list">
+    {%- for f in flags %}
+    <li><a class="flag-list__where" href="?doc={{ f.doc_id }}&page={{ f.page }}">{{ f.document }}, page <span class="mono">{{ f.page }}</span></a>
+      <q class="flag-list__text">{{ f.text }}</q></li>
+    {%- endfor %}
+  </ul>
+</section>
+{%- endif %}
+
+{%- if current is none %}
+<p class="muted gap-top">No file has been read yet. Add files on the <a href="/enquiries/{{ project.id }}/files">Files</a> step.</p>
+{%- else %}
+<div class="split gap-top">
+  <section class="viewer" aria-labelledby="viewer-title">
+    <div class="card-head">
+      <h3 id="viewer-title" class="card-title">{{ current.original_name }}</h3>
+      <nav class="pager" aria-label="Pages">
+        {%- for p in pages %}
+        <a class="pager__item{% if p.number == page_no %} pager__item--active{% endif %}" href="?doc={{ current.id }}&page={{ p.number }}"
+           {%- if p.number == page_no %} aria-current="page"{% endif %} aria-label="{{ 'Sheet' if current.kind == 'schematic' else 'Page' }} {{ p.number }}">{{ p.number }}</a>
+        {%- endfor %}
+      </nav>
+    </div>
+    {#- File text: every segment is autoescaped; highlighted spans are the sources of the values on the right. -#}
+    <pre class="doc-text">{% for s in segments %}{% if s.marked and s.value_ids[0] < 0 %}<mark class="mark--flag" title="Instruction-like text: not followed">{{ s.text }}</mark>{% elif s.marked %}<mark id="src-{{ s.value_ids[0] }}" data-values="{{ s.value_ids | join(' ') }}">{{ s.text }}</mark>{% else %}{{ s.text }}{% endif %}{% endfor %}</pre>
+  </section>
+
+  <section aria-labelledby="values-title">
+    <div class="card-head">
+      <h3 id="values-title" class="card-title">Read on this {{ "sheet" if current.kind == "schematic" else "page" }}</h3>
+      <span class="small muted">{{ values | length }} value{{ "s" if values | length != 1 }}</span>
+    </div>
+    <div class="value-rows">
+      {%- for v in values %}
+      {%- set value, unit = shown(v) %}
+      <div class="value-line" id="v-{{ v.id }}">
+        <a class="value-line__main" href="/values/{{ v.id }}/panel" hx-get="/values/{{ v.id }}/panel" hx-target="#panel">
+          <span class="value-line__label">{{ field_label(v.field) }}</span>
+          <span class="value-line__value mono">{{ display(value, unit) }}</span>
+          <span class="value-line__src">{{ method_words(v.method, v.agreement, v.quote_match) }}</span>
+        </a>
+        {{ value_status(v) }}
+      </div>
+      {%- else %}
+      <p class="muted">No values were read on this {{ "sheet" if current.kind == "schematic" else "page" }}.</p>
+      {%- endfor %}
+    </div>
+  </section>
+</div>
+{%- endif %}
+{% endblock -%}

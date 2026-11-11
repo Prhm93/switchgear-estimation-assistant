@@ -58,11 +58,11 @@ REQUIRED_PAIRS: tuple[ContrastPair, ...] = tuple(
         ("text-nav", "header-solid", TEXT_AA, "site navigation"),
         ("text-nav", "header-glow-solid", TEXT_AA, "site navigation where the glow is brightest"),
         ("text", "header-glow-solid", TEXT_AA, "product name in the header over the glow"),
-        ("text", "sidebar-solid", TEXT_AA, "sidebar brand and project name"),
-        ("text-soft", "sidebar-solid", TEXT_AA, "sidebar navigation"),
+        ("text", "sidebar-solid", TEXT_AA, "product name in the top bar"),
+        ("text-soft", "sidebar-solid", TEXT_AA, "top bar link"),
         ("text-muted", "sidebar-solid", TEXT_AA, "sidebar environment line"),
         ("label", "sidebar-solid", TEXT_AA, "sidebar section labels"),
-        ("text", "nav-active-solid", TEXT_AA, "selected sidebar item"),
+        ("text", "nav-active-solid", TEXT_AA, "selected top bar link, menu entry hover"),
         ("text", "veil-solid", TEXT_AA, "project switcher, glass button"),
         ("text-soft", "veil-solid", TEXT_AA, "hero pill"),
         ("count-text", "count-solid", TEXT_AA, "review count in the sidebar"),
@@ -130,7 +130,25 @@ REQUIRED_PAIRS: tuple[ContrastPair, ...] = tuple(
         ("focus", "bg", NON_TEXT_AA, "keyboard focus ring"),
         ("focus", "glass-solid", NON_TEXT_AA, "keyboard focus ring in cards"),
         ("focus", "deep-solid", NON_TEXT_AA, "keyboard focus ring in rows"),
-        ("focus", "sidebar-solid", NON_TEXT_AA, "keyboard focus ring in the sidebar"),
+        ("focus", "sidebar-solid", NON_TEXT_AA, "keyboard focus ring in the top bar"),
+        # The app screens (Stage UX): rows, chips and tabs directly on the page.
+        # Rows on the page take the glass tone (text, chips and marks on glass-solid are checked above).
+        ("text", "veil-page-solid", TEXT_AA, "glass button and step number on the page"),
+        ("text-soft", "veil-page-solid", TEXT_AA, "file count on the Files tab"),
+        ("text", "veil-hover-page-solid", TEXT_AA, "glass button on the page, hover"),
+        ("text", "tonal-page-solid", TEXT_AA, "tonal button on the page"),
+        ("text", "active-page-solid", TEXT_AA, "selected filter on the page"),
+        ("count-text", "count-page-solid", TEXT_AA, "count on the Check tab"),
+        ("label-table", "bg", TEXT_AA, "table headings and panel labels on the page"),
+        ("text-soft", "bg", TEXT_AA, "summary sentence on Check"),
+        ("blue-text", "bg", TEXT_AA, "links on the page"),
+        ("red-text", "bg", TEXT_AA, "error state of a file on the page"),
+        ("warning-text", "bg", TEXT_AA, "not-read state of a file on the page"),
+        ("text", "field-page-solid", TEXT_AA, "text typed in an input on the page"),
+        ("text-muted", "field-page-solid", TEXT_AA, "input placeholder on the page"),
+        ("text-soft", "surface", TEXT_AA, "menu entries"),
+        ("red-text", "surface", TEXT_AA, "Delete in a menu"),
+        ("red", "glass-solid", NON_TEXT_AA, "red edge of a conflict card"),
     )
 )
 
@@ -165,6 +183,12 @@ COMPOSITES: dict[str, tuple[str, str]] = {
     "header-solid": ("header", "bg"),
     "glow-solid": ("glow-core", "bg"),
     "header-glow-solid": ("header", "glow-solid"),
+    "veil-page-solid": ("veil", "bg"),
+    "veil-hover-page-solid": ("veil-hover", "bg"),
+    "tonal-page-solid": ("tonal", "bg"),
+    "active-page-solid": ("active", "bg"),
+    "count-page-solid": ("tint-count", "bg"),
+    "field-page-solid": ("field", "bg"),
 }
 
 # Twins of gradient stops and other colours that are not tokens: (r, g, b, alpha) over a token.

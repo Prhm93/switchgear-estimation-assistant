@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     drawing_reading: Literal["off", "ocr"] = Field(default="ocr", description="DRAWING_READING")
     ocr_dpi: Literal[150, 300] = Field(default=300, description="OCR_DPI")
     tesseract_cmd: str | None = Field(default=None, description="TESSERACT_CMD: the Tesseract program if not on PATH")
+    # The sample enquiry (Stage UX): "Try the sample enquiry" uploads the committed showcase files from here.
+    sample_dir: Path = Field(default=REPO_ROOT / "data" / "projects" / "showcase", description="SAMPLE_DIR")
 
     @property
     def max_upload_bytes(self) -> int:

@@ -1,0 +1,14 @@
+{%- extends "layout_enquiry.html" -%}
+{#- The confirmation step before archiving, deleting or reading again: nothing happens until the button is pressed. -#}
+
+{%- block step %}
+<section class="decision{% if danger %} decision--conflict{% endif %} narrow">
+  <h2 class="block-title">{{ title }}</h2>
+  <p>{{ message }}</p>
+  <form class="row gap-top" method="post" action="{{ action }}">
+    <input type="hidden" name="confirm" value="yes">
+    <button class="btn {{ 'btn--primary' if danger else 'btn--tonal' }}" type="submit">{{ button }}</button>
+    <a class="btn btn--ghost" href="/enquiries/{{ project.id }}">Cancel</a>
+  </form>
+</section>
+{% endblock -%}

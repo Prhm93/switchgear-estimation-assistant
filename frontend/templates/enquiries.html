@@ -1,0 +1,74 @@
+{%- extends "layout_app.html" -%}
+{%- from "macros.html" import icon, status_pill with context -%}
+
+{%- block title %}Enquiries · {{ app_name }}{% endblock -%}
+
+{%- block heading %}
+<div class="page-head">
+  <h1 class="page-title">{{ "Archived enquiries" if archived else "Enquiries" }}</h1>
+  {%- if archived %}<a class="btn btn--ghost btn--sm" href="/enquiries">Back to enquiries</a>
+  {%- elif archived_count %}<a class="btn btn--ghost btn--sm" href="/enquiries?show=archived">Archive ({{ archived_count }})</a>{% endif %}
+</div>
+{% endblock -%}
+
+{%- block content %}
+{%- if rows %}
+<div class="table-wrap">
+  <table class="data-table">
+    <caption class="visually-hidden">Enquiries</caption>
+    <thead><tr>
+      <th scope="col">Enquiry</th><th scope="col">Reference</th><th scope="col">Status</th>
+      <th scope="col" class="num">Draft total</th><th scope="col">Last updated</th><th scope="col"><span class="visually-hidden">Actions</span></th>
+    </tr></thead>
+    <tbody>
+      {%- for r in rows %}
+      {%- set p = r.project %}
+      {%- set when = p.updated_at or p.created_at %}
+      <tr>
+        <td><a class="row-link" href="/enquiries/{{ p.id }}">{{ p.name }}</a></td>
+        <td class="mono">{{ p.reference or "" }}</td>
+        <td>{{ status_pill(r.status) }}</td>
+        <td class="num">{% if r.estimate and r.estimate.lines %}{{ r.estimate.currency }} {{ money(r.estimate.total) }}{% endif %}</td>
+        <td><span class="mono">{{ short_date(when) }}</span></td>
+        <td class="actions">
+          <details class="menu menu--right">
+            <summary class="icon-btn" aria-label="Actions for {{ p.name }}">{{ icon("more", "sm") }}</summary>
+            <div class="menu__list">
+              <a href="/enquiries/{{ p.id }}/rename">Rename</a>
+              {%- if archived %}
+              <form method="post" action="/enquiries/{{ p.id }}/unarchive"><button type="submit">Bring back</button></form>
+              {%- else %}
+              <a href="/enquiries/{{ p.id }}/archive">Archive</a>
+              {%- endif %}
+              <a class="menu__danger" href="/enquiries/{{ p.id }}/delete">Delete</a>
+            </div>
+          </details>
+        </td>
+      </tr>
+      {%- endfor %}
+    </tbody>
+  </table>
+</div>
+{%- elif archived %}
+<p class="muted gap-top-lg">Nothing is archived.</p>
+{%- else %}
+<form class="dropzone dropzone--hero gap-top-lg" method="post" action="/enquiries" enctype="multipart/form-data" data-dropzone data-submit-plain>
+  <div class="upload-box upload-box--card">
+    <div class="upload-box__inner dropzone__inner">
+      {{ icon("upload", "lg") }}
+      <h2 class="dropzone__title">Drop the customer's files here</h2>
+      <p class="muted">Specification, drawing and letter. PDF, DXF, DOCX, PNG or JPG, up to {{ max_mb }} MB each.</p>
+      <div class="row">
+        <label class="btn btn--secondary">Choose files<input class="visually-hidden" type="file" name="files" multiple accept=".pdf,.png,.jpg,.jpeg,.dxf,.docx" data-file-input></label>
+        <button class="btn btn--primary" type="submit">Start</button>
+      </div>
+      <p class="small muted" data-file-summary aria-live="polite"></p>
+    </div>
+  </div>
+</form>
+<form class="center gap-top" method="post" action="/enquiries/sample">
+  <button class="btn btn--tonal" type="submit">Try the sample enquiry</button>
+  <p class="small muted">An invented switchboard enquiry: specification, letter and drawing.</p>
+</form>
+{%- endif %}
+{% endblock -%}

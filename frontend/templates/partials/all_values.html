@@ -1,0 +1,34 @@
+{%- from "macros.html" import value_status, pager with context -%}
+{#- "Show all values": one filtered page of rows, loaded on demand. No form is rendered here. -#}
+{%- set base = "/enquiries/%d/check/values?show=%s%s&page=" | format(project.id, show, "&doc=%d" | format(doc) if doc else "") %}
+<div id="all-values-body">
+  <div class="filters gap-top" role="group" aria-label="Filter values">
+    {%- for key, label in filters.items() %}
+    {%- set href = "/enquiries/%d/check/values?show=%s%s" | format(project.id, key, "&doc=%d" | format(doc) if doc else "") %}
+    <a href="{{ href }}" hx-get="{{ href }}" hx-target="#all-values-body" hx-swap="outerHTML"{% if key == show %} aria-current="true"{% endif %}>{{ label }}</a>
+    {%- endfor %}
+  </div>
+  <div class="filters" role="group" aria-label="Filter by file">
+    {%- set href = "/enquiries/%d/check/values?show=%s" | format(project.id, show) %}
+    <a href="{{ href }}" hx-get="{{ href }}" hx-target="#all-values-body" hx-swap="outerHTML"{% if not doc %} aria-current="true"{% endif %}>Every file</a>
+    {%- for d in project.documents if d.pages %}
+    {%- set href = "/enquiries/%d/check/values?show=%s&doc=%d" | format(project.id, show, d.id) %}
+    <a href="{{ href }}" hx-get="{{ href }}" hx-target="#all-values-body" hx-swap="outerHTML"{% if doc == d.id %} aria-current="true"{% endif %}>{{ d.original_name }}</a>
+    {%- endfor %}
+  </div>
+  <p class="small muted gap-top">{{ total }} value{{ "s" if total != 1 }}</p>
+  <div class="value-rows">
+    {%- for v in rows %}
+    {%- set value, unit = shown(v) %}
+    <div class="value-line">
+      <a class="value-line__main" href="/values/{{ v.id }}/panel" hx-get="/values/{{ v.id }}/panel" hx-target="#panel">
+        <span class="value-line__label">{{ field_label(v.field) }}</span>
+        <span class="value-line__value mono">{{ display(value, unit) }}</span>
+        <span class="value-line__src">{{ source_words(v.source_document, v.page) }}</span>
+      </a>
+      {{ value_status(v) }}
+    </div>
+    {%- endfor %}
+  </div>
+  {{ pager(page, pages, base, "#all-values-body") }}
+</div>

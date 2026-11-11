@@ -1,42 +1,41 @@
-"""Server-rendered screens (Jinja2 + HTMX): home, projects, project dashboard, upload, analysis, review, estimate.
+"""Server-rendered screens (Jinja2 + HTMX).
+
+The flow is: Enquiries (the list) -> an enquiry's three steps, Files, Check and
+Quote -> the report. Proof viewer and Activity sit in the enquiry's Details
+menu. Old ``/projects/...`` addresses redirect to ``/enquiries/...``.
 
 All document text and every value reach the templates as plain data and are
 escaped by Jinja's autoescaping; nothing from a document is marked safe.
 Writes go through :mod:`backend.app.services`, which records each in the
-audit log.
+audit log. What the screens show is worked out in :mod:`backend.app.enquiry`;
+the words come from :mod:`backend.app.labels`.
 """
 
 from __future__ import annotations
 
+import hashlib
 import re
-from collections import OrderedDict
 from datetime import UTC, datetime
 from typing import Annotated, Any
+from urllib.parse import quote as url_quote
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session, object_session
+from sqlalchemy.orm import Session
 
-from backend.app import normalise as norm
-from backend.app import services
+from backend.app import enquiry, labels, services
+from backend.app.drawing.render import can_render, drawing_png
+from backend.app.estimate import load_rules
 from backend.app.highlight import segments
-from backend.app.injection import find_instructions
 from backend.app.models import AuditEvent, Document, Estimate, ExtractedValueRow, Match, Project
 from backend.app.report import estimate_docx
 from backend.app.schemas import DocumentStatus, ReviewStatus
-from backend.app.storage import UploadRejected
+from backend.app.storage import FileType, UploadRejected
 
 router = APIRouter()
-BUSY = {DocumentStatus.UPLOADED.value, DocumentStatus.READING.value, DocumentStatus.EXTRACTING.value}
-STATUS_WORDS = {"uploaded": "Queued", "reading": "Reading", "extracting": "Extracting", "done": "Read",
-                "not_read": "Not read yet", "failed": "Could not be read"}
-KIND_WORDS = {"specification": "Specification", "schematic": "Drawing", "requirements": "Customer letter"}
-FIELD_ORDER = ["system.", "enclosure.", "incomer.", "busbar.", "metering.", "ways.count", "way."]
-REQUIRED = ["system.voltage", "system.fault_level", "enclosure.form", "enclosure.ip_rating", "enclosure.cable_entry",
-            "incomer.device", "incomer.rating", "incomer.poles", "busbar.rating", "metering.ct_ratio",
-            "metering.meter", "ways.count"]
-WAY_REQUIRED = ["device", "rating", "poles", "cable"]
+BUSY = enquiry.BUSY
+PAGE_SIZE = 50  # rows per page in "Show all values" and Activity
 
 
 def get_session(request: Request):
@@ -50,183 +49,468 @@ def get_session(request: Request):
 SessionDep = Annotated[Session, Depends(get_session)]
 
 
-def render(request: Request, template: str, /, status_code: int = 200, **context: Any) -> HTMLResponse:
-    """Render a template; ``template`` is positional-only so any context key (``name`` too) is allowed.
-
-    Adds the sidebar context: the environment, and for a project screen the
-    project switcher list and the number of values still to review.
-    """
+def render(request: Request, template: str, /, status_code: int = 200, headers: dict[str, str] | None = None,
+           **context: Any) -> HTMLResponse:
+    """Render a template; ``template`` is positional-only so any context key (``name`` too) is allowed."""
     templates = request.app.state.templates
-    base = {"app_name": request.app.state.settings.app_name, "status_words": STATUS_WORDS, "kind_words": KIND_WORDS,
-            "environment": request.app.state.settings.environment}
-    project = context.get("project")
-    if isinstance(project, Project):
-        base.update(sidebar_context(project))
-    return templates.TemplateResponse(request, template, {**base, **context}, status_code=status_code)
+    base = {"app_name": request.app.state.settings.app_name, "kind_words": labels.KIND_WORDS,
+            "field_label": labels.field_label, "display": labels.display, "source_words": labels.source_words,
+            "method_words": labels.method_words, "money": services.money, "shown": enquiry.shown,
+            "short_date": labels.short_date, "drawing_hint": drawing_hint(request.app.state.settings)}
+    return templates.TemplateResponse(request, template, {**base, **context}, status_code=status_code,
+                                      headers=headers)
 
 
-def initials(name: str) -> str:
-    """Two characters for the project tile: the first letters of the first two words."""
-    words = [w for w in re.split(r"[\s_/-]+", name) if w]
-    letters = "".join(w[0] for w in words[:2]) if len(words) > 1 else name[:2]
-    return letters.upper() or "P"
+def drawing_hint(settings: Any) -> str:
+    """What happens to a drawing once uploaded, said before the upload."""
+    if getattr(settings, "drawing_reading", "off") == "ocr":
+        return ("A DXF drawing is read at once. Drawing PDFs and pictures are read by OCR, about 3 to 5 s "
+                "per sheet, and every value read that way waits for your check.")
+    return "A DXF drawing is read at once. Drawing PDFs and pictures are stored but not read: drawing reading is off."
 
 
-def sidebar_context(project: Project) -> dict[str, Any]:
-    """Project switcher entries (the 20 newest projects) and the number of values to review."""
-    session = object_session(project)
-    others = []
-    if session is not None:
-        others = list(session.execute(select(Project.id, Project.name).order_by(Project.id.desc()).limit(20)))
-    return {"switch_projects": others, "project_initials": initials(project.name),
-            "review_count": sum(1 for v in project.values if v.review_status == ReviewStatus.EXTRACTED.value),
-            "model_runs": sorted({d.model_run for d in project.documents if d.model_run})}
-
-
-def instruction_flags(project: Project, document_id: int | None = None) -> list[dict[str, Any]]:
-    """Instruction-like sentences in the stored page text of the project's documents (or one document)."""
-    out = []
-    for d in project.documents:
-        if document_id is not None and d.id != document_id:
-            continue
-        for page in d.pages:
-            for f in find_instructions(page.number, page.text):
-                out.append({"doc_id": d.id, "document": d.original_name, "page": f.page, "text": f.text,
-                            "reasons": f.reasons})
-    return out
+def is_htmx(request: Request) -> bool:
+    return bool(request.headers.get("HX-Request"))
 
 
 def project_or_404(session: Session, project_id: int) -> Project:
     project = session.get(Project, project_id)
     if project is None:
-        raise HTTPException(404, "No such project.")
+        raise HTTPException(404, "No such enquiry.")
     return project
 
 
-def field_sort_key(field: str) -> tuple:
-    group = next((i for i, p in enumerate(FIELD_ORDER) if field.startswith(p)), len(FIELD_ORDER))
-    m = re.match(r"^way\.Q(\d+)\.(.+)$", field)
-    return (group, int(m.group(1)), m.group(2)) if m else (group, 0, field)
+def document_or_404(session: Session, document_id: int) -> Document:
+    doc = session.get(Document, document_id)
+    if doc is None:
+        raise HTTPException(404, "No such file.")
+    return doc
 
 
-def field_label(field: str) -> str:
-    m = re.match(r"^way\.(\w+)\.(.+)$", field)
-    if m:
-        return f"Way {m.group(1)} · {m.group(2).replace('_', ' ')}"
-    return field.replace(".", " · ").replace("_", " ")
+def enquiry_context(session: Session, project: Project, found: enquiry.Decisions | None = None) -> dict[str, Any]:
+    """What every enquiry screen shows in its header: status, how it was read, and the count on the Check tab."""
+    found = found or enquiry.decisions(project)
+    estimate = services.latest_estimate(session, project.id)
+    return {"project": project, "found": found, "estimate": estimate,
+            "status": enquiry.status(session, project, estimate, found),
+            "reading_line": enquiry.reading_line(project)}
 
 
-def display(value: Any, unit: str | None) -> str:
-    if value is None:
-        return "Not given"
-    return f"{value} {unit}" if unit else str(value)
-
-
-# --- dashboard and projects ---------------------------------------------------------------------
-
-SHOWCASE_NAME = "showcase"
-
+# --- home, old addresses -------------------------------------------------------------------------------
 
 @router.get("/", response_class=HTMLResponse)
 def home(request: Request) -> HTMLResponse:
-    """The public home page. Works without a database; with one, the hero cards show the showcase project."""
-    showcase, summary = None, None
-    sessions = request.app.state.sessions
-    if sessions is not None:
-        try:
-            with sessions() as session:
-                found = session.scalars(select(Project).where(func.lower(Project.name).contains(SHOWCASE_NAME))
-                                        .order_by(Project.id.desc()).limit(1)).first()
-                if found is not None:
-                    summary = project_summary(found)
-                    summary = {k: summary[k] for k in ("values", "approved", "review", "conflict", "missing")}
-                    showcase = {"id": found.id, "name": found.name}
-        except Exception:  # an unreachable database must not take the home page down
-            showcase, summary = None, None
-    return render(request, "home.html", showcase=showcase, summary=summary)
+    """The public home page. It needs no database: its numbers are the measured ones from the docs."""
+    return render(request, "home.html")
 
 
-@router.get("/projects", response_class=HTMLResponse)
-def projects(request: Request, session: SessionDep) -> HTMLResponse:
-    projects = list(session.scalars(select(Project).order_by(Project.id.desc())))
-    pending = dict(session.execute(select(ExtractedValueRow.project_id, func.count(ExtractedValueRow.id))
-                                   .where(ExtractedValueRow.review_status == "extracted")
-                                   .group_by(ExtractedValueRow.project_id)).all())
-    approved = dict(session.execute(select(ExtractedValueRow.project_id, func.count(ExtractedValueRow.id))
-                                    .where(ExtractedValueRow.review_status.in_(["approved", "edited"]))
-                                    .group_by(ExtractedValueRow.project_id)).all())
-    totals = dict(session.execute(select(ExtractedValueRow.project_id, func.count(ExtractedValueRow.id))
-                                  .group_by(ExtractedValueRow.project_id)).all())
-    errors = dict(session.execute(select(Document.project_id, func.count(Document.id))
-                                  .where(Document.status == "failed").group_by(Document.project_id)).all())
-    rows = [{"project": p, "documents": len(p.documents), "pending": pending.get(p.id, 0),
-             "approved": approved.get(p.id, 0), "value_count": totals.get(p.id, 0), "errors": errors.get(p.id, 0),
-             "estimate": services.latest_estimate(session, p.id)} for p in projects]
-    return render(request, "projects.html", counts=services.project_counts(session), rows=rows)
+OLD_SCREENS = {"upload": "files", "analysis": "proof", "review": "check", "estimate": "quote", "audit": "activity"}
 
 
-@router.get("/projects/new", response_class=HTMLResponse)
-def new_project_form(request: Request) -> HTMLResponse:
-    return render(request, "project_new.html", error=None, name="", reference="")
+@router.api_route("/projects", methods=["GET", "POST"], include_in_schema=False)
+@router.api_route("/projects/{rest:path}", methods=["GET", "POST"], include_in_schema=False)
+def old_addresses(request: Request, rest: str = "") -> RedirectResponse:
+    """``/projects/...`` moved to ``/enquiries/...``; old bookmarks and forms keep working (308 keeps the method)."""
+    parts = rest.split("/") if rest else []
+    if len(parts) == 2 and parts[1] in OLD_SCREENS:
+        parts[1] = OLD_SCREENS[parts[1]]
+    target = "/enquiries" + ("/" + "/".join(parts) if parts else "")
+    if request.url.query:
+        target += "?" + request.url.query
+    return RedirectResponse(target, status_code=308)
 
 
-@router.post("/projects")
-def create_project(request: Request, session: SessionDep, name: Annotated[str, Form()] = "",
-                   reference: Annotated[str, Form()] = "") -> Response:
-    try:
-        project = services.create_project(session, name, reference)
-    except ValueError as error:
-        return render(request, "project_new.html", status_code=422, error=str(error), name=name, reference=reference)
-    return RedirectResponse(f"/projects/{project.id}/upload", status_code=303)
+# --- the list -------------------------------------------------------------------------------------------
 
-
-# --- upload ---------------------------------------------------------------------------------------
-
-def _documents_context(project: Project) -> dict[str, Any]:
-    return {"project": project, "documents": project.documents,
-            "busy": any(d.status in BUSY for d in project.documents)}
-
-
-@router.get("/projects/{project_id}/upload", response_class=HTMLResponse)
-def upload_page(request: Request, project_id: int, session: SessionDep) -> HTMLResponse:
-    project = project_or_404(session, project_id)
+@router.get("/enquiries", response_class=HTMLResponse)
+def enquiries(request: Request, session: SessionDep, show: str = "open") -> HTMLResponse:
+    archived = show == "archived"
+    query = select(Project).where(Project.archived_at.is_not(None) if archived else Project.archived_at.is_(None))
+    projects = list(session.scalars(query.order_by(func.coalesce(Project.updated_at, Project.created_at).desc(),
+                                                   Project.id.desc())))
+    rows = []
+    for p in projects:
+        estimate = services.latest_estimate(session, p.id)
+        rows.append({"project": p, "estimate": estimate, "status": enquiry.status(session, p, estimate)})
+    archived_count = session.scalar(select(func.count(Project.id)).where(Project.archived_at.is_not(None))) or 0
     settings = request.app.state.settings
-    return render(request, "upload.html", errors=[], max_mb=settings.max_upload_mb,
-                  max_pages=settings.max_pdf_pages, **_documents_context(project))
+    return render(request, "enquiries.html", rows=rows, archived=archived, archived_count=archived_count,
+                  max_mb=settings.max_upload_mb, nav="enquiries")
 
 
-@router.get("/projects/{project_id}/documents", response_class=HTMLResponse)
-def document_cards(request: Request, project_id: int, session: SessionDep) -> HTMLResponse:
-    """The file cards; polled by HTMX every second while a file is being processed."""
-    project = project_or_404(session, project_id)
-    return render(request, "partials/documents.html", errors=[], **_documents_context(project))
+@router.get("/enquiries/new", response_class=HTMLResponse)
+def new_enquiry_form(request: Request) -> HTMLResponse:
+    settings = request.app.state.settings
+    return render(request, "enquiry_new.html", errors=[], name="", max_mb=settings.max_upload_mb,
+                  max_pages=settings.max_pdf_pages, nav="new")
 
 
-@router.post("/projects/{project_id}/documents", response_class=HTMLResponse)
-async def upload(request: Request, project_id: int, session: SessionDep, background: BackgroundTasks,
-                 files: Annotated[list[UploadFile], File()]) -> Response:
-    project = project_or_404(session, project_id)
+async def _store_uploads(request: Request, session: Session, background: BackgroundTasks, project: Project,
+                         files: list[UploadFile]) -> list[dict[str, str]]:
+    """Check and store each file, queue its reading, and return the rejected ones with the reason."""
     settings, storage = request.app.state.settings, request.app.state.storage
     errors: list[dict[str, str]] = []
     for upload_file in files:
+        if not upload_file.filename:  # an empty file input sends one nameless part
+            continue
         data = await upload_file.read(settings.max_upload_bytes + 1)  # never read more than the limit
         try:
-            doc = services.add_document(session, storage, settings, project, upload_file.filename or "", data)
+            doc = services.add_document(session, storage, settings, project, upload_file.filename, data)
         except UploadRejected as error:
-            errors.append({"name": (upload_file.filename or "unnamed").replace("\\", "/").split("/")[-1],
-                           "reason": str(error)})
+            errors.append({"name": upload_file.filename.replace("\\", "/").split("/")[-1], "reason": str(error)})
             continue
         background.add_task(services.process_document, request.app.state.sessions, storage, doc.id, settings)
+    return errors
+
+
+@router.post("/enquiries")
+async def create_enquiry(request: Request, session: SessionDep, background: BackgroundTasks,
+                         name: Annotated[str, Form()] = "", reference: Annotated[str, Form()] = "",
+                         files: Annotated[list[UploadFile], File()] = []) -> Response:  # noqa: B006
+    """One step: an optional name and the files. With files it goes on to read them and then to Check."""
+    project = services.create_project(session, name, reference)
+    errors = await _store_uploads(request, session, background, project, files)
     session.refresh(project)
-    if request.headers.get("HX-Request"):
-        return render(request, "partials/documents.html", errors=errors, **_documents_context(project))
     if errors:
-        return render(request, "upload.html", status_code=422, errors=errors, max_mb=settings.max_upload_mb,
-                      max_pages=settings.max_pdf_pages, **_documents_context(project))
-    return RedirectResponse(f"/projects/{project_id}/upload", status_code=303)
+        return render(request, "files.html", status_code=422, errors=errors, go=False,
+                      **_files_context(request, session, project))
+    return RedirectResponse(f"/enquiries/{project.id}/files" + ("?go=1" if project.documents else ""),
+                            status_code=303)
 
 
-# --- analysis -------------------------------------------------------------------------------------
+@router.post("/enquiries/sample")
+def create_sample(request: Request, session: SessionDep, background: BackgroundTasks) -> Response:
+    """A fresh sample enquiry from the showcase files, read with recorded model runs where their hash matches."""
+    settings, storage = request.app.state.settings, request.app.state.storage
+    try:
+        project, ids = services.create_sample(session, storage, settings)
+    except FileNotFoundError as error:
+        raise HTTPException(503, "The sample files are not installed with this copy of the app.") from error
+    for doc_id in ids:
+        background.add_task(services.process_document, request.app.state.sessions, storage, doc_id, settings)
+    return RedirectResponse(f"/enquiries/{project.id}/files?go=1", status_code=303)
+
+
+@router.get("/enquiries/{project_id}")
+def open_enquiry(project_id: int, session: SessionDep) -> Response:
+    """Opening an enquiry goes to the step that needs the engineer: Files while empty, otherwise Check."""
+    project = project_or_404(session, project_id)
+    return RedirectResponse(f"/enquiries/{project_id}/{'check' if project.documents else 'files'}", status_code=303)
+
+
+# --- rename, archive, delete (each asks first) ---------------------------------------------------------
+
+def _confirm(request: Request, session: Session, project: Project, **context: Any) -> HTMLResponse:
+    return render(request, "confirm.html", **enquiry_context(session, project), **context)
+
+
+@router.get("/enquiries/{project_id}/rename", response_class=HTMLResponse)
+def rename_form(request: Request, project_id: int, session: SessionDep) -> HTMLResponse:
+    project = project_or_404(session, project_id)
+    return render(request, "rename.html", error=None, **enquiry_context(session, project))
+
+
+@router.post("/enquiries/{project_id}/rename")
+def rename(request: Request, project_id: int, session: SessionDep, name: Annotated[str, Form()] = "",
+           reference: Annotated[str, Form()] = "") -> Response:
+    project = project_or_404(session, project_id)
+    try:
+        services.rename_project(session, project, name, reference)
+    except ValueError as error:
+        return render(request, "rename.html", status_code=422, error=str(error),
+                      **enquiry_context(session, project))
+    return RedirectResponse("/enquiries", status_code=303)
+
+
+@router.get("/enquiries/{project_id}/archive", response_class=HTMLResponse)
+def archive_confirm(request: Request, project_id: int, session: SessionDep) -> HTMLResponse:
+    project = project_or_404(session, project_id)
+    return _confirm(request, session, project, title="Archive this enquiry?", action=f"/enquiries/{project_id}/archive",
+                    button="Archive", danger=False,
+                    message="It leaves the list but nothing is deleted. You can bring it back from the archive.")
+
+
+@router.post("/enquiries/{project_id}/archive")
+def archive(request: Request, project_id: int, session: SessionDep, confirm: Annotated[str, Form()] = "") -> Response:
+    project = project_or_404(session, project_id)
+    if confirm != "yes":
+        return archive_confirm(request, project_id, session)
+    services.archive_project(session, project, True)
+    return RedirectResponse("/enquiries", status_code=303)
+
+
+@router.post("/enquiries/{project_id}/unarchive")
+def unarchive(project_id: int, session: SessionDep) -> Response:
+    services.archive_project(session, project_or_404(session, project_id), False)
+    return RedirectResponse("/enquiries", status_code=303)
+
+
+@router.get("/enquiries/{project_id}/delete", response_class=HTMLResponse)
+def delete_confirm(request: Request, project_id: int, session: SessionDep) -> HTMLResponse:
+    project = project_or_404(session, project_id)
+    files, values = len(project.documents), len(project.values)
+    return _confirm(request, session, project, title="Delete this enquiry?", action=f"/enquiries/{project_id}/delete",
+                    button="Delete for good", danger=True,
+                    message=f"This removes its {files} file{'s' if files != 1 else ''}, {values} values, every "
+                            "decision and its quotes. It cannot be undone. To hide it instead, archive it.")
+
+
+@router.post("/enquiries/{project_id}/delete")
+def delete(request: Request, project_id: int, session: SessionDep, confirm: Annotated[str, Form()] = "") -> Response:
+    project = project_or_404(session, project_id)
+    if confirm != "yes":  # nothing is deleted without the confirmation step
+        return delete_confirm(request, project_id, session)
+    services.delete_project(session, request.app.state.storage, project)
+    return RedirectResponse("/enquiries", status_code=303)
+
+
+# --- step 1: files --------------------------------------------------------------------------------------
+
+PICTURES = ("png", "jpg")
+
+
+def file_line(doc: Document) -> dict[str, Any]:
+    """One plain progress line for a file: what it is, its size, and where its reading stands."""
+    picture = doc.file_type in PICTURES
+    if doc.kind == "schematic":
+        what = "Drawing picture" if picture else "Drawing (CAD file)" if doc.file_type == "dxf" else "Drawing PDF"
+    elif doc.kind:
+        what = labels.KIND_WORDS.get(doc.kind, doc.kind)
+    else:
+        what = "Drawing picture" if picture else {"dxf": "Drawing (CAD file)", "docx": "Letter"}.get(doc.file_type, "PDF")
+    size = None
+    if doc.page_count:
+        unit = "sheet" if doc.kind == "schematic" else "page"
+        size = f"{doc.page_count} {unit}{'s' if doc.page_count != 1 else ''}"
+    method = enquiry.document_method(doc)
+    if doc.status == DocumentStatus.UPLOADED.value:
+        state, tone = "waiting to be read", "busy"
+    elif doc.status in BUSY:
+        state = "reading text from the picture, about 5 s per sheet" if picture else "reading"
+        tone = "busy"
+    elif doc.status == DocumentStatus.DONE.value:
+        state = {"ocr": "read from the picture (OCR)",
+                 "rules+model": f"read with rules and {labels.model_run_words(doc.model_run or 'the model')}"
+                 }.get(method or "", "read")
+        tone = "ok"
+    elif doc.status == DocumentStatus.NOT_READ.value:
+        state, tone = "not read", "warn"
+    else:
+        state, tone = "could not be read", "error"
+    return {"doc": doc, "what": what, "size": size, "state": state, "tone": tone,
+            "note": doc.note if tone in ("warn", "error") else None}
+
+
+def _files_context(request: Request, session: Session, project: Project) -> dict[str, Any]:
+    settings = request.app.state.settings
+    return {**enquiry_context(session, project), "lines": [file_line(d) for d in project.documents],
+            "busy": any(d.status in BUSY for d in project.documents), "max_mb": settings.max_upload_mb,
+            "max_pages": settings.max_pdf_pages, "tab": "files"}
+
+
+def _read_any(project: Project) -> bool:
+    return any(d.status == DocumentStatus.DONE.value for d in project.documents)
+
+
+@router.get("/enquiries/{project_id}/files", response_class=HTMLResponse)
+def files_page(request: Request, project_id: int, session: SessionDep, go: int = 0) -> Response:
+    project = project_or_404(session, project_id)
+    context = _files_context(request, session, project)
+    if go and not context["busy"] and _read_any(project):  # reading already finished: straight on to Check
+        return RedirectResponse(f"/enquiries/{project_id}/check", status_code=303)
+    return render(request, "files.html", errors=[], go=bool(go), **context)
+
+
+@router.get("/enquiries/{project_id}/documents", response_class=HTMLResponse)
+def file_lines(request: Request, project_id: int, session: SessionDep, go: int = 0) -> Response:
+    """The file lines; polled by HTMX every second while a file is read. With ``go`` it moves on to Check."""
+    project = project_or_404(session, project_id)
+    context = _files_context(request, session, project)
+    if go and not context["busy"] and _read_any(project) and is_htmx(request):
+        return Response(status_code=204, headers={"HX-Redirect": f"/enquiries/{project_id}/check"})
+    return render(request, "partials/file_lines.html", errors=[], go=bool(go), **context)
+
+
+@router.post("/enquiries/{project_id}/documents", response_class=HTMLResponse)
+async def upload(request: Request, project_id: int, session: SessionDep, background: BackgroundTasks,
+                 files: Annotated[list[UploadFile], File()]) -> Response:
+    project = project_or_404(session, project_id)
+    errors = await _store_uploads(request, session, background, project, files)
+    session.refresh(project)
+    context = _files_context(request, session, project)
+    if is_htmx(request):
+        return render(request, "partials/file_lines.html", errors=errors, go=not errors, **context)
+    if errors:
+        return render(request, "files.html", status_code=422, errors=errors, go=False, **context)
+    return RedirectResponse(f"/enquiries/{project_id}/files?go=1", status_code=303)
+
+
+@router.get("/documents/{document_id}/delete", response_class=HTMLResponse)
+def delete_document_confirm(request: Request, document_id: int, session: SessionDep) -> HTMLResponse:
+    doc = document_or_404(session, document_id)
+    values = session.scalar(select(func.count(ExtractedValueRow.id)).where(
+        ExtractedValueRow.document_id == doc.id)) or 0
+    return _confirm(request, session, doc.project, title=f"Delete {doc.original_name}?",
+                    action=f"/documents/{doc.id}/delete", button="Delete the file", danger=True,
+                    message=f"This removes the file, the {values} values read from it and the decisions made on "
+                            "them. The quote is rebuilt without them. It cannot be undone.")
+
+
+@router.post("/documents/{document_id}/delete")
+def delete_document(request: Request, document_id: int, session: SessionDep,
+                    confirm: Annotated[str, Form()] = "") -> Response:
+    doc = document_or_404(session, document_id)
+    if confirm != "yes":
+        return delete_document_confirm(request, document_id, session)
+    project_id = doc.project_id
+    services.delete_document(session, request.app.state.storage, doc)
+    services.refresh_quote(session, project_id, request.app.state.settings)
+    return RedirectResponse(f"/enquiries/{project_id}/files", status_code=303)
+
+
+@router.get("/documents/{document_id}/read-again", response_class=HTMLResponse)
+def read_again_confirm(request: Request, document_id: int, session: SessionDep) -> HTMLResponse:
+    doc = document_or_404(session, document_id)
+    decided = session.scalar(select(func.count(ExtractedValueRow.id)).where(
+        ExtractedValueRow.document_id == doc.id, ExtractedValueRow.review_status != "extracted")) or 0
+    return _confirm(request, session, doc.project, title=f"Read {doc.original_name} again?",
+                    action=f"/documents/{doc.id}/read-again", button="Read again", danger=False,
+                    message="The file is read again with today's settings and its values are replaced."
+                            + (f" Your {decided} decision{'s' if decided != 1 else ''} on its values will be removed; "
+                               "they stay listed in Activity." if decided else ""))
+
+
+@router.post("/documents/{document_id}/read-again")
+def read_again(request: Request, document_id: int, session: SessionDep, background: BackgroundTasks,
+               confirm: Annotated[str, Form()] = "") -> Response:
+    doc = document_or_404(session, document_id)
+    if confirm != "yes":
+        return read_again_confirm(request, document_id, session)
+    project_id = doc.project_id
+    services.reset_document(session, doc)
+    background.add_task(services.process_document, request.app.state.sessions, request.app.state.storage,
+                        document_id, request.app.state.settings)
+    return RedirectResponse(f"/enquiries/{project_id}/files", status_code=303)
+
+
+# --- step 2: check --------------------------------------------------------------------------------------
+
+def _items(request: Request, session: Session, project: Project) -> list[enquiry.Item]:
+    settings = request.app.state.settings
+    return enquiry.preview_items(project, services.catalogue_items(session), load_rules(settings.estimate_rules),
+                                 enquiry.approved_substitutes(session, project.id))
+
+
+def _check_context(request: Request, session: Session, project: Project, open_reason: str | None = None,
+                   error: str | None = None) -> dict[str, Any]:
+    found = enquiry.decisions(project)
+    items = _items(request, session, project)
+    return {**enquiry_context(session, project, found), "items": items, "reasons": enquiry.REASONS,
+            "open_reason": open_reason if open_reason in found.reasons else None, "error": error,
+            "flags": enquiry.instruction_flags(project), "tab": "check"}
+
+
+@router.get("/enquiries/{project_id}/check", response_class=HTMLResponse)
+def check_page(request: Request, project_id: int, session: SessionDep, open: str | None = None,
+               error: str | None = None) -> HTMLResponse:
+    project = project_or_404(session, project_id)
+    return render(request, "check.html", **_check_context(request, session, project, open, error))
+
+
+def _after_decision(request: Request, session: Session, project_id: int, open_reason: str | None = None,
+                    error: str | None = None, anchor: str | None = None) -> Response:
+    """After a decision on Check: rebuild the quote, then the refreshed Check block (HTMX) or a redirect."""
+    if error is None:
+        services.refresh_quote(session, project_id, request.app.state.settings)
+    if is_htmx(request):
+        session.expire_all()
+        project = project_or_404(session, project_id)
+        return render(request, "partials/check_body.html", oob=True,
+                      **_check_context(request, session, project, open_reason, error))
+    target = f"/enquiries/{project_id}/check"
+    params = "&".join(p for p in (f"open={open_reason}" if open_reason else "",
+                                  f"error={url_quote(error)}" if error else "") if p)
+    return RedirectResponse(target + (f"?{params}" if params else "") + (f"#{anchor}" if anchor and not error else ""),
+                            status_code=303)
+
+
+@router.get("/enquiries/{project_id}/check/group/{reason}", response_class=HTMLResponse)
+def check_group(request: Request, project_id: int, reason: str, session: SessionDep) -> HTMLResponse:
+    """The values of one "needs your decision" group, loaded when the engineer opens it."""
+    project = project_or_404(session, project_id)
+    found = enquiry.decisions(project)
+    if reason not in found.reasons:
+        raise HTTPException(404, "Nothing left to review in this group.")
+    return render(request, "partials/value_rows.html", project=project, rows=found.reasons[reason],
+                  open_reason=reason, actions=True)
+
+
+VALUE_FILTERS = {"all": "All", "open": "Not decided", "approved": "Approved", "rejected": "Rejected"}
+
+
+@router.get("/enquiries/{project_id}/check/values", response_class=HTMLResponse)
+def check_values(request: Request, project_id: int, session: SessionDep, show: str = "all", doc: int | None = None,
+                 page: int = 1) -> HTMLResponse:
+    """ "Show all values": one filtered page of plain rows. No edit form is rendered here."""
+    project = project_or_404(session, project_id)
+    show = show if show in VALUE_FILTERS else "all"
+    wanted = {"open": ("extracted",), "approved": enquiry.DONE, "rejected": ("rejected",)}.get(show)
+    rows = [v for v in sorted(project.values, key=lambda v: (enquiry.field_sort_key(v.field), v.id))
+            if (wanted is None or v.review_status in wanted) and (doc is None or v.document_id == doc)]
+    pages = max(1, -(-len(rows) // PAGE_SIZE))
+    page = min(max(1, page), pages)
+    extra = {} if is_htmx(request) else {**enquiry_context(session, project), "tab": "check"}
+    return render(request, "partials/all_values.html" if is_htmx(request) else "values.html", total=len(rows),
+                  rows=rows[(page - 1) * PAGE_SIZE: page * PAGE_SIZE], show=show, doc=doc, page=page, pages=pages,
+                  filters=VALUE_FILTERS, **{"project": project, **extra})
+
+
+@router.get("/enquiries/{project_id}/check/accept-all", response_class=HTMLResponse)
+def accept_all_confirm(request: Request, project_id: int, session: SessionDep) -> HTMLResponse:
+    """The confirmation step of "Accept all": it shows how many values would be approved, and which kinds never are."""
+    project = project_or_404(session, project_id)
+    found = enquiry.decisions(project)
+    template = "partials/accept_confirm.html" if is_htmx(request) else "accept_confirm.html"
+    return render(request, template, **enquiry_context(session, project, found), tab="check")
+
+
+@router.post("/enquiries/{project_id}/check/accept-all")
+def accept_all(request: Request, project_id: int, session: SessionDep, confirm: Annotated[str, Form()] = "") -> Response:
+    project = project_or_404(session, project_id)
+    if confirm != "yes":
+        return accept_all_confirm(request, project_id, session)
+    services.accept_all(session, project)
+    return _after_decision(request, session, project_id)
+
+
+@router.post("/enquiries/{project_id}/fields/use")
+def use_value(request: Request, project_id: int, session: SessionDep, field: Annotated[str, Form()],
+              value_id: Annotated[int, Form()]) -> Response:
+    """ "Use this" on a conflict card: keep this source's value, reject the others."""
+    project_or_404(session, project_id)
+    error = None
+    try:
+        services.resolve_field(session, project_id, field, keep_value_id=value_id)
+    except services.ReviewError as e:
+        error = str(e)
+    return _after_decision(request, session, project_id, error=error)
+
+
+@router.post("/enquiries/{project_id}/fields/type")
+def type_value(request: Request, project_id: int, session: SessionDep, field: Annotated[str, Form()],
+               value: Annotated[str, Form()] = "", unit: Annotated[str, Form()] = "",
+               reason: Annotated[str, Form()] = "") -> Response:
+    """ "Type another value" on a conflict card: the typed value is approved, the sources' values rejected."""
+    project_or_404(session, project_id)
+    error = None
+    try:
+        services.resolve_field(session, project_id, field, typed_value=value, typed_unit=unit, reason=reason)
+    except services.ReviewError as e:
+        error = str(e)
+    return _after_decision(request, session, project_id, error=error)
+
+
+# --- the proof panel -------------------------------------------------------------------------------------
 
 def _anchor(v: ExtractedValueRow) -> str | None:
     """Table cells are found inside their way's row."""
@@ -235,239 +519,120 @@ def _anchor(v: ExtractedValueRow) -> str | None:
     return None
 
 
-@router.get("/projects/{project_id}/analysis", response_class=HTMLResponse)
-def analysis(request: Request, project_id: int, session: SessionDep, doc: int | None = None,
-             page: int | None = None) -> HTMLResponse:
-    project = project_or_404(session, project_id)
-    readable = [d for d in project.documents if d.pages]
-    current = next((d for d in project.documents if d.id == doc), None) or (readable[0] if readable else None)
-    pages, page_no, segs, values = [], None, [], []
-    if current is not None and current.pages:
-        pages = current.pages
-        page_no = page if page in {p.number for p in pages} else pages[0].number
-        text = next(p.text for p in pages if p.number == page_no)
-        values = sorted((v for v in project.values if v.document_id == current.id and v.page == page_no),
-                        key=lambda v: field_sort_key(v.field))
-        flagged = [f["text"] for f in instruction_flags(project, current.id) if f["page"] == page_no]
-        segs = segments(text, [(v.id, v.source_text or "", _anchor(v)) for v in values]
-                        + [(-1 - i, t, None) for i, t in enumerate(flagged)])
-    flags = instruction_flags(project, current.id) if current is not None else []
-    return render(request, "analysis.html", project=project, current=current, pages=pages, page_no=page_no,
-                  segments=segs, values=values, field_label=field_label, display=display, flags=flags)
-
-
-# --- review ---------------------------------------------------------------------------------------
-
-WAY_FIELD = re.compile(r"^way\.(\w+)\.")
-
-
-def partial_ways(rows: list[Any]) -> dict[str, list[str]]:
-    """Ways missing from a document that lists ways, mapped to the documents they are missing from.
-
-    The specification and the drawing both list the outgoing ways; a way in only
-    one of them is a quantity question for the engineer, so it is never approved
-    in bulk. Rejected values do not count as stating a way.
-    """
-    seen: dict[str, set[str]] = {}
-    for r in rows:
-        if r.review_status != ReviewStatus.REJECTED.value and (m := WAY_FIELD.match(r.field)):
-            seen.setdefault(m.group(1), set()).add(r.source_document)
-    listing = set().union(*seen.values()) if seen else set()
-    if len(listing) < 2:
-        return {}
-    return {w: sorted(listing - kinds) for w, kinds in seen.items() if kinds != listing}
-
-
-def open_in_a_document(rows: list[Any]) -> bool:
-    """True when a document leaves the field open (for example "TBC") while another gives a value."""
-    return any(r.value is None and r.review_status != ReviewStatus.REJECTED.value for r in rows)
-
-
-def review_groups(project: Project) -> OrderedDict[str, dict[str, Any]]:
-    groups: OrderedDict[str, dict[str, Any]] = OrderedDict()
-    for v in sorted(project.values, key=lambda v: (field_sort_key(v.field), v.id)):
-        g = groups.setdefault(v.field, {"field": v.field, "label": field_label(v.field), "values": []})
-        g["values"].append(v)
-    partial = partial_ways(project.values)
-    for g in groups.values():
-        m = WAY_FIELD.match(g["field"])
-        g["missing_from"] = partial.get(m.group(1), []) if m else []
-        live = [v for v in g["values"] if v.review_status != ReviewStatus.REJECTED.value and v.value is not None]
-        current = {(norm.value_key(v.approved_value if v.review_status in ("approved", "edited") else v.value),
-                    norm.unit(v.approved_unit if v.review_status in ("approved", "edited") else v.unit))
-                   for v in live}
-        g["conflict"] = len(current) > 1
-        g["pending"] = any(v.review_status == ReviewStatus.EXTRACTED.value for v in g["values"])
-        g["left_open"] = open_in_a_document(g["values"])
-    return groups
-
-
-def missing_information(project: Project, groups: OrderedDict[str, dict[str, Any]]) -> list[dict[str, str]]:
-    stated = {f for f, g in groups.items() if any(v.value is not None for v in g["values"])}
-    ways = sorted({m.group(1) for f in groups if (m := re.match(r"^way\.(\w+)\.", f))},
-                  key=lambda w: (len(w), w))
-    needed = REQUIRED + [f"way.{w}.{p}" for w in ways for p in WAY_REQUIRED]
-    out = []
-    for f in needed:
-        if f not in stated:
-            tbc = f in groups
-            out.append({"field": f, "label": field_label(f),
-                        "why": "Stated as TBC; no value given" if tbc else "Not found in any document read"})
+def proof_of(v: ExtractedValueRow, context_lines: int = 3) -> dict[str, Any]:
+    """Where a value was read: a picture of the drawing with its box, or its sentence with a few lines around it."""
+    doc = v.document
+    out: dict[str, Any] = {"image": None, "before": "", "mark": None, "after": ""}
+    if v.regions and can_render(FileType(doc.file_type)):
+        out["image"] = f"/values/{v.id}/drawing.png"
+    page = next((p for p in doc.pages if p.number == v.page), None)
+    if page is None or not v.source_text:
+        return out
+    segs = segments(page.text, [(v.id, v.source_text, _anchor(v))])
+    index = next((i for i, s in enumerate(segs) if s.marked), None)
+    if index is None:
+        return out
+    before = "".join(s.text for s in segs[:index]).split("\n")
+    after = "".join(s.text for s in segs[index + 1:]).split("\n")
+    out.update(before="\n".join(before[-(context_lines + 1):]), mark=segs[index].text,
+               after="\n".join(after[:context_lines + 1]))
     return out
 
 
-def segment_counts(project: Project, groups: OrderedDict[str, dict[str, Any]],
-                   missing: list[dict[str, str]]) -> dict[str, int]:
-    """Counts for the segment bar and the ring gauge. Rejected values count in none of them."""
-    in_conflict = {v.id for g in groups.values() if g["conflict"] for v in g["values"]}
-    pending = [v for v in project.values if v.review_status == ReviewStatus.EXTRACTED.value]
-    return {"values": sum(1 for v in project.values if v.review_status != ReviewStatus.REJECTED.value),
-            "approved": sum(1 for v in project.values if v.review_status in ("approved", "edited")),
-            "conflict": sum(1 for v in pending if v.id in in_conflict),
-            "review": sum(1 for v in pending if v.id not in in_conflict),
-            "missing": len(missing)}
+def _panel(request: Request, session: Session, v: ExtractedValueRow, error: str | None = None,
+           open_reason: str | None = None, status_code: int = 200) -> HTMLResponse:
+    others = [o for o in session.scalars(select(ExtractedValueRow).where(
+        ExtractedValueRow.project_id == v.project_id, ExtractedValueRow.field == v.field)) if o.id != v.id]
+    headers = {"HX-Retarget": "#panel", "HX-Reswap": "innerHTML"} if error else None
+    return render(request, "partials/value_panel.html", status_code=status_code, headers=headers, v=v, others=others,
+                  proof=proof_of(v), error=error, open_reason=open_reason,
+                  confidence_words=labels.CONFIDENCE_WORDS)
 
 
-def _review_context(project: Project) -> dict[str, Any]:
-    groups = review_groups(project)
-    missing = missing_information(project, groups)
-    # Conflicts first, then values still to review, then reviewed ones; field order within each.
-    shown = OrderedDict(sorted(groups.items(), key=lambda kv: (not kv[1]["conflict"], not kv[1]["pending"])))
-    return {"project": project, "groups": shown, "missing": missing, "seg": segment_counts(project, groups, missing),
-            "field_label": field_label, "display": display, "source_label": services.source_label,
-            "conflicts": sum(1 for g in groups.values() if g["conflict"]),
-            "pending": sum(1 for v in project.values if v.review_status == "extracted"),
-            "not_read": [d for d in project.documents if d.status == DocumentStatus.NOT_READ.value],
-            "flags": instruction_flags(project)}
+@router.get("/values/{value_id}/panel", response_class=HTMLResponse)
+def value_panel(request: Request, value_id: int, session: SessionDep, open: str | None = None) -> HTMLResponse:
+    """The proof and the decision form of one value, loaded when the engineer clicks it."""
+    v = session.get(ExtractedValueRow, value_id)
+    if v is None:
+        raise HTTPException(404, "No such value.")
+    if not is_htmx(request):  # opened as a page (no script): the same panel on its own screen
+        return render(request, "value.html", v=v, panel_error=None, open_reason=open, proof=proof_of(v),
+                      others=[o for o in v.project.values if o.field == v.field and o.id != v.id],
+                      confidence_words=labels.CONFIDENCE_WORDS, error=None, tab="check",
+                      **enquiry_context(session, v.project))
+    return _panel(request, session, v, open_reason=open)
 
 
-def project_summary(project: Project) -> dict[str, Any]:
-    """The segment counts plus the review groups, the missing list and the fields in conflict."""
-    groups = review_groups(project)
-    missing = missing_information(project, groups)
-    return {**segment_counts(project, groups, missing), "groups": groups, "missing_list": missing,
-            "conflicts": [g for g in groups.values() if g["conflict"]]}
+@router.get("/values/{value_id}/drawing.png")
+def value_drawing(request: Request, value_id: int, session: SessionDep, full: int = 0) -> Response:
+    """The drawing sheet a value was read from, with its box outlined (cropped around it unless ``full``)."""
+    v = session.get(ExtractedValueRow, value_id)
+    if v is None or not v.regions:
+        raise HTTPException(404, "This value has no box on a drawing.")
+    doc = v.document
+    file_type = FileType(doc.file_type)
+    if not can_render(file_type):
+        raise HTTPException(404, "This file has no picture to show.")
+    region = v.regions[0]
+    sheet = v.page if file_type == FileType.PDF else 1
+    try:
+        png = drawing_png(file_type, request.app.state.storage.read(doc.storage_key), sheet or 1,
+                          [region["bbox"]], crop=not full)
+    except (OSError, ValueError) as error:
+        raise HTTPException(404, "The drawing could not be shown.") from error
+    return Response(png, media_type="image/png", headers={"Cache-Control": "private, max-age=300"})
 
 
-def way_of(field: str) -> str:
-    """The way column of the dashboard table: Q2, IN for the incomer, a dash otherwise."""
-    if m := WAY_FIELD.match(field):
-        return m.group(1)
-    return "IN" if field.startswith("incomer.") else "-"
-
-
-DASHBOARD_ROWS = 12
-FILTERS = {"all": "All", "review": "Needs review", "approved": "Approved"}
-
-
-def dashboard_rows(groups: OrderedDict[str, dict[str, Any]], show: str) -> list[dict[str, Any]]:
-    """One row per value that is not rejected; conflicts first, then values to review, then approved ones."""
-    rows = []
-    for g in groups.values():
-        for v in g["values"]:
-            if v.review_status == ReviewStatus.REJECTED.value:
-                continue
-            done = v.review_status in ("approved", "edited")
-            if (show == "review" and done) or (show == "approved" and not done):
-                continue
-            others = [o for o in g["values"] if o.id != v.id and o.review_status != ReviewStatus.REJECTED.value]
-            rows.append({"v": v, "way": way_of(g["field"]), "label": g["label"], "conflict": g["conflict"],
-                         "done": done, "others": others, "rank": (not g["conflict"], done)})
-    rows.sort(key=lambda r: r["rank"])  # stable: field order within each rank
-    return rows
-
-
-@router.get("/projects/{project_id}", response_class=HTMLResponse)
-def project_dashboard(request: Request, project_id: int, session: SessionDep, show: str = "all") -> HTMLResponse:
-    """Overview of one project. It changes nothing itself: its buttons post to the review routes."""
+@router.get("/enquiries/{project_id}/items/{key}/panel", response_class=HTMLResponse)
+def item_panel(request: Request, project_id: int, key: str, session: SessionDep) -> HTMLResponse:
+    """What an item rests on: the values of each field it needs, each opening its own proof."""
     project = project_or_404(session, project_id)
-    show = show if show in FILTERS else "all"
-    summary = project_summary(project)
-    rows = dashboard_rows(summary["groups"], show)
-    counts = {"all": summary["values"], "review": summary["review"] + summary["conflict"],
-              "approved": summary["approved"]}
-    events = list(session.scalars(select(AuditEvent).where(AuditEvent.project_id == project_id)
-                                  .order_by(AuditEvent.id.desc()).limit(5)))
-    estimate = services.latest_estimate(session, project_id)
-    blocked = len({line for p in estimate.problems for line in p["lines"]}) if estimate else 0
-    return render(request, "project_dashboard.html", project=project, summary=summary,
-                  rows=rows[:DASHBOARD_ROWS], row_total=len(rows), show=show, filters=FILTERS,
-                  filter_counts=counts, events=events, estimate=estimate, blocked=blocked,
-                  money=services.money, display=display, source_label=services.source_label,
-                  audit_detail=audit_detail)
-
-
-@router.get("/projects/{project_id}/review", response_class=HTMLResponse)
-def review_page(request: Request, project_id: int, session: SessionDep, error: str | None = None) -> HTMLResponse:
-    project = project_or_404(session, project_id)
-    return render(request, "review.html", error=error, **_review_context(project))
+    item = next((i for i in _items(request, session, project) if i.key == key), None)
+    if item is None:
+        raise HTTPException(404, "No such item.")
+    groups = enquiry.review_groups(project)
+    basis = [{"field": f, "label": labels.field_label(f), "values": groups[f]["values"] if f in groups else [],
+              "conflict": groups[f]["conflict"] if f in groups else False} for f in dict.fromkeys(item.basis)]
+    template = "partials/item_panel.html" if is_htmx(request) else "item.html"
+    extra = {} if is_htmx(request) else {**enquiry_context(session, project), "tab": "check"}
+    return render(request, template, item=item, basis=basis, **{"project": project, **extra})
 
 
 @router.post("/values/{value_id}/{action}")
 def review_value(request: Request, value_id: int, action: str, session: SessionDep,
                  value: Annotated[str, Form()] = "", unit: Annotated[str, Form()] = "",
-                 reason: Annotated[str, Form()] = "") -> Response:
+                 reason: Annotated[str, Form()] = "", open: Annotated[str, Form()] = "") -> Response:
     row = session.get(ExtractedValueRow, value_id)
     if row is None or action not in ("approve", "edit", "reject"):
         raise HTTPException(404)
-    project_id = row.project_id
-    error = None
+    project_id, field = row.project_id, row.field
     try:
         services.review_value(session, value_id, action, value, unit, reason)
     except services.ReviewError as e:
-        error = str(e)
-    if request.headers.get("HX-Request"):
-        project = project_or_404(session, project_id)
-        session.refresh(project)
-        return render(request, "partials/review_body.html", error=error, **_review_context(project))
-    target = f"/projects/{project_id}/review#f-{row.field}"
-    return RedirectResponse(target if error is None else f"/projects/{project_id}/review?error={error}",
-                            status_code=303)
+        if is_htmx(request):
+            return _panel(request, session, row, error=str(e), open_reason=open or None)
+        return _after_decision(request, session, project_id, open or None, error=str(e))
+    return _after_decision(request, session, project_id, open or None, anchor=f"f-{field}")
 
 
-@router.post("/projects/{project_id}/review/approve-agreed")
-def approve_agreed(request: Request, project_id: int, session: SessionDep) -> Response:
-    """Approve every unreviewed high-confidence value whose field has no conflict; each is audited.
+# --- step 3: quote --------------------------------------------------------------------------------------
 
-    Left for the engineer: a way missing from one of the documents that list ways, a field
-    that one document leaves open (for example "TBC") while another gives a value, every
-    model value whose quote was stitched from words on the page (``words_on_page``, Stage 3c),
-    and every value read by OCR from a drawing (Stage 4).
-    """
-    project = project_or_404(session, project_id)
-    approved = 0
-    for g in review_groups(project).values():
-        if g["conflict"] or g["missing_from"] or g["left_open"]:
-            continue
-        for v in g["values"]:
-            if v.quote_match == "words_on_page":
-                continue  # a stitched quote is never approved in bulk, whatever its confidence
-            if v.method == "ocr":
-                continue  # OCR values are approved one by one, whatever their confidence
-            if v.review_status == "extracted" and v.confidence == "high" and v.value is not None:
-                services.review_value(session, v.id, "approve", reason="approved with all agreeing values")
-                approved += 1
-    services.audit(session, "approve_agreed", "project", project_id, project_id, approved=approved)
-    session.commit()
-    return RedirectResponse(f"/projects/{project_id}/review", status_code=303)
-
-
-# --- estimate -------------------------------------------------------------------------------------
-
-@router.post("/projects/{project_id}/estimate")
-def build_estimate(request: Request, project_id: int, session: SessionDep) -> Response:
+@router.post("/enquiries/{project_id}/quote")
+def rebuild_quote(request: Request, project_id: int, session: SessionDep) -> Response:
     project_or_404(session, project_id)
     services.build_estimate(session, project_id, request.app.state.settings)
-    return RedirectResponse(f"/projects/{project_id}/estimate", status_code=303)
+    return RedirectResponse(f"/enquiries/{project_id}/quote", status_code=303)
 
 
-@router.get("/projects/{project_id}/estimate", response_class=HTMLResponse)
-def estimate_page(request: Request, project_id: int, session: SessionDep) -> HTMLResponse:
+@router.get("/enquiries/{project_id}/quote", response_class=HTMLResponse)
+def quote_page(request: Request, project_id: int, session: SessionDep) -> HTMLResponse:
     project = project_or_404(session, project_id)
-    est = services.latest_estimate(session, project_id)
-    approved = len(services.approved_values(session, project_id))
-    return render(request, "estimate.html", project=project, estimate=est, approved=approved,
-                  money=services.money, field_label=field_label)
+    context = enquiry_context(session, project)
+    est = context["estimate"]
+    return render(request, "quote.html", **context, tab="quote",
+                  blockers=enquiry.quote_blockers(est) if est else [],
+                  out_of_date=enquiry.quote_out_of_date(session, project_id, est),
+                  line_label=labels.line_label)
 
 
 @router.post("/matches/{match_id}/{action}")
@@ -481,48 +646,82 @@ def review_match(request: Request, match_id: int, action: str, session: SessionD
     except services.ReviewError as error:
         raise HTTPException(422, str(error)) from error
     services.build_estimate(session, m.project_id, request.app.state.settings)
-    return RedirectResponse(f"/projects/{m.project_id}/estimate", status_code=303)
+    return RedirectResponse(f"/enquiries/{m.project_id}/quote", status_code=303)
 
 
-@router.get("/projects/{project_id}/estimates/{estimate_id}/report.docx")
+def _export_docx(request: Request, session: Session, project: Project, est: Estimate) -> Response:
+    ids = {i for ln in est.lines for i in ln.value_ids}
+    values = {v.id: v for v in session.scalars(select(ExtractedValueRow).where(ExtractedValueRow.id.in_(ids)))}
+    data = estimate_docx(project, est, values, datetime.now(UTC), enquiry.reading_line(project))
+    services.audit(session, "export", "estimate", est.id, project.id, format="docx", bytes=len(data),
+                   sha256=hashlib.sha256(data).hexdigest())
+    session.commit()
+    name = f"quote-{project.id}-{est.id}.docx"
+    return Response(data, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+@router.get("/enquiries/{project_id}/quote/report.docx")
+def export_latest_docx(request: Request, project_id: int, session: SessionDep) -> Response:
+    """The report of the current quote. The quote is rebuilt first if anything changed since it was built."""
+    project = project_or_404(session, project_id)
+    est = services.latest_estimate(session, project_id)
+    if est is None or enquiry.quote_out_of_date(session, project_id, est):
+        est = services.build_estimate(session, project_id, request.app.state.settings)
+    return _export_docx(request, session, project, est)
+
+
+@router.get("/enquiries/{project_id}/estimates/{estimate_id}/report.docx")
 def export_docx(request: Request, project_id: int, estimate_id: int, session: SessionDep) -> Response:
     project = project_or_404(session, project_id)
     est = session.get(Estimate, estimate_id)
     if est is None or est.project_id != project_id:
         raise HTTPException(404)
-    ids = {i for ln in est.lines for i in ln.value_ids}
-    values = {v.id: v for v in session.scalars(select(ExtractedValueRow).where(ExtractedValueRow.id.in_(ids)))}
-    data = estimate_docx(project, est, values, datetime.now(UTC))
-    services.audit(session, "export", "estimate", est.id, project_id, format="docx", bytes=len(data),
-                   sha256=__import__("hashlib").sha256(data).hexdigest())
-    session.commit()
-    name = f"estimate-{project_id}-{estimate_id}.docx"
-    return Response(data, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    headers={"Content-Disposition": f'attachment; filename="{name}"'})
+    return _export_docx(request, session, project, est)
 
 
-def _state_words(state: Any) -> str:
-    """{"value": 200, "unit": "A", "status": "extracted"} as "200 A, extracted"."""
-    if not isinstance(state, dict):
-        return str(state)
-    value = display(state["value"], state.get("unit")) if state.get("value") is not None else None
-    return ", ".join(str(x) for x in (value, state.get("code"), state.get("status")) if x)
+# --- details: proof viewer and activity ----------------------------------------------------------------
 
-
-def audit_detail(detail: dict[str, Any]) -> list[tuple[str, str]]:
-    """An audit event's detail as (label, plain text) pairs; old and new states become one change."""
-    out: list[tuple[str, str]] = []
-    if "old" in detail or "new" in detail:
-        out.append(("change", f"{_state_words(detail.get('old'))} → {_state_words(detail.get('new'))}"))
-    for key, value in detail.items():
-        if key not in ("old", "new") and value is not None:
-            out.append((key.replace("_", " "), _state_words(value)))
-    return out
-
-
-@router.get("/projects/{project_id}/audit", response_class=HTMLResponse)
-def audit_log(request: Request, project_id: int, session: SessionDep) -> HTMLResponse:
+@router.get("/enquiries/{project_id}/proof", response_class=HTMLResponse)
+def proof_viewer(request: Request, project_id: int, session: SessionDep, doc: int | None = None,
+                 page: int | None = None) -> HTMLResponse:
+    """A file's text page by page, with the source of every value highlighted (the old Analysis screen)."""
     project = project_or_404(session, project_id)
-    events = list(session.scalars(select(AuditEvent).where(AuditEvent.project_id == project_id)
-                                  .order_by(AuditEvent.id.desc())))
-    return render(request, "audit.html", project=project, events=events, audit_detail=audit_detail)
+    readable = [d for d in project.documents if d.pages]
+    current = next((d for d in readable if d.id == doc), None) or (readable[0] if readable else None)
+    pages, page_no, segs, values = [], None, [], []
+    if current is not None:
+        pages = current.pages
+        page_no = page if page in {p.number for p in pages} else pages[0].number
+        text = next(p.text for p in pages if p.number == page_no)
+        values = sorted((v for v in project.values if v.document_id == current.id and v.page == page_no),
+                        key=lambda v: enquiry.field_sort_key(v.field))
+        flagged = [f["text"] for f in enquiry.instruction_flags(project, current.id) if f["page"] == page_no]
+        segs = segments(text, [(v.id, v.source_text or "", _anchor(v)) for v in values]
+                        + [(-1 - i, t, None) for i, t in enumerate(flagged)])
+    flags = enquiry.instruction_flags(project, current.id) if current is not None else []
+    return render(request, "proof.html", **enquiry_context(session, project), current=current, pages=pages,
+                  page_no=page_no, segments=segs, values=values, flags=flags, tab="details")
+
+
+@router.get("/enquiries/{project_id}/activity", response_class=HTMLResponse)
+def activity(request: Request, project_id: int, session: SessionDep, show: str = "all", page: int = 1) -> HTMLResponse:
+    """Everything done on the enquiry, newest first, in plain words; filtered by kind and paged."""
+    project = project_or_404(session, project_id)
+    show = show if show in labels.ACTIVITY_GROUPS else "all"
+    query = select(AuditEvent).where(AuditEvent.project_id == project_id)
+    count = select(func.count(AuditEvent.id)).where(AuditEvent.project_id == project_id)
+    if show != "all":
+        actions = labels.ACTIVITY_GROUPS[show][1]
+        query, count = query.where(AuditEvent.action.in_(actions)), count.where(AuditEvent.action.in_(actions))
+    total = session.scalar(count) or 0
+    pages = max(1, -(-total // PAGE_SIZE))
+    page = min(max(1, page), pages)
+    events = list(session.scalars(query.order_by(AuditEvent.id.desc()).offset((page - 1) * PAGE_SIZE)
+                                  .limit(PAGE_SIZE)))
+    names = {str(d.id): d.original_name for d in project.documents}
+    rows = [{"event": e, "text": labels.activity_text(
+        e.action, e.detail, names.get(e.entity_id or "") if e.entity == "document" else None)} for e in events]
+    return render(request, "activity.html", **enquiry_context(session, project), rows=rows, show=show, page=page,
+                  pages=pages, total=total, tab="details",
+                  filters={"all": "All", **{k: v[0] for k, v in labels.ACTIVITY_GROUPS.items()}})

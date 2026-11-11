@@ -10,8 +10,12 @@ notebooks
 tutorials
 docs
 tests
-# Only the parts catalogue is needed in the image.
+# Only the parts catalogue and the four files of the sample enquiry are needed in the image.
 data/*
 !data/catalogue
+!data/projects/showcase/specification.pdf
+!data/projects/showcase/requirements.docx
+!data/projects/showcase/drawing/schematic.dxf
+!data/projects/showcase/drawing/schematic.pdf
 *.log
 storage

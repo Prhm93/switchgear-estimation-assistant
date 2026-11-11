@@ -1,4 +1,4 @@
-"""Tests for the health endpoint and the design system health-check page."""
+"""Tests for the health endpoint, the System status page and the design samples page."""
 
 from fastapi.testclient import TestClient
 
@@ -26,8 +26,8 @@ def test_healthz_reports_unreachable_database() -> None:
     assert body["database"]["pgvector"] is None
 
 
-def test_health_page_renders_every_component(client: TestClient) -> None:
-    response = client.get("/health")
+def test_design_samples_render_every_component(client: TestClient) -> None:
+    response = client.get("/health/design")
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
     html = response.text
@@ -53,16 +53,25 @@ def test_health_page_renders_every_component(client: TestClient) -> None:
         "Sample data",
         "btn--tonal",
     ):
-        assert marker in html, f"{marker} missing from the health page"
+        assert marker in html, f"{marker} missing from the design samples page"
 
 
-def test_health_page_shows_database_state(client: TestClient) -> None:
-    assert "Not configured" in client.get("/health").text
+def test_design_samples_are_not_served_in_production() -> None:
+    with TestClient(create_app(Settings(environment="production"))) as client:
+        assert client.get("/health/design").status_code == 404
+        assert "Design samples" not in client.get("/health").text
+
+
+def test_system_status_shows_the_real_settings(client: TestClient) -> None:
+    html = client.get("/health").text
+    assert "System status" in html and "Not configured" in html
+    assert "Drawing PDFs and pictures" in html and "Quote check for model values" in html
+    assert "/health/design" in html  # developers find the samples from here (not in production)
 
 
 def test_health_page_uses_no_forbidden_wording(client: TestClient) -> None:
     """Design rule: plain professional labels, no 'magic' wording or sparkle symbols."""
-    html = client.get("/health").text.lower()
+    html = (client.get("/health").text + client.get("/health/design").text).lower()
     for word in ("magic", "sparkle", "ai-powered", "✨"):
         assert word not in html
 
@@ -87,7 +96,13 @@ def test_old_system_address_redirects_to_health(client: TestClient) -> None:
 def test_home_page_works_without_a_database(client: TestClient) -> None:
     html = client.get("/").text
     assert "checked</em> estimates" in html
-    assert 'action="/projects"' in html  # the hero form creates a project through the existing route
+    assert 'action="/enquiries"' in html  # the hero form creates an enquiry
+    assert 'action="/enquiries/sample"' in html
     assert "Not affiliated with or endorsed by any company" in html
-    assert "Sign in" not in html  # hidden until login is built (Stage 8)
-    assert "[PLACEHOLDER]" in html  # numbers not measured yet are marked, never invented
+    assert "Sign in" not in html  # hidden until login is built
+    assert "[PLACEHOLDER]" not in html  # every number now comes from docs/stage-3.md and docs/stage-4.md
+    for number in ("0.778", "0.727", "0.497", "0.813", "0.893", "0.863", "0.572"):
+        assert number in html
+    assert "tuned on this set" in html  # the relaxed-check number is labelled
+    assert "Strict quote check, fixed baseline. Not held out: these sets were used during development." in html
+    assert "Test set; the linker was tuned on 3 of these drawings." in html

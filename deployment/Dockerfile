@@ -25,9 +25,11 @@ COPY ai_engine ./ai_engine
 COPY backend ./backend
 COPY frontend ./frontend
 # The answer-key schema is shared with the extracted values; the parts catalogue and the
-# estimate rules are read at start-up. No generated project data goes into the image.
+# estimate rules are read at start-up. The only project data in the image is the four files of
+# the sample enquiry ("Try the sample enquiry"), from the committed showcase.
 COPY data_generator ./data_generator
 COPY data/catalogue ./data/catalogue
+COPY data/projects/showcase ./data/projects/showcase
 COPY config ./config
 
 # Run as an unprivileged user. Uploaded originals live in /app/storage (a volume).

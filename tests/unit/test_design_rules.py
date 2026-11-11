@@ -8,6 +8,7 @@ These keep the look consistent as the stylesheet grows:
   .glow (top radial glow), .sheen (card sheen) and .cta-panel (call to action);
 * 3D tilt only in the home page hero, and only at 1100px and wider;
 * card radii of 18 and 20px, pill buttons, a red primary button with a shadow;
+* IBM Plex Sans everywhere, the serif display font on the home page only;
 * 150 ms transitions, none for reduced-motion users, and a visible focus ring;
 * no emoji or "magic" wording in the templates.
 """
@@ -143,11 +144,21 @@ def test_buttons_are_pills_and_primary_is_red_with_a_soft_red_shadow() -> None:
     assert "var(--tint-reject)" in _rule(".icon-btn--reject")
 
 
-def test_page_titles_use_the_serif() -> None:
-    for selector in (".page-title", ".hero__title", ".section-title"):
-        assert any("var(--font-serif)" in body for sel, body in _rules() if sel == selector), selector
+def test_the_serif_is_for_the_home_page_only() -> None:
+    """Stage UX: IBM Plex Sans everywhere in the app; the serif display font only on the home page."""
+    home_only = {".hero__title", ".section-title", ".cta-panel h2", ".page--home .brand__name", ".serif"}
+    serif = {sel for sel, body in _rules() if "var(--font-serif)" in body}
+    assert serif == home_only, serif
+    assert "var(--font-serif)" not in _rule(".page-title") and "font-family" not in _rule(".page-title")
+    assert "var(--font-sans)" in _rule("body")
     assert '"Instrument Serif"' in CSS
     assert "InstrumentSerif-Regular.woff2" in CSS and "InstrumentSerif-Italic.woff2" in CSS
+
+
+def test_mono_is_only_for_numbers_codes_and_document_text() -> None:
+    """Plex Mono marks numbers, part codes and text copied from a document; never headings or labels."""
+    for selector in (".page-title", ".block-title", ".decision__title", ".panel__title", ".step", ".lead", ".btn"):
+        assert "var(--font-mono)" not in _rule(selector), selector
 
 
 def test_transitions_are_150ms_and_off_for_reduced_motion() -> None:

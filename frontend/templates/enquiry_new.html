@@ -1,0 +1,32 @@
+{%- extends "layout_app.html" -%}
+{%- from "macros.html" import icon with context -%}
+
+{%- block title %}New enquiry · {{ app_name }}{% endblock -%}
+{%- block page_class %} page--narrow{% endblock -%}
+
+{%- block heading %}
+<div class="page-head"><h1 class="page-title">New enquiry</h1></div>
+{% endblock -%}
+
+{%- block content %}
+<form class="form gap-top-lg" method="post" action="/enquiries" enctype="multipart/form-data" data-dropzone>
+  <label class="field">
+    <span class="field__label">Name (optional: taken from the specification if left empty)</span>
+    <input class="input" name="name" value="{{ name }}" maxlength="200" autocomplete="off" placeholder="e.g. MSB-2 main switchboard">
+  </label>
+  <div class="upload-box upload-box--card">
+    <div class="upload-box__inner dropzone__inner">
+      {{ icon("upload", "lg") }}
+      <h2 class="dropzone__title">Drop the customer's files here</h2>
+      <p class="muted">PDF, DXF, DOCX, PNG or JPG, up to {{ max_mb }} MB each; a PDF up to {{ max_pages }} pages.</p>
+      <label class="btn btn--secondary">Choose files<input class="visually-hidden" type="file" name="files" multiple accept=".pdf,.png,.jpg,.jpeg,.dxf,.docx" data-file-input></label>
+      <p class="small muted" data-file-summary aria-live="polite"></p>
+      <p class="small muted">{{ drawing_hint }}</p>
+    </div>
+  </div>
+  <div class="row">
+    <button class="btn btn--primary" type="submit">Start</button>
+    <a class="btn btn--ghost" href="/enquiries">Cancel</a>
+  </div>
+</form>
+{% endblock -%}

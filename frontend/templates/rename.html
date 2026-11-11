@@ -1,0 +1,18 @@
+{%- extends "layout_enquiry.html" -%}
+
+{%- block step %}
+<section class="narrow">
+  <h2 class="block-title">Rename this enquiry</h2>
+  {%- if error %}<p class="alert alert--error" role="alert">{{ error }}</p>{% endif %}
+  <form class="form gap-top" method="post" action="/enquiries/{{ project.id }}/rename">
+    <label class="field"><span class="field__label">Name</span>
+      <input class="input" name="name" value="{{ project.name }}" required maxlength="200" autocomplete="off"></label>
+    <label class="field"><span class="field__label">Reference (optional)</span>
+      <input class="input mono" name="reference" value="{{ project.reference or '' }}" maxlength="100" autocomplete="off"></label>
+    <div class="row">
+      <button class="btn btn--primary" type="submit">Save</button>
+      <a class="btn btn--ghost" href="/enquiries">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock -%}

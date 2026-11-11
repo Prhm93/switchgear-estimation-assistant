@@ -1,11 +1,15 @@
 {#- Public home page, as docs/design/mockup-home.html. Works without a database.
-    Numbers are real results from docs/stage-1.md and docs/stage-2.md or live
-    showcase counts; anything not measured yet reads [PLACEHOLDER]. -#}
+    Every number is a measured result from docs/stage-3.md or docs/stage-4.md. Numbers
+    from the relaxed quote check are labelled "tuned on this set"; the cards in the
+    hero are examples from the sample enquiry, not results. -#}
 {%- extends "base.html" -%}
-{%- from "macros.html" import icon, brand_mark, segbar with context -%}
+{%- from "macros.html" import icon, brand_mark with context -%}
 
 {%- block title %}{{ app_name }}{% endblock -%}
 {%- block body_class %}page--home{% endblock -%}
+{%- block head %}
+  <link rel="preload" href="{{ url_for('static', path='fonts/InstrumentSerif-Regular.woff2') }}" as="font" type="font/woff2" crossorigin>
+{%- endblock -%}
 
 {%- block body %}
 <div class="glow" aria-hidden="true"></div>
@@ -16,10 +20,9 @@
       <a href="#how">How it works</a>
       <a href="#accuracy">Accuracy</a>
       <a href="#trust">Trust &amp; safety</a>
-      <a href="/projects">Dashboard</a>
     </nav>
-    {#- Sign in is hidden until login is built (Stage 8). -#}
-    <a class="btn btn--primary" href="/projects">Open workspace</a>
+    {#- Sign in stays hidden until login is built. -#}
+    <a class="btn btn--primary" href="/enquiries">Open enquiries</a>
   </div>
   <div class="site-header__line" aria-hidden="true"></div>
 </header>
@@ -46,14 +49,14 @@
     <div class="hero__center">
       <span class="hero__pill"><span class="dot" aria-hidden="true"></span>Local-first · every value traceable</span>
       <h1 id="hero-title" class="hero__title">Turn enquiries into <em>checked</em> estimates</h1>
-      <p class="hero__lede">Upload the specification, drawing and customer letter. Every rating, quantity and price shows where it came from, and nothing reaches the estimate until an engineer approves it.</p>
-      <form class="hero__form" method="post" action="/projects">
+      <p class="hero__lede">Drop in the specification, drawing and customer letter. Every rating, quantity and price shows where it came from, and nothing reaches the quote until an engineer approves it.</p>
+      <form class="hero__form" method="post" action="/enquiries">
         <div class="upload-box">
           <div class="upload-box__inner">
-            <label class="visually-hidden" for="home-name">Project name</label>
-            <input id="home-name" class="upload-box__input" name="name" type="text" required maxlength="200" autocomplete="off"
+            <label class="visually-hidden" for="home-name">Enquiry name</label>
+            <input id="home-name" class="upload-box__input" name="name" type="text" maxlength="200" autocomplete="off"
                    placeholder="Name the enquiry, e.g. MSB-2 main switchboard">
-            <button class="btn btn--primary btn--lg" type="submit">Start a project{{ icon("arrow-right", "sm") }}</button>
+            <button class="btn btn--primary btn--lg" type="submit">Start an enquiry{{ icon("arrow-right", "sm") }}</button>
           </div>
         </div>
       </form>
@@ -66,20 +69,14 @@
 
     <div class="hero__side hero__side--right">
       <article class="float-card sheen">
-        <div class="float-card__head"><span>Values approved</span></div>
-        {%- if summary %}
-        <div class="float-card__value"><span class="kpi__value">{{ summary.approved }}</span> <span class="muted">of {{ summary["values"] }}</span></div>
-        {{ segbar(summary) }}
-        <div class="float-card__meta">{{ showcase.name }}</div>
-        {%- else %}
-        <div class="float-card__value placeholder">[PLACEHOLDER]</div>
-        <div class="float-card__meta">Live counts appear once the showcase project is uploaded.</div>
-        {%- endif %}
+        <div class="float-card__head"><span>Read from a scanned drawing</span><span class="chip chip--neutral">Medium</span></div>
+        <div class="float-card__value">Q4 · 160 A</div>
+        <div class="float-card__meta">Drawing · sheet 1 · OCR · always checked by the engineer</div>
       </article>
       <article class="float-card sheen">
         <div class="float-card__head"><span>Missing information</span><span class="chip chip--missing">Missing</span></div>
         <div class="float-card__value">Way Q3 rating</div>
-        <div class="float-card__meta">Test project T12: the specification says "TBC"</div>
+        <div class="float-card__meta">The specification says "TBC": nothing is guessed</div>
       </article>
     </div>
   </section>
@@ -88,11 +85,11 @@
     <div class="frame">
       <div class="frame__bar">
         <span class="frame__dot" aria-hidden="true"></span><span class="frame__dot" aria-hidden="true"></span><span class="frame__dot" aria-hidden="true"></span>
-        <span class="frame__title">Analysis · Showcase MSB-2 main switchboard</span>
+        <span class="frame__title">Check · Sample enquiry, main switchboard MSB-2</span>
       </div>
       <div class="frame__body">
         <div class="frame__nav" aria-hidden="true">
-          <span>Dashboard</span><span aria-current="true">Analysis</span><span>Review</span><span>Estimate</span><span>Audit log</span>
+          <span>1 Files</span><span aria-current="true">2 Check</span><span>3 Quote</span>
         </div>
         <div class="frame__content">
           <div class="paper"><div class="paper__src">specification.pdf · page 4</div>3.4 Prospective fault level: <mark>36 kA</mark> for 1 s.
@@ -118,36 +115,37 @@
       <div class="tile glass--tile"><div class="tile__no">01</div><h3 class="tile__title">Upload</h3><p class="tile__text">Specification, drawing and letter are stored unchanged, each with its own fingerprint.</p></div>
       <div class="tile glass--tile"><div class="tile__no">02</div><h3 class="tile__title">Read</h3><p class="tile__text">Ratings, poles, quantities and part types are found with the exact sentence or drawing text they came from.</p></div>
       <div class="tile glass--tile"><div class="tile__no">03</div><h3 class="tile__title">Cross-check</h3><p class="tile__text">Where the drawing and specification disagree, both sources are shown side by side. Nothing is chosen quietly.</p></div>
-      <div class="tile glass--tile"><div class="tile__no">04</div><h3 class="tile__title">Approve &amp; export</h3><p class="tile__text">Only approved values reach the estimate. Prices come from the catalogue, and every action is logged.</p></div>
+      <div class="tile glass--tile"><div class="tile__no">04</div><h3 class="tile__title">Approve &amp; export</h3><p class="tile__text">Only approved values reach the quote. Prices come from the catalogue, and every action is logged.</p></div>
     </div>
   </section>
 
   <section id="accuracy" class="section accuracy" aria-labelledby="accuracy-title">
     <div>
       <div class="eyebrow">Measured, not promised</div>
-      <h2 id="accuracy-title" class="section-title">Every step is scored against an answer key</h2>
-      <p class="section-lede">Each method is scored on the same 20 test enquiries. From Stage 4, drawing results are reported separately for clean, scanned, photographed and real drawings.</p>
+      <h2 id="accuracy-title" class="section-title">Every method is scored against an answer key</h2>
+      <p class="section-lede">20 invented test enquiries and 20 reworded copies whose wording the reading rules never saw. The scores are F1 over every value. Drawings are scored apart as clean, scanned and photographed; no real drawing has been scored yet.</p>
     </div>
     <div class="stats">
-      <div class="stat glass--tile"><div class="stat__value">20</div><div class="stat__label">test enquiries with exact answer keys</div></div>
-      <div class="stat glass--tile"><div class="stat__value">17</div><div class="stat__label">planted problems to catch, plus 4 clean controls</div></div>
-      <div class="stat glass--tile"><div class="stat__value">0.486</div><div class="stat__label">rules recall without the CAD file: the gap the drawing-reading stages must close</div></div>
-      <div class="stat glass--tile"><div class="stat__value placeholder">[PLACEHOLDER]</div><div class="stat__label">drawing conditions scored apart: clean, scanned, photo, real</div></div>
+      <div class="stat glass--tile"><div class="stat__value">0.778</div><div class="stat__label">model alone on the test enquiries, with the CAD file. Strict quote check, fixed baseline. Not held out: these sets were used during development. Fair scores come from a fresh set in Stage 7.</div></div>
+      <div class="stat glass--tile"><div class="stat__value">0.727</div><div class="stat__label">the same on the reworded enquiries (0.497 without the CAD file)</div></div>
+      <div class="stat glass--tile"><div class="stat__value">0.813</div><div class="stat__label">with the relaxed quote check, the app default: tuned on this set, so not a fair score (0.790 reworded, also tuned)</div></div>
+      <div class="stat glass--tile"><div class="stat__value">0.893</div><div class="stat__label">drawing values read by OCR from a clean drawing; 0.863 scanned, 0.572 photographed (3 to 5 s per sheet). Test set; the linker was tuned on 3 of these drawings.</div></div>
     </div>
   </section>
 
   <section id="trust" class="section cta-panel" aria-labelledby="trust-title">
     <div>
       <h2 id="trust-title">The engineer decides. The system shows its work.</h2>
-      <p>Runs locally. No documents leave the machine, and prices never come from a model. From Stage 3, every model answer must quote its source, and a quote that is not in the document is rejected.</p>
+      <p>Runs locally. No documents leave the machine, and prices never come from a model. Every model answer must quote its source, and a quote that is not on the page is rejected.</p>
     </div>
-    <a class="btn btn--primary btn--lg" href="{{ '/projects/%d' % showcase.id if showcase else '/projects/new' }}">
-      {{- "Open the showcase project" if showcase else "Start the showcase project" }}{{ icon("arrow-right", "sm") }}</a>
+    <form method="post" action="/enquiries/sample">
+      <button class="btn btn--primary btn--lg" type="submit">Try the sample enquiry{{ icon("arrow-right", "sm") }}</button>
+    </form>
   </section>
 </main>
 
 <footer class="site-footer">
   <span>Independent personal project. Synthetic data only. Not affiliated with or endorsed by any company.</span>
-  <span class="mono placeholder">[PLACEHOLDER]</span>
+  <a href="/health">System status</a>
 </footer>
 {% endblock -%}

@@ -1,0 +1,230 @@
+{%- extends "layout_app.html" -%}
+{%- from "macros.html" import icon, badge, confidence, level_chip, ring, segbar with context -%}
+{%- set nav = "health" -%}
+
+{%- block title %}Design samples · {{ app_name }}{% endblock -%}
+
+
+{%- block heading %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Design samples</h1>
+    <p class="page-lede">
+      For developers: one example of each interface component and the colour tokens.
+      Everything here is sample data and no button does anything. Live status is on
+      the <a href="/health">System status</a> page.
+    </p>
+  </div>
+  <span class="chip chip--neutral">Sample data</span>
+</div>
+{% endblock -%}
+
+{%- block content %}
+{#- Sample stat cards -#}
+<section class="grid-cards gap-top-lg" aria-label="Sample stat cards">
+  <article class="glass kpi--ring">
+    {{ ring(18, 24, "18 of 24 values approved (sample)") }}
+    <div class="kpi"><span class="kpi__label">Values approved</span><span class="kpi__value">18<small> / 24</small></span></div>
+  </article>
+  <article class="glass kpi">
+    <span class="kpi__label"><span>Open conflicts</span><span class="dot dot--error" aria-hidden="true"></span></span>
+    <span class="kpi__value">4</span>
+    <span class="kpi__note">Specification and drawing disagree</span>
+  </article>
+  <article class="glass kpi">
+    <span class="kpi__label"><span>Values to review</span><span class="dot dot--warn" aria-hidden="true"></span></span>
+    <span class="kpi__value">27</span>
+    <span class="kpi__note">Across 5 enquiries</span>
+  </article>
+  <article class="glass kpi">
+    <span class="kpi__label">Segment bar</span>
+    {{ segbar({"approved": 18, "review": 3, "conflict": 1, "missing": 2}) }}
+  </article>
+</section>
+
+<section class="glass gap-top" aria-labelledby="table-title">
+  <div class="card-head"><h2 id="table-title" class="card-title">Recent enquiries</h2><span class="chip chip--neutral">Sample data</span></div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <caption class="visually-hidden">Recent enquiries (sample data)</caption>
+      <thead>
+        <tr>
+          <th scope="col">Reference</th>
+          <th scope="col">Enquiry</th>
+          <th scope="col" class="num">Documents</th>
+          <th scope="col" class="num">Values approved</th>
+          <th scope="col">Status</th>
+          <th scope="col" class="num">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mono">ENQ-0142</td>
+          <td>Hospital wing main LV switchboard<span class="data-table__sub">1600 A, form 4b</span></td>
+          <td class="num">3</td>
+          <td class="num">18 / 24</td>
+          <td>{{ badge("review") }}</td>
+          <td class="actions"><span class="icon-actions">
+            <button class="icon-btn icon-btn--approve" type="button" aria-label="Approve (sample)">{{ icon("check", "sm") }}</button>
+            <button class="icon-btn" type="button" aria-label="Edit (sample)">{{ icon("edit", "sm") }}</button>
+            <button class="icon-btn icon-btn--reject" type="button" aria-label="Reject (sample)">{{ icon("close", "sm") }}</button></span></td>
+        </tr>
+        <tr>
+          <td class="mono">ENQ-0139</td>
+          <td>Office block distribution board<span class="data-table__sub">630 A, form 2</span></td>
+          <td class="num">3</td>
+          <td class="num">31 / 31</td>
+          <td>{{ badge("approved") }}</td>
+          <td class="actions">{{ badge("approved") }}</td>
+        </tr>
+        <tr>
+          <td class="mono">ENQ-0137</td>
+          <td>Warehouse motor control panel<span class="data-table__sub">800 A, form 3b</span></td>
+          <td class="num">2</td>
+          <td class="num">9 / 15</td>
+          <td>{{ badge("conflict") }}</td>
+          <td class="actions"><button class="btn btn--secondary btn--sm" type="button">Compare</button></td>
+        </tr>
+        <tr>
+          <td class="mono">ENQ-0131</td>
+          <td>School refurbishment sub-mains<span class="data-table__sub">400 A, form 2</span></td>
+          <td class="num">3</td>
+          <td class="num">0 / 12</td>
+          <td>{{ badge("missing") }}</td>
+          <td class="actions">{{ badge("extracted") }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="grid-cards gap-top">
+  {#- Typography -#}
+  <section class="glass" aria-labelledby="type-title">
+    <div class="card-head"><h2 id="type-title" class="card-title">Typography</h2><span class="eyebrow">Serif · Sans · Mono</span></div>
+    <div class="stack gap-top">
+      <p class="serif" style="font-size: 40px; line-height: 1.1">Checked <em>estimates</em></p>
+      <p class="soft">Instrument Serif on the home page only. Everything else in IBM Plex Sans. Numbers, part codes and quantities use IBM Plex Mono with tabular figures so columns line up.</p>
+      <div class="row" style="column-gap: var(--space-6)">
+        <span class="mono" style="font-size: 22px">1600 A</span>
+        <span class="mono" style="font-size: 22px">50 kA</span>
+        <span class="mono" style="font-size: 22px">PRT-0042</span>
+      </div>
+    </div>
+  </section>
+
+  {#- Buttons -#}
+  <section class="glass" aria-labelledby="buttons-title">
+    <h2 id="buttons-title" class="card-title">Buttons</h2>
+    <div class="stack gap-top">
+      <div class="row">
+        <button class="btn btn--primary" type="button">{{ icon("check", "sm") }}Approve value</button>
+        <button class="btn btn--secondary" type="button">Edit value</button>
+        <button class="btn btn--tonal" type="button">Add note</button>
+      </div>
+      <div class="row">
+        <button class="btn btn--ghost" type="button">Reject</button>
+        <button class="icon-btn icon-btn--approve" type="button" aria-label="Approve">{{ icon("check", "sm") }}</button>
+        <button class="icon-btn" type="button" aria-label="Edit">{{ icon("edit", "sm") }}</button>
+        <button class="icon-btn icon-btn--reject" type="button" aria-label="Reject">{{ icon("close", "sm") }}</button>
+        <button class="icon-btn icon-btn--red" type="button" aria-label="Next step">{{ icon("arrow-right", "sm") }}</button>
+        <button class="btn btn--secondary" type="button" disabled>Export</button>
+      </div>
+    </div>
+  </section>
+
+  {#- Segmented toggle and tabs -#}
+  <section class="glass" aria-labelledby="toggle-title">
+    <h2 id="toggle-title" class="card-title">Toggle and tabs</h2>
+    <div class="stack gap-top">
+      <fieldset class="segmented">
+        <legend class="visually-hidden">Model mode</legend>
+        <input type="radio" id="mode-rules" name="mode" value="rules" checked>
+        <label for="mode-rules">Rules</label>
+        <input type="radio" id="mode-recorded" name="mode" value="recorded">
+        <label for="mode-recorded">Recorded</label>
+        <input type="radio" id="mode-live" name="mode" value="ollama">
+        <label for="mode-live">Live model</label>
+      </fieldset>
+      <div class="tabs" role="tablist" aria-label="Enquiry sections">
+        <button class="tab" type="button" role="tab" id="tab-docs" aria-controls="panel-docs" aria-selected="true">Documents</button>
+        <button class="tab" type="button" role="tab" id="tab-values" aria-controls="panel-values" aria-selected="false">Values</button>
+        <button class="tab" type="button" role="tab" id="tab-review" aria-controls="panel-review" aria-selected="false">Review</button>
+      </div>
+      <div class="tab-panel" role="tabpanel" id="panel-docs" aria-labelledby="tab-docs" tabindex="0">Uploaded documents and their processing status.</div>
+      <div class="tab-panel" role="tabpanel" id="panel-values" aria-labelledby="tab-values" tabindex="0">Values found in the documents, each with its source and confidence.</div>
+      <div class="tab-panel" role="tabpanel" id="panel-review" aria-labelledby="tab-review" tabindex="0">Approve, edit or reject each value. Conflicts show both sources.</div>
+    </div>
+  </section>
+</div>
+
+<div class="split-cards gap-top">
+  {#- Document cards -#}
+  <section class="glass main" aria-labelledby="card-title">
+    <div class="card-head"><h2 id="card-title" class="card-title">Document cards</h2><span class="chip chip--neutral">Sample data</span></div>
+    <div class="stack gap-top">
+      <article class="doc-card">
+        <div class="doc-card__icon">{{ icon("document") }}</div>
+        <div>
+          <h3 class="doc-card__name">specification.pdf</h3>
+          <div class="doc-card__meta"><span>Specification</span><span class="mono">PDF</span><span class="mono">1.2 MB</span><span class="mono">14 pages</span></div>
+          <div class="doc-card__status">{{ badge("extracted") }}</div>
+        </div>
+        <div class="doc-card__actions">
+          <button class="icon-btn" type="button" aria-label="View specification.pdf">{{ icon("view", "sm") }}</button>
+        </div>
+      </article>
+      <article class="doc-card">
+        <div class="doc-card__icon">{{ icon("drawing") }}</div>
+        <div>
+          <h3 class="doc-card__name">single-line-diagram.png</h3>
+          <div class="doc-card__meta"><span>Schematic</span><span class="mono">PNG</span><span class="mono">840 kB</span></div>
+          <div class="doc-card__status">{{ badge("review") }}</div>
+        </div>
+        <div class="doc-card__actions">
+          <button class="icon-btn" type="button" aria-label="View single-line-diagram.png">{{ icon("view", "sm") }}</button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  {#- Chips, confidence and a conflict pair -#}
+  <section class="glass aside" aria-labelledby="badge-title">
+    <div class="card-head"><h2 id="badge-title" class="card-title">Chips and confidence</h2><span class="chip chip--neutral">Sample data</span></div>
+    <div class="row">{{ level_chip("high") }}{{ badge("review") }}{{ badge("conflict") }}{{ badge("missing") }}{{ badge("approved") }}{{ badge("extracted") }}</div>
+    <div class="row" style="column-gap: var(--space-5)">{{ confidence("high") }}{{ confidence("medium") }}{{ confidence("low") }}{{ confidence("conflict") }}</div>
+    <div>
+      <div class="card-head"><span>Outgoing ways</span>{{ badge("conflict") }}</div>
+      <div class="pair">
+        <div class="pair__side"><div class="pair__src">Specification · p5</div><div class="pair__value">6</div></div>
+        <div class="pair__side"><div class="pair__src">Drawing · sheet 1</div><div class="pair__value">7</div></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="split-cards gap-top">
+  {#- Icons -#}
+  <section class="glass main" aria-labelledby="icons-title">
+    <div class="card-head"><h2 id="icons-title" class="card-title">Icons</h2><span class="eyebrow">Line art · 24 px grid</span></div>
+    <div class="icon-grid">
+      {%- for name in ["switchboard", "breaker", "document", "drawing", "check", "warning", "dashboard", "review", "estimate", "audit"] %}
+      <div class="icon-tile">{{ icon(name, "lg") }}<span>{{ name }}</span></div>
+      {%- endfor %}
+    </div>
+  </section>
+
+  {#- Colour tokens -#}
+  <section class="glass aside" aria-labelledby="colour-title">
+    <div class="card-head"><h2 id="colour-title" class="card-title">Colour tokens</h2><span class="eyebrow">WCAG 2.2 AA</span></div>
+    <div class="swatches">
+      {%- for token in ["bg", "surface", "surface-2", "text", "text-muted", "text-soft", "red", "red-text", "blue", "blue-text", "success", "warning", "glass", "hairline-strong"] %}
+      <div class="swatch">
+        <div class="swatch__chip" style="background: var(--{{ token }})"></div>
+        <div class="swatch__label"><span class="mono">--{{ token }}</span></div>
+      </div>
+      {%- endfor %}
+    </div>
+  </section>
+</div>
+{% endblock -%}
