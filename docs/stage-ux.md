@@ -57,7 +57,7 @@ rename or read again, and design samples in the main navigation.
   are gone; a drawing that was not read says why.
 - **Look:** the same navy, red and blue, calmer: fewer cards, more space, about a third of the text.
   IBM Plex Sans everywhere, Plex Mono only for numbers, codes and document text, Instrument Serif only on
-  the home page (a design-rule test enforces both).
+  the home page (a design-rule test enforces both). *Reversed in UX-V: there is no serif any more.*
 - **Home page:** every number is a measured result from docs/stage-3.md and docs/stage-4.md. The strict
   quote check numbers are labelled as the fixed baseline and as not held out (these sets were used during
   development; fair scores come from a fresh set in Stage 7). The relaxed-check number is labelled "tuned
@@ -129,3 +129,90 @@ sample enquiry" works in the container. The recordings stay outside the image, m
   same value: each is a separate stored value and each approval is logged.
 - Screens were checked with headless Edge at 1280 px and at Edge's narrowest window (518 px); a real
   390 px phone was not tested.
+
+## UX-V: the technical-drawing style (in progress)
+
+Parts 1 to 3 are built and committed as a checkpoint; part 4 (the hero shader), the screenshots and the
+Docker rebuild are still to do.
+
+### Decision reversed: no serif
+
+UX-1 kept Instrument Serif for the home page. The owner's UX-V style names IBM Plex Sans and IBM Plex
+Mono only, so the serif is gone everywhere: its two woff2 files, `OFL-InstrumentSerif.txt`, its
+`@font-face` rules, the `--font-serif` token, the home page preload and its row in the README licences
+table. The design-rule test that kept the serif on the home page now checks that there is none.
+
+### Part 1: the view bar on Check, and two fixes
+
+- Under the tabs, a row of buttons: **Decisions N**, **Items N**, **Report**. The counts are read from
+  the database on every request (Decisions is the number on the Check tab; Items is the number of
+  items worked out from the files). The bar is built from one list, `web.VIEWS`; adding Ask or Stock in
+  UX-2 and UX-3 is one line there plus one template, `partials/views/<key>.html`.
+- The open view is highlighted and kept in the address, `/enquiries/{id}/check?view=items`, so Back and
+  links work; with script a button swaps only the Check block and pushes the address. An unknown view
+  falls back to Decisions, the default.
+- The summary sentence and the "Needs your decision" heading are gone. "Accept all" is now a small link
+  at the top of Decisions; its confirmation step is unchanged.
+- **Items** (before UX-2): what the customer asks for, one row per item with quantity, how many
+  documents state it and whether it is approved. **Report**: what the Word report holds, the "Read
+  with ..." line, how many values are decided, the limits and the Export button. Neither shows a price,
+  a total or the blocked lines: those stay on the Quote tab only, so nothing is said twice.
+- Fix: a drawing source says which drawing: "Drawing (CAD), sheet 1" for the DXF, "Drawing (picture),
+  sheet 1" for a drawing PDF or image. On a conflict card only true duplicates are merged (the same
+  file and page with the same value, for example the rules and the model reading one line); the CAD
+  file and a picture of the drawing stay separate, also when they agree.
+- Fix: Export is disabled, with "Approve at least one value to export.", while nothing is approved, on
+  Quote and on Report; the export address refuses with 409.
+- Reported, not fixed: "ACB" and "one air circuit breaker" count as two different values, so the sample
+  shows a conflict on Incomer device. This is a normalisation question for Stage 5; `normalise.py` is
+  frozen.
+
+### Part 2: the style on every page
+
+- Same navy, red and blue tokens. Small labels and block titles are uppercase IBM Plex Mono; headings
+  stay in Plex Sans. One red word in a headline (New *enquiry*, System *status*, Page not *found*); red
+  on navy is 3.83:1, which passes AA for large text only, so the accent is used in headlines only and is
+  checked at the large-text level.
+- Fewer boxes: a decision is no longer a glass card but open space with a hairline above and "+"
+  crosshair marks in its corners (`.xmarks`, an SVG in four background positions).
+- Every app page has a faint drawing in the corner above the footer: an original single-line diagram
+  with a title block "DRAWING NO. SEA/MSB-2 · SCALE 1:2" (decoration, hidden from screen readers and
+  below 900 px).
+
+### Part 3: the home page
+
+- One headline with one red word, one button "Start an enquiry" (to the New enquiry page) and one link
+  "Try the sample enquiry". The tilted cards, the app preview and the call-to-action panel are gone.
+  Behind the hero, static contour lines in navy and blue with one red hairline (the shader of part 4
+  will draw over them).
+- A statement whose words brighten one by one as it scrolls into view. The full text is in the HTML
+  and every word is readable before the reveal (the dim colour passes AA), so only its brightness moves.
+- "How it works": three steps beside an original isometric line drawing of a four-section switchboard
+  that draws itself with the scroll (`stroke-dashoffset`), labelled INCOMER, OUTGOING WAYS and FORM 4a.
+- The measured numbers with the UX-1 labels word for word, and the intro line now reads "20 reworded
+  copies, written to test the reading rules on new wording." Then trust and safety, and the footer.
+- Motion is hand-written: `frontend/static/js/home.js` (IntersectionObserver plus one
+  requestAnimationFrame per scroll), no library, no file from another site. Without script, or with
+  reduced motion, everything is shown at once.
+
+### Design-rule and contrast tests changed on purpose
+
+| Test | Before | Now |
+|---|---|---|
+| Gradients | four rules: `.upload-box`, `.glow`, `.sheen`, `.cta-panel` | one: `.upload-box` (the other three and their tokens are removed) |
+| 3D | tilt only in the home hero at 1100 px and wider | no 3D transforms anywhere |
+| Serif | the serif on the home page only | no serif anywhere, no serif files |
+| Mono | never for labels | also for small uppercase labels (`.label-mono`, `.block-title`); never for headings |
+| New | | the "+" marks are SVG in four corners; every app page has the corner drawing |
+| Contrast pairs | home glow, sheen, call-to-action, preview and paper pairs | removed with their parts; added: the red accent word (large text), the dim statement words, the view buttons and their counts, the mono labels, the home step numbers |
+
+### Tests
+
+New: `tests/integration/test_enquiry_views.py` (the bar, its live counts, the address of each view, no
+prices in Items and Report, Export disabled and refused), `tests/unit/test_sources.py` (true duplicates
+merged, CAD and picture kept apart and labelled), `tests/integration/test_home_page.py` (one headline,
+one button, one link, the statement in the HTML, three steps and the labelled drawing, the UX-1 number
+labels, own scripts only and no animation library, reduced motion). Results below come from the
+checkpoint run.
+
+RESULTS_UXV

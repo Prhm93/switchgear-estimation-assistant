@@ -125,9 +125,9 @@ def showcase_flow(client: TestClient) -> None:
     listing = client.get("/enquiries").text
     assert "Showcase" in listing and "Needs you (" in listing
     check = client.get(f"/enquiries/{pid}/check").text
-    assert f"<strong>{count}</strong> values" in check
+    assert count > 0 and re.search(r'>\s*Decisions\s*<span class="view-btn__count mono">\d+</span>', check)
     assert "The documents disagree" in check and "was not read" in check
-    assert check.index('id="f-way.Q2.rating"') < check.index('id="accept"')  # conflicts come first
+    assert 'id="f-way.Q2.rating"' in check and 'class="link-accept"' in check  # the conflict waits; the rest in one step
 
     # Approve everything that agrees; the planted Q2 conflict (250 A spec, 200 A drawing) stays open.
     assert accept_all(client, pid).status_code == 303
@@ -365,9 +365,10 @@ def test_document_text_with_markup_is_escaped_in_the_proof_viewer_and_the_proof_
 
 def test_home_page_starts_an_enquiry_and_offers_the_sample(client: TestClient) -> None:
     html = client.get("/").text
-    assert 'action="/enquiries"' in html and 'action="/enquiries/sample"' in html
+    # UX-V: one button to the New enquiry page instead of a form on the home page.
+    assert 'href="/enquiries/new"' in html and 'action="/enquiries/sample"' in html
     assert "Try the sample enquiry" in html
-    # The typed name is used: the form creates the enquiry and opens its Files step.
+    # The typed name is used: the New enquiry form creates the enquiry and opens its Files step.
     response = client.post("/enquiries", data={"name": "MSB-2 main switchboard"}, follow_redirects=True)
     assert response.status_code == 200 and "MSB-2 main switchboard" in response.text
     assert "Drop the customer" in response.text

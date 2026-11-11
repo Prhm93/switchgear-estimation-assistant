@@ -81,12 +81,24 @@ def display(value: Any, unit: str | None = None) -> str:
     return f"{value} {unit}" if unit else str(value)
 
 
-def source_words(document: str, page: int | None) -> str:
-    """ "Specification, page 5", "Drawing, sheet 1", "Customer letter"."""
+def source_words(document: str, page: int | None, file_type: str | None = None) -> str:
+    """ "Specification, page 5", "Drawing (CAD), sheet 1", "Drawing (picture), sheet 1", "Customer letter".
+
+    With the file type, a drawing says whether it is the CAD file (DXF) or a picture of the drawing (a drawing
+    PDF or an image, read by OCR), so the two never look like the same source.
+    """
     kind = KIND_WORDS.get(document, document.capitalize())
+    if document == "schematic" and file_type:
+        kind = "Drawing (CAD)" if file_type == "dxf" else "Drawing (picture)"
     if page is None or document == "requirements":
         return kind
     return f"{kind}, {'sheet' if document == 'schematic' else 'page'} {page}"
+
+
+def value_source(v: Any) -> str:
+    """Where one stored value was read, in words (see :func:`source_words`)."""
+    doc = getattr(v, "document", None)
+    return source_words(v.source_document, v.page, getattr(doc, "file_type", None))
 
 
 def method_words(method: str, agreement: str | None = None, quote_match: str | None = None) -> str:

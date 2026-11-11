@@ -2,7 +2,7 @@
 {#- The confirmation step before archiving, deleting or reading again: nothing happens until the button is pressed. -#}
 
 {%- block step %}
-<section class="decision{% if danger %} decision--conflict{% endif %} narrow">
+<section class="decision xmarks{% if danger %} decision--conflict{% endif %} narrow">
   <h2 class="block-title">{{ title }}</h2>
   <p>{{ message }}</p>
   <form class="row gap-top" method="post" action="{{ action }}">

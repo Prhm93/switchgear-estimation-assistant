@@ -177,7 +177,6 @@ Only permissive licences are used. AGPL libraries (for example PyMuPDF and Ultra
 | PostgreSQL | 16 | PostgreSQL Licence | Database (Docker image) |
 | pgvector | 0.8.7 | PostgreSQL Licence | Vector search extension |
 | IBM Plex Sans, IBM Plex Mono | 1.1.0 | SIL OFL 1.1 | Fonts, self-hosted (`frontend/static/fonts/OFL.txt`) |
-| Instrument Serif (regular, italic) | woff2 from @fontsource/instrument-serif 5.3.0, Latin subset | SIL OFL 1.1 | Page titles and big headings, self-hosted (`frontend/static/fonts/OFL-InstrumentSerif.txt`) |
 | IBM Plex Sans Condensed, IBM Plex Serif, IBM Plex Mono (TTF) | from the Google Fonts repository | SIL OFL 1.1 | Drawing and specification text in generated documents (`data_generator/fonts/OFL-IBMPlex.txt`) |
 | Caveat | variable font, Google Fonts repository | SIL OFL 1.1 | Handwritten-style note on scanned and photo drawings (`data_generator/fonts/OFL-Caveat.txt`) |
 | Icons | n/a | This repo | Drawn for this project |

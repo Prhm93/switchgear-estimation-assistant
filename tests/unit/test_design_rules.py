@@ -4,11 +4,13 @@ These keep the look consistent as the stylesheet grows:
 
 * glass cards with hairline edges only: every border is 0, none or a 1px
   hairline in rgba(156,192,255, 0.10 to 0.18); no solid opaque borders;
-* gradients only in the four allowed rules: .upload-box (red-to-blue border),
-  .glow (top radial glow), .sheen (card sheen) and .cta-panel (call to action);
-* 3D tilt only in the home page hero, and only at 1100px and wider;
+* one gradient only: the red-to-blue border of .upload-box (Stage UX-V removed the
+  glow, the sheen and the call-to-action panel);
+* no 3D transforms anywhere (Stage UX-V removed the tilted hero cards);
 * card radii of 18 and 20px, pill buttons, a red primary button with a shadow;
-* IBM Plex Sans everywhere, the serif display font on the home page only;
+* IBM Plex Sans everywhere and no serif (Stage UX-V); Plex Mono for numbers, codes,
+  document text and small uppercase labels only;
+* "+" crosshair marks and the corner drawing are SVG, never gradients;
 * 150 ms transitions, none for reduced-motion users, and a visible focus ring;
 * no emoji or "magic" wording in the templates.
 """
@@ -21,7 +23,9 @@ from backend.app.design.contrast import load_rgba_tokens, load_tokens
 from backend.app.paths import STYLESHEET, TEMPLATES_DIR
 
 CSS = STYLESHEET.read_text(encoding="utf-8")
-ALLOWED_GRADIENTS = {".upload-box", ".glow", ".sheen", ".cta-panel"}
+# Stage UX-V: the hero glow, the card sheen and the call-to-action panel are gone (the shader and
+# hairline sections replace them); the red-to-blue upload border is the one gradient left.
+ALLOWED_GRADIENTS = {".upload-box"}
 
 
 def _without_comments(css: str) -> str:
@@ -92,7 +96,7 @@ def test_every_border_is_none_or_a_hairline() -> None:
             assert ok, f"{selector}: {prop}: {value}"
 
 
-def test_gradients_only_in_the_four_allowed_rules() -> None:
+def test_gradients_only_in_the_allowed_rule() -> None:
     found = set()
     for selector, body in _rules():
         if "gradient(" in body:
@@ -109,14 +113,10 @@ def test_the_upload_box_border_runs_red_to_blue() -> None:
     assert re.search(r"linear-gradient\(90deg,\s*var\(--red\),\s*var\(--blue\)", body)
 
 
-def test_tilt_only_in_the_home_hero_and_only_on_wide_screens() -> None:
-    wide = "".join(_media_blocks("(min-width: 1100px)"))
-    outside = RULES_CSS
-    for block in _media_blocks("(min-width: 1100px)"):
-        outside = outside.replace(block, "")
-    assert "perspective(" not in outside and "rotateY(" not in outside
-    tilted = [sel for sel, body in _rules(wide) if "perspective(" in body or "rotateY(" in body]
-    assert tilted and all(sel.startswith(".hero") for sel in tilted), tilted
+def test_no_3d_transforms() -> None:
+    """Stage UX-V: the tilted hero cards are gone; nothing is drawn in 3D."""
+    for word in ("perspective", "rotateY(", "rotateX(", "rotate3d(", "translateZ(", "preserve-3d"):
+        assert word not in RULES_CSS, word
 
 
 def test_glass_cards_have_hairline_shadow_and_highlight() -> None:
@@ -144,21 +144,37 @@ def test_buttons_are_pills_and_primary_is_red_with_a_soft_red_shadow() -> None:
     assert "var(--tint-reject)" in _rule(".icon-btn--reject")
 
 
-def test_the_serif_is_for_the_home_page_only() -> None:
-    """Stage UX: IBM Plex Sans everywhere in the app; the serif display font only on the home page."""
-    home_only = {".hero__title", ".section-title", ".cta-panel h2", ".page--home .brand__name", ".serif"}
-    serif = {sel for sel, body in _rules() if "var(--font-serif)" in body}
-    assert serif == home_only, serif
-    assert "var(--font-serif)" not in _rule(".page-title") and "font-family" not in _rule(".page-title")
-    assert "var(--font-sans)" in _rule("body")
-    assert '"Instrument Serif"' in CSS
-    assert "InstrumentSerif-Regular.woff2" in CSS and "InstrumentSerif-Italic.woff2" in CSS
+def test_there_is_no_serif() -> None:
+    """Stage UX-V reverses the UX-1 decision: IBM Plex Sans and Plex Mono only, no serif font anywhere."""
+    assert "--font-serif" not in CSS and "Instrument Serif" not in CSS and "InstrumentSerif" not in CSS
+    fonts = STYLESHEET.parent.parent / "fonts"
+    assert not list(fonts.glob("InstrumentSerif*")) and not (fonts / "OFL-InstrumentSerif.txt").exists()
+    for path in TEMPLATES_DIR.rglob("*.html"):
+        assert "InstrumentSerif" not in path.read_text(encoding="utf-8"), path.name
 
 
 def test_mono_is_only_for_numbers_codes_and_document_text() -> None:
-    """Plex Mono marks numbers, part codes and text copied from a document; never headings or labels."""
-    for selector in (".page-title", ".block-title", ".decision__title", ".panel__title", ".step", ".lead", ".btn"):
+    """Plex Mono marks numbers, part codes, document text and small uppercase labels; never headings."""
+    for selector in (".page-title", ".decision__title", ".panel__title", ".step", ".lead", ".btn"):
         assert "var(--font-mono)" not in _rule(selector), selector
+    for selector in (".label-mono", ".block-title"):  # the technical-drawing labels
+        body = _rule(selector)
+        assert "var(--font-mono)" in body and "text-transform: uppercase" in body and "var(--fs-xs)" in body
+
+
+def test_crosshair_marks_are_svg_in_four_corners() -> None:
+    body = _rule(".xmarks")
+    assert body.count("url(\"data:image/svg+xml") + body.count("var(--xmark)") >= 1 and "gradient(" not in body
+    for corner in ("left top", "right top", "left bottom", "right bottom"):
+        assert corner in body, corner
+
+
+def test_app_pages_have_the_corner_drawing_with_its_title_block() -> None:
+    layout = (TEMPLATES_DIR / "layout_app.html").read_text(encoding="utf-8")
+    macros = (TEMPLATES_DIR / "macros.html").read_text(encoding="utf-8")
+    assert "{{ corner_drawing() }}" in layout
+    assert '<div class="corner-drawing" aria-hidden="true">' in macros
+    assert "DRAWING NO. SEA/MSB-2" in macros and "SCALE 1:2" in macros
 
 
 def test_transitions_are_150ms_and_off_for_reduced_motion() -> None:

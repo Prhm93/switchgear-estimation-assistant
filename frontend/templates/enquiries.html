@@ -5,7 +5,7 @@
 
 {%- block heading %}
 <div class="page-head">
-  <h1 class="page-title">{{ "Archived enquiries" if archived else "Enquiries" }}</h1>
+  <h1 class="page-title">{% if archived %}Archived <span class="accent">enquiries</span>{% else %}Enquiries{% endif %}</h1>
   {%- if archived %}<a class="btn btn--ghost btn--sm" href="/enquiries">Back to enquiries</a>
   {%- elif archived_count %}<a class="btn btn--ghost btn--sm" href="/enquiries?show=archived">Archive ({{ archived_count }})</a>{% endif %}
 </div>

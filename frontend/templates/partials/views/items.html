@@ -1,0 +1,27 @@
+{%- from "macros.html" import agree_marks with context -%}
+{#- Items: what the customer asks for, one row per item, with how many documents state it and whether it is
+    approved. No part prices or totals here: those are on the Quote tab only. -#}
+  <section class="section-block" aria-label="Items the customer wants">
+    {%- if items %}
+    <ul class="item-list">
+      {%- for item in items %}
+      <li>
+        <a class="item" href="/enquiries/{{ project.id }}/items/{{ item.key }}/panel" hx-get="/enquiries/{{ project.id }}/items/{{ item.key }}/panel" hx-target="#panel">
+          <span class="item__what">{{ item.description }}
+            {%- if item.waiting_on %}<span class="item__sub">Waiting for {{ item.waiting_on | map(attribute="label") | unique | join(", ") }}</span>
+            {%- elif item.code %}<span class="item__sub"><span class="mono">{{ item.code }}</span> {{ item.part }}</span>
+            {%- elif item.note %}<span class="item__sub">{{ item.note }}</span>{% endif %}
+          </span>
+          <span class="item__qty mono">{% if item.quantity is not none %}{{ "%g" | format(item.quantity) }}{% if item.unit and item.unit != "each" %} {{ item.unit }}{% endif %}{% endif %}</span>
+          {{ agree_marks(item.sources) }}
+          <span class="chip chip--{{ {'approved': 'approved', 'unapproved': 'neutral', 'waiting': 'conflict', 'substitute': 'review', 'unmatched': 'missing'}[item.state] }}">{{ item.state_words }}</span>
+        </a>
+      </li>
+      {%- endfor %}
+    </ul>
+    <p class="small muted">Dots show how many documents state the item. The quote uses approved values only.</p>
+    {%- else %}
+    <p class="muted">No item can be worked out from the files read so far.</p>
+    {%- endif %}
+  </section>
+

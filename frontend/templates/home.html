@@ -1,146 +1,150 @@
-{#- Public home page, as docs/design/mockup-home.html. Works without a database.
-    Every number is a measured result from docs/stage-3.md or docs/stage-4.md. Numbers
-    from the relaxed quote check are labelled "tuned on this set"; the cards in the
-    hero are examples from the sample enquiry, not results. -#}
+{#- Public home page (Stage UX-V). Works without a database and without script.
+    Every number is a measured result from docs/stage-3.md or docs/stage-4.md, labelled as in UX-1.
+    Motion is hand-written (static/js/home.js, static/js/hero-shader.js): the full text is in the HTML and
+    only its reveal is animated. Reduced motion, or no WebGL, gives the static page. -#}
 {%- extends "base.html" -%}
 {%- from "macros.html" import icon, brand_mark with context -%}
 
 {%- block title %}{{ app_name }}{% endblock -%}
 {%- block body_class %}page--home{% endblock -%}
 {%- block head %}
-  <link rel="preload" href="{{ url_for('static', path='fonts/InstrumentSerif-Regular.woff2') }}" as="font" type="font/woff2" crossorigin>
+  {#- Marks that script runs, so the reveal styles apply only then; home.js removes it for reduced motion. -#}
+  <script>document.documentElement.classList.add("js");</script>
+  <script src="{{ url_for('static', path='js/home.js') }}" defer></script>
 {%- endblock -%}
 
 {%- block body %}
-<div class="glow" aria-hidden="true"></div>
 <header class="site-header">
   <div class="site-header__inner">
-    <a class="brand" href="/">{{ brand_mark(28) }}<span class="brand__name">{{ app_name }}</span></a>
+    <a class="brand" href="/">{{ brand_mark(26) }}<span class="brand__name">{{ app_name }}</span></a>
     <nav class="site-nav" aria-label="Main">
       <a href="#how">How it works</a>
-      <a href="#accuracy">Accuracy</a>
+      <a href="#accuracy">Measured</a>
       <a href="#trust">Trust &amp; safety</a>
+      <a href="/enquiries">Enquiries</a>
     </nav>
-    {#- Sign in stays hidden until login is built. -#}
-    <a class="btn btn--primary" href="/enquiries">Open enquiries</a>
   </div>
-  <div class="site-header__line" aria-hidden="true"></div>
 </header>
 
 <main id="main" class="site-main">
-  <section class="hero" aria-labelledby="hero-title">
-    <div class="hero__side hero__side--left">
-      <article class="float-card sheen">
-        <div class="float-card__head"><span>Value found</span><span class="chip chip--high">High</span></div>
-        <div class="float-card__value">ACB 1250 A 4P</div>
-        <div class="float-card__meta">Specification · page 5 · incomer</div>
-        <div class="meter" aria-hidden="true"><div class="meter__fill" style="width: 100%"></div></div>
-        <div class="float-card__meta">3 of 3 documents agree</div>
-      </article>
-      <article class="float-card sheen">
-        <div class="float-card__head"><span>Conflict · Q2 rating</span><span class="chip chip--conflict">Conflict</span></div>
-        <div class="pair">
-          <div class="pair__side"><div class="pair__src">Drawing · sheet 1</div><div class="pair__value">200 A</div></div>
-          <div class="pair__side"><div class="pair__src">Specification · p5</div><div class="pair__value">250 A</div></div>
-        </div>
-      </article>
+  <section class="hero xmarks" aria-labelledby="hero-title">
+    <div class="hero__art" aria-hidden="true">
+      <svg class="hero__lines" viewBox="0 0 1440 700" preserveAspectRatio="xMidYMid slice" focusable="false">
+      <path d="M0 90 L40 101 L80 111 L120 118 L160 123 L200 125 L240 124 L280 121 L320 116 L360 110 L400 105 L440 100 L480 98 L520 96 L560 96 L600 96 L640 97 L680 97 L720 95 L760 91 L800 86 L840 79 L880 71 L920 63 L960 56 L1000 51 L1040 49 L1080 51 L1120 55 L1160 63 L1200 72 L1240 83 L1280 93 L1320 102 L1360 109 L1400 114 L1440 116"/>
+      <path d="M0 184 L40 188 L80 189 L120 187 L160 183 L200 177 L240 171 L280 165 L320 160 L360 157 L400 156 L440 155 L480 156 L520 156 L560 156 L600 154 L640 150 L680 145 L720 138 L760 130 L800 123 L840 117 L880 113 L920 112 L960 115 L1000 120 L1040 128 L1080 138 L1120 149 L1160 159 L1200 168 L1240 175 L1280 179 L1320 180 L1360 179 L1400 176 L1440 173"/>
+      <path d="M0 249 L40 244 L80 237 L120 231 L160 225 L200 220 L240 217 L280 215 L320 215 L360 215 L400 215 L440 215 L480 213 L520 209 L560 204 L600 197 L640 190 L680 183 L720 178 L760 175 L800 176 L840 179 L880 185 L920 194 L960 204 L1000 215 L1040 226 L1080 234 L1120 240 L1160 244 L1200 244 L1240 242 L1280 239 L1320 235 L1360 231 L1400 228 L1440 226"/>
+      <path d="M0 291 L40 284 L80 279 L120 276 L160 274 L200 274 L240 274 L280 275 L320 274 L360 272 L400 269 L440 263 L480 257 L520 251 L560 245 L600 240 L640 238 L680 239 L720 244 L760 251 L800 260 L840 271 L880 282 L920 292 L960 300 L1000 305 L1040 308 L1080 308 L1120 305 L1160 301 L1200 297 L1240 292 L1280 289 L1320 287 L1360 286 L1400 286 L1440 287"/>
+      <path d="M0 335 L40 334 L80 333 L120 334 L160 334 L200 334 L240 332 L280 328 L320 323 L360 317 L400 311 L440 306 L480 303 L520 302 L560 304 L600 309 L640 316 L680 326 L720 337 L760 348 L800 358 L840 365 L880 370 L920 372 L960 371 L1000 368 L1040 363 L1080 358 L1120 353 L1160 349 L1200 347 L1240 346 L1280 346 L1320 347 L1360 347 L1400 347 L1440 345"/>
+      <path d="M0 393 L40 394 L80 393 L120 391 L160 388 L200 384 L240 378 L280 373 L320 368 L360 366 L400 365 L440 368 L480 374 L520 382 L560 393 L600 404 L640 414 L680 424 L720 431 L760 434 L800 435 L840 434 L880 430 L920 424 L960 418 L1000 413 L1040 409 L1080 407 L1120 406 L1160 406 L1200 406 L1240 406 L1280 406 L1320 403 L1360 399 L1400 393 L1440 386"/>
+      <path d="M0 452 L40 449 L80 444 L120 439 L160 435 L200 431 L240 429 L280 430 L320 433 L360 440 L400 449 L440 459 L480 470 L520 481 L560 489 L600 495 L640 499 L680 499 L720 496 L760 491 L800 485 L840 479 L880 473 L920 469 L960 466 L1000 465 L1040 465 L1080 465 L1120 466 L1160 465 L1200 462 L1240 458 L1280 452 L1320 445 L1360 438 L1400 431 L1440 426"/>
+      <path d="M0 501 L40 497 L80 494 L120 493 L160 494 L200 499 L240 506 L280 515 L320 526 L360 536 L400 547 L440 555 L480 560 L520 562 L560 561 L600 558 L640 552 L680 545 L720 539 L760 533 L800 528 L840 526 L880 524 L920 524 L960 525 L1000 525 L1040 524 L1080 522 L1120 517 L1160 512 L1200 505 L1240 498 L1280 492 L1320 487 L1360 485 L1400 486 L1440 491"/>
+      <path d="M0 557 L40 559 L80 564 L120 572 L160 581 L200 592 L240 603 L280 612 L320 620 L360 624 L400 625 L440 623 L480 619 L520 613 L560 605 L600 598 L640 592 L680 588 L720 585 L760 584 L800 584 L840 584 L880 584 L920 583 L960 581 L1000 577 L1040 571 L1080 565 L1120 559 L1160 553 L1200 550 L1240 549 L1280 551 L1320 556 L1360 564 L1400 574 L1440 585"/>
+        <path class="hero__red" d="M0 430 L40 433 L80 435 L120 438 L160 440 L200 443 L240 444 L280 446 L320 447 L360 448 L400 448 L440 448 L480 447 L520 446 L560 445 L600 443 L640 441 L680 439 L720 437 L760 434 L800 431 L840 428 L880 426 L920 423 L960 421 L1000 418 L1040 416 L1080 415 L1120 413 L1160 413 L1200 412 L1240 412 L1280 412 L1320 413 L1360 414 L1400 416 L1440 418"/>
+      </svg>
     </div>
-
-    <div class="hero__center">
-      <span class="hero__pill"><span class="dot" aria-hidden="true"></span>Local-first · every value traceable</span>
-      <h1 id="hero-title" class="hero__title">Turn enquiries into <em>checked</em> estimates</h1>
-      <p class="hero__lede">Drop in the specification, drawing and customer letter. Every rating, quantity and price shows where it came from, and nothing reaches the quote until an engineer approves it.</p>
-      <form class="hero__form" method="post" action="/enquiries">
-        <div class="upload-box">
-          <div class="upload-box__inner">
-            <label class="visually-hidden" for="home-name">Enquiry name</label>
-            <input id="home-name" class="upload-box__input" name="name" type="text" maxlength="200" autocomplete="off"
-                   placeholder="Name the enquiry, e.g. MSB-2 main switchboard">
-            <button class="btn btn--primary btn--lg" type="submit">Start an enquiry{{ icon("arrow-right", "sm") }}</button>
-          </div>
-        </div>
-      </form>
-      <div class="hero__facts">
-        <span>PDF · DXF · DOCX · PNG · JPG</span>
-        <span>SHA-256 fingerprint on every upload</span>
-        <span>Prices only from the catalogue</span>
+    <div class="hero__body">
+      <div class="label-mono">Low-voltage switchgear · enquiry to quote</div>
+      <h1 id="hero-title" class="hero__title">Customer enquiries, turned into <span class="accent">checked</span> quotes</h1>
+      <p class="hero__lede">Every rating, quantity and price shows the line it came from. Nothing is priced until an engineer approves it.</p>
+      <div class="hero__actions">
+        <a class="btn btn--primary btn--lg" href="/enquiries/new">Start an enquiry{{ icon("arrow-right", "sm") }}</a>
+        <form method="post" action="/enquiries/sample">
+          <button class="link-button" type="submit">Try the sample enquiry</button>
+        </form>
       </div>
     </div>
-
-    <div class="hero__side hero__side--right">
-      <article class="float-card sheen">
-        <div class="float-card__head"><span>Read from a scanned drawing</span><span class="chip chip--neutral">Medium</span></div>
-        <div class="float-card__value">Q4 · 160 A</div>
-        <div class="float-card__meta">Drawing · sheet 1 · OCR · always checked by the engineer</div>
-      </article>
-      <article class="float-card sheen">
-        <div class="float-card__head"><span>Missing information</span><span class="chip chip--missing">Missing</span></div>
-        <div class="float-card__value">Way Q3 rating</div>
-        <div class="float-card__meta">The specification says "TBC": nothing is guessed</div>
-      </article>
-    </div>
+    <div class="hero__block label-mono" aria-hidden="true"><span>DRAWING NO. SEA/MSB-2</span><span>SCALE 1:2</span><span>REV A</span></div>
   </section>
 
-  <section class="preview" aria-label="Product preview">
-    <div class="frame">
-      <div class="frame__bar">
-        <span class="frame__dot" aria-hidden="true"></span><span class="frame__dot" aria-hidden="true"></span><span class="frame__dot" aria-hidden="true"></span>
-        <span class="frame__title">Check · Sample enquiry, main switchboard MSB-2</span>
-      </div>
-      <div class="frame__body">
-        <div class="frame__nav" aria-hidden="true">
-          <span>1 Files</span><span aria-current="true">2 Check</span><span>3 Quote</span>
-        </div>
-        <div class="frame__content">
-          <div class="paper"><div class="paper__src">specification.pdf · page 4</div>3.4 Prospective fault level: <mark>36 kA</mark> for 1 s.
-4 Construction
-4.1 Form of separation: <mark>Form 4a</mark> to BS EN IEC 61439-2.
-4.2 Degree of protection: <mark>IP54</mark> with all doors closed.
-4.4 Cable entry: <mark>bottom entry</mark> for all incoming and outgoing cables.</div>
-          <div class="preview-values">
-            <div class="preview-value"><div><div class="preview-value__v">Q2 · MCCB 250 A 4P 36 kA</div><div class="preview-value__src">Spec p5 · rules · drawing says 200 A</div></div><span class="chip chip--conflict">Conflict</span></div>
-            <div class="preview-value"><div><div class="preview-value__v">Fault level · 36 kA</div><div class="preview-value__src">Spec p4 · rules</div></div><span class="chip chip--high">High</span></div>
-            <div class="preview-value"><div><div class="preview-value__v">Form of separation · 4a</div><div class="preview-value__src">Spec p4 · rules</div></div><span class="chip chip--high">High</span></div>
-            <div class="preview-value"><div><div class="preview-value__v">IP rating · IP54</div><div class="preview-value__src">Spec p4 · rules</div></div><span class="chip chip--high">High</span></div>
-          </div>
-        </div>
-      </div>
-    </div>
+  <section class="statement" aria-label="What it does">
+    <p class="statement__text"><span class="word">A</span> <span class="word">customer</span> <span class="word">enquiry</span> <span class="word">arrives</span> <span class="word">as</span> <span class="word">three</span> <span class="word">documents</span> <span class="word">that</span> <span class="word">rarely</span> <span class="word">agree.</span> <span class="word">The</span> <span class="word">assistant</span> <span class="word">reads</span> <span class="word">each</span> <span class="word">one,</span> <span class="word">shows</span> <span class="word">where</span> <span class="word">every</span> <span class="word">value</span> <span class="word">came</span> <span class="word">from,</span> <span class="word">puts</span> <span class="word">disagreements</span> <span class="word">side</span> <span class="word">by</span> <span class="word">side</span> <span class="word">and</span> <span class="word">leaves</span> <span class="word">every</span> <span class="word">decision</span> <span class="word">to</span> <span class="word">the</span> <span class="word">engineer.</span> <span class="word">Nothing</span> <span class="word">reaches</span> <span class="word">the</span> <span class="word">quote</span> <span class="word">until</span> <span class="word">it</span> <span class="word">is</span> <span class="word">approved.</span></p>
   </section>
 
-  <section id="how" class="section" aria-labelledby="how-title">
-    <div class="eyebrow">How it works</div>
-    <h2 id="how-title" class="section-title">From three documents to one checked estimate</h2>
-    <div class="steps">
-      <div class="tile glass--tile"><div class="tile__no">01</div><h3 class="tile__title">Upload</h3><p class="tile__text">Specification, drawing and letter are stored unchanged, each with its own fingerprint.</p></div>
-      <div class="tile glass--tile"><div class="tile__no">02</div><h3 class="tile__title">Read</h3><p class="tile__text">Ratings, poles, quantities and part types are found with the exact sentence or drawing text they came from.</p></div>
-      <div class="tile glass--tile"><div class="tile__no">03</div><h3 class="tile__title">Cross-check</h3><p class="tile__text">Where the drawing and specification disagree, both sources are shown side by side. Nothing is chosen quietly.</p></div>
-      <div class="tile glass--tile"><div class="tile__no">04</div><h3 class="tile__title">Approve &amp; export</h3><p class="tile__text">Only approved values reach the quote. Prices come from the catalogue, and every action is logged.</p></div>
+  <section id="how" class="how xmarks" aria-labelledby="how-title">
+    <div class="how__text">
+      <div class="label-mono">01 · How it works</div>
+      <h2 id="how-title" class="section-title">Three steps, one <span class="accent">checked</span> quote</h2>
+      <ol class="how__steps">
+        <li class="how__step"><span class="how__no mono">1</span><div><h3>Files</h3><p>Drop in the specification, the drawing and the customer letter. Each is kept unchanged.</p></div></li>
+        <li class="how__step"><span class="how__no mono">2</span><div><h3>Check</h3><p>Every value shows its source. Where documents disagree, both sides are shown and you decide.</p></div></li>
+        <li class="how__step"><span class="how__no mono">3</span><div><h3>Quote</h3><p>Approved values only, catalogue prices only, and a report that says how it was read.</p></div></li>
+      </ol>
     </div>
+    <figure class="how__figure">
+    <svg class="iso" viewBox="0 85 420 430" role="img" aria-labelledby="iso-title">
+      <title id="iso-title">Line drawing of a four-section switchboard: an incomer section and three sections of outgoing ways, form 4a</title>
+      <path class="draw" pathLength="1" d="M89.4 365.0 L314.5 495.0 L314.5 265.0 L89.4 135.0 Z"/>
+      <path class="draw" pathLength="1" d="M89.4 135.0 L150.0 100.0 L375.2 230.0 L314.5 265.0"/>
+      <path class="draw" pathLength="1" d="M314.5 495.0 L375.2 460.0 L375.2 230.0"/>
+      <path class="draw" pathLength="1" d="M89.4 353.0 L314.5 483.0"/>
+      <path class="draw" pathLength="1" d="M145.7 385.5 L145.7 167.5"/>
+      <path class="draw" pathLength="1" d="M202.0 418.0 L202.0 200.0"/>
+      <path class="draw" pathLength="1" d="M258.2 450.5 L258.2 232.5"/>
+      <path class="draw" pathLength="1" d="M94.6 138.0 L103.2 117.0 L149.1 143.5 L140.5 164.5"/>
+      <path class="draw" pathLength="1" d="M99.8 251.0 L135.3 271.5 L135.3 201.5 L99.8 181.0 Z"/>
+      <path class="draw" pathLength="1" d="M111.9 228.0 L123.2 234.5 L123.2 222.5 L111.9 216.0 Z"/>
+      <path class="draw" pathLength="1" d="M152.6 229.5 L195.0 254.0 L195.0 214.0 L152.6 189.5 Z"/>
+      <path class="draw" pathLength="1" d="M169.9 225.5 L177.7 230.0 L177.7 218.0 L169.9 213.5 Z"/>
+      <path class="draw" pathLength="1" d="M152.6 285.5 L195.0 310.0 L195.0 270.0 L152.6 245.5 Z"/>
+      <path class="draw" pathLength="1" d="M169.9 281.5 L177.7 286.0 L177.7 274.0 L169.9 269.5 Z"/>
+      <path class="draw" pathLength="1" d="M152.6 341.5 L195.0 366.0 L195.0 326.0 L152.6 301.5 Z"/>
+      <path class="draw" pathLength="1" d="M169.9 337.5 L177.7 342.0 L177.7 330.0 L169.9 325.5 Z"/>
+      <path class="draw" pathLength="1" d="M145.7 291.5 L202.0 324.0"/>
+      <path class="draw" pathLength="1" d="M145.7 235.5 L202.0 268.0"/>
+      <path class="draw" pathLength="1" d="M208.9 262.0 L251.3 286.5 L251.3 246.5 L208.9 222.0 Z"/>
+      <path class="draw" pathLength="1" d="M226.2 258.0 L234.0 262.5 L234.0 250.5 L226.2 246.0 Z"/>
+      <path class="draw" pathLength="1" d="M208.9 318.0 L251.3 342.5 L251.3 302.5 L208.9 278.0 Z"/>
+      <path class="draw" pathLength="1" d="M226.2 314.0 L234.0 318.5 L234.0 306.5 L226.2 302.0 Z"/>
+      <path class="draw" pathLength="1" d="M208.9 374.0 L251.3 398.5 L251.3 358.5 L208.9 334.0 Z"/>
+      <path class="draw" pathLength="1" d="M226.2 370.0 L234.0 374.5 L234.0 362.5 L226.2 358.0 Z"/>
+      <path class="draw" pathLength="1" d="M202.0 324.0 L258.2 356.5"/>
+      <path class="draw" pathLength="1" d="M202.0 268.0 L258.2 300.5"/>
+      <path class="draw" pathLength="1" d="M265.2 294.5 L307.6 319.0 L307.6 279.0 L265.2 254.5 Z"/>
+      <path class="draw" pathLength="1" d="M282.5 290.5 L290.3 295.0 L290.3 283.0 L282.5 278.5 Z"/>
+      <path class="draw" pathLength="1" d="M265.2 350.5 L307.6 375.0 L307.6 335.0 L265.2 310.5 Z"/>
+      <path class="draw" pathLength="1" d="M282.5 346.5 L290.3 351.0 L290.3 339.0 L282.5 334.5 Z"/>
+      <path class="draw" pathLength="1" d="M265.2 406.5 L307.6 431.0 L307.6 391.0 L265.2 366.5 Z"/>
+      <path class="draw" pathLength="1" d="M282.5 402.5 L290.3 407.0 L290.3 395.0 L282.5 390.5 Z"/>
+      <path class="draw" pathLength="1" d="M258.2 356.5 L314.5 389.0"/>
+      <path class="draw" pathLength="1" d="M258.2 300.5 L314.5 333.0"/>
+      <path class="draw" pathLength="1" d="M167.3 398.0 L144.8 437.0"/>
+      <path class="draw" pathLength="1" d="M223.6 430.5 L201.1 469.5"/>
+      <path class="draw" pathLength="1" d="M279.9 463.0 L257.4 502.0"/>
+      <g class="iso__labels">
+        <path class="draw" pathLength="1" d="M117.1 191.0 L77.1 121.0 H7.1"/>
+        <text x="7.1" y="113.0">INCOMER</text>
+        <path class="draw" pathLength="1" d="M236.6 238.0 L266.6 158.0 H356.6"/>
+        <text x="266.6" y="150.0">OUTGOING WAYS</text>
+        <path class="draw" pathLength="1" d="M258.2 356.5 L328.2 396.5 H398.2"/>
+        <text x="328.2" y="388.5">FORM 4a</text>
+      </g>
+    </svg>
+    </figure>
   </section>
 
-  <section id="accuracy" class="section accuracy" aria-labelledby="accuracy-title">
-    <div>
-      <div class="eyebrow">Measured, not promised</div>
-      <h2 id="accuracy-title" class="section-title">Every method is scored against an answer key</h2>
-      <p class="section-lede">20 invented test enquiries and 20 reworded copies whose wording the reading rules never saw. The scores are F1 over every value. Drawings are scored apart as clean, scanned and photographed; no real drawing has been scored yet.</p>
+  <section id="accuracy" class="numbers xmarks" aria-labelledby="accuracy-title">
+    <div class="numbers__head">
+      <div class="label-mono">02 · Measured, not promised</div>
+      <h2 id="accuracy-title" class="section-title">Scored against an <span class="accent">answer</span> key</h2>
+      <p class="section-lede">20 invented test enquiries and 20 reworded copies, written to test the reading rules on new wording. The scores are F1 over every value. Drawings are scored apart as clean, scanned and photographed; no real drawing has been scored yet.</p>
     </div>
-    <div class="stats">
-      <div class="stat glass--tile"><div class="stat__value">0.778</div><div class="stat__label">model alone on the test enquiries, with the CAD file. Strict quote check, fixed baseline. Not held out: these sets were used during development. Fair scores come from a fresh set in Stage 7.</div></div>
-      <div class="stat glass--tile"><div class="stat__value">0.727</div><div class="stat__label">the same on the reworded enquiries (0.497 without the CAD file)</div></div>
-      <div class="stat glass--tile"><div class="stat__value">0.813</div><div class="stat__label">with the relaxed quote check, the app default: tuned on this set, so not a fair score (0.790 reworded, also tuned)</div></div>
-      <div class="stat glass--tile"><div class="stat__value">0.893</div><div class="stat__label">drawing values read by OCR from a clean drawing; 0.863 scanned, 0.572 photographed (3 to 5 s per sheet). Test set; the linker was tuned on 3 of these drawings.</div></div>
-    </div>
+    <dl class="numbers__list">
+      <div class="number"><dt class="number__value mono">0.778</dt><dd class="number__label">model alone on the test enquiries, with the CAD file. Strict quote check, fixed baseline. Not held out: these sets were used during development. Fair scores come from a fresh set in Stage 7.</dd></div>
+      <div class="number"><dt class="number__value mono">0.727</dt><dd class="number__label">the same on the reworded enquiries (0.497 without the CAD file)</dd></div>
+      <div class="number"><dt class="number__value mono">0.813</dt><dd class="number__label">with the relaxed quote check, the app default: tuned on this set, so not a fair score (0.790 reworded, also tuned)</dd></div>
+      <div class="number"><dt class="number__value mono">0.893</dt><dd class="number__label">drawing values read by OCR from a clean drawing; 0.863 scanned, 0.572 photographed (3 to 5 s per sheet). Test set; the linker was tuned on 3 of these drawings.</dd></div>
+    </dl>
   </section>
 
-  <section id="trust" class="section cta-panel" aria-labelledby="trust-title">
-    <div>
-      <h2 id="trust-title">The engineer decides. The system shows its work.</h2>
-      <p>Runs locally. No documents leave the machine, and prices never come from a model. Every model answer must quote its source, and a quote that is not on the page is rejected.</p>
-    </div>
-    <form method="post" action="/enquiries/sample">
-      <button class="btn btn--primary btn--lg" type="submit">Try the sample enquiry{{ icon("arrow-right", "sm") }}</button>
-    </form>
+  <section id="trust" class="trust xmarks" aria-labelledby="trust-title">
+    <div class="label-mono">03 · Trust &amp; safety</div>
+    <h2 id="trust-title" class="section-title">The engineer <span class="accent">decides</span></h2>
+    <ul class="trust__list">
+      <li>Runs locally: no document leaves the machine.</li>
+      <li>Documents are data, never instructions: instruction-like text is flagged, not followed.</li>
+      <li>Every model answer must quote its source; a quote that is not on the page is rejected.</li>
+      <li>Only catalogue prices: prices never come from a model, and every decision is logged.</li>
+    </ul>
   </section>
 </main>
 

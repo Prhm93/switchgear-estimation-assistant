@@ -1,0 +1,18 @@
+{%- from "macros.html" import export_button with context -%}
+{#- Report: what the exported report holds and how this enquiry was read. No prices or lines here: the
+    numbers are on the Quote tab and in the report itself. -#}
+<section class="section-block" aria-label="Report">
+  <div class="report-head">
+    <div>
+      <div class="label-mono">Word report</div>
+      <p class="small muted">{% if estimate %}Built from the quote of {{ short_date(estimate.created_at) }}{% if out_of_date %}; it is rebuilt first, because something changed since{% endif %}.{% else %}The quote is built when you export.{% endif %}</p>
+    </div>
+    {{ export_button(project, can_export) }}
+  </div>
+  <dl class="spec-list">
+    <div><dt>What it holds</dt><dd>The quote lines with their catalogue parts, the price breakdown, and for each line the approved values it uses with their sources.</dd></div>
+    <div><dt>How this was read</dt><dd>{{ reading_line }}.</dd></div>
+    <div><dt>Decisions so far</dt><dd><span class="mono">{{ found.approved }}</span> of <span class="mono">{{ found.total }}</span> values approved or edited.</dd></div>
+    <div><dt>Limits</dt><dd>A draft for an engineer to check. Prices come only from the catalogue, and only approved values are used. Values read from a picture or pieced together from a model's quote are never approved in bulk.</dd></div>
+  </dl>
+</section>

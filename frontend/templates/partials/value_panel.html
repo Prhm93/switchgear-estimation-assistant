@@ -15,7 +15,7 @@
   {%- if v.review_status == "edited" %}<p class="small muted">Read as {{ display(v.value, v.unit) }}.</p>{% endif %}
 
   <h3 class="panel__label">Where it was read</h3>
-  <p class="small">{{ source_words(v.source_document, v.page) }} · {{ v.document.original_name }}</p>
+  <p class="small">{{ value_source(v) }} · {{ v.document.original_name }}</p>
   {%- if proof.image %}
   <a href="{{ proof.image }}?full=1" target="_blank" rel="noopener"><img class="proof-image" src="{{ proof.image }}" alt="The part of the drawing this value was read from, outlined in red" loading="lazy"></a>
   {%- endif %}
@@ -35,7 +35,7 @@
   <ul class="plain-list plain-list--tight">
     {%- for o in others %}
     {%- set ov, ou = shown(o) %}
-    <li><a href="/values/{{ o.id }}/panel" hx-get="/values/{{ o.id }}/panel" hx-target="#panel"><span class="mono">{{ display(ov, ou) }}</span> · {{ source_words(o.source_document, o.page) }}</a>
+    <li><a href="/values/{{ o.id }}/panel" hx-get="/values/{{ o.id }}/panel" hx-target="#panel"><span class="mono">{{ display(ov, ou) }}</span> · {{ value_source(o) }}</a>
       {%- if o.review_status == "rejected" %} <span class="small muted">rejected</span>{% elif o.review_status in ("approved", "edited") %} <span class="small muted">approved</span>{% endif %}</li>
     {%- endfor %}
   </ul>

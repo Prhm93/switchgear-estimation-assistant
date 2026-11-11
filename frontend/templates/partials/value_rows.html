@@ -7,7 +7,7 @@
     <a class="value-line__main" href="/values/{{ v.id }}/panel?open={{ open_reason }}" hx-get="/values/{{ v.id }}/panel?open={{ open_reason }}" hx-target="#panel">
       <span class="value-line__label">{{ field_label(v.field) }}</span>
       <span class="value-line__value mono">{{ display(value, unit) }}</span>
-      <span class="value-line__src">{{ source_words(v.source_document, v.page) }}</span>
+      <span class="value-line__src">{{ value_source(v) }}</span>
     </a>
     {{ value_checks(v) }}
     {%- if actions and v.value is not none %}

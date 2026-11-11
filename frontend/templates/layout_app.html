@@ -1,7 +1,7 @@
 {#- The app: a top bar with two links, the page, and a small footer.
     Child templates set `nav` ("enquiries" or "new") and fill the blocks heading and content. -#}
 {%- extends "base.html" -%}
-{%- from "macros.html" import icon, brand_mark with context -%}
+{%- from "macros.html" import icon, brand_mark, corner_drawing with context -%}
 
 {%- block body %}
 <header class="topbar">
@@ -20,6 +20,7 @@
 </main>
 
 <footer class="footer">
+  {{ corner_drawing() }}
   <span>Demonstration with synthetic data only.</span>
   <a href="/health">System status</a>
 </footer>

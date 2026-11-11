@@ -165,10 +165,10 @@ def test_check_does_not_render_a_form_per_value(client: TestClient) -> None:
     page = client.get(f"/enquiries/{pid}/check").text
     values = count(client, ExtractedValueRow, project_id=pid)
     assert page.count("<form") < values / 3, (page.count("<form"), values)
-    assert "Show all values" in page and "Items the customer wants" in page
-    # One count everywhere: the summary sentence says the number on the Check tab.
+    assert "Show all values" in page and "?view=items" in page
+    # One count everywhere: the Decisions button says the number on the Check tab.
     tab = re.search(r'step__count--needs mono" aria-label="(\d+) waiting', page).group(1)
-    assert f"<strong>{tab}</strong> need" in page
+    assert re.search(rf'>\s*Decisions\s*<span class="view-btn__count mono">{tab}</span>', page)
     assert "/check/values" in page  # the full list is loaded only when opened
 
 

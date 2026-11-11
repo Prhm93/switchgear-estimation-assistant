@@ -61,3 +61,10 @@ def test_a_title_comes_from_the_specification_or_not_at_all() -> None:
             "Enquiry reference: ENQ-3192\nDate: 1 Nov 2026\n")
     assert title_from_specification(text) == ("Low-voltage main switchboard MSB-2", "ENQ-3192")
     assert title_from_specification("Clause 1: General\nThe board shall ...") == (None, None)
+
+
+def test_a_drawing_source_says_whether_it_is_the_cad_file_or_a_picture() -> None:
+    assert source_words("schematic", 1, "dxf") == "Drawing (CAD), sheet 1"
+    assert source_words("schematic", 1, "pdf") == "Drawing (picture), sheet 1"
+    assert source_words("schematic", 2, "png") == "Drawing (picture), sheet 2"
+    assert source_words("specification", 5, "pdf") == "Specification, page 5"

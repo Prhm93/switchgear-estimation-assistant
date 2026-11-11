@@ -80,11 +80,11 @@ def test_stylesheet_fonts_and_icons_are_served(client: TestClient) -> None:
     css = client.get("/static/css/app.css")
     assert css.status_code == 200
     assert "--red" in css.text
-    for font in ("IBMPlexSans-Regular.woff2", "IBMPlexMono-Regular.woff2",
-                 "InstrumentSerif-Regular.woff2", "InstrumentSerif-Italic.woff2"):
+    for font in ("IBMPlexSans-Regular.woff2", "IBMPlexMono-Regular.woff2"):
         response = client.get(f"/static/fonts/{font}")
         assert response.status_code == 200
         assert response.content[:4] == b"wOF2"
+    assert client.get("/static/fonts/InstrumentSerif-Regular.woff2").status_code == 404  # no serif since UX-V
     assert client.get("/static/icons/icons.svg").status_code == 200
 
 
@@ -95,8 +95,8 @@ def test_old_system_address_redirects_to_health(client: TestClient) -> None:
 
 def test_home_page_works_without_a_database(client: TestClient) -> None:
     html = client.get("/").text
-    assert "checked</em> estimates" in html
-    assert 'action="/enquiries"' in html  # the hero form creates an enquiry
+    assert '<span class="accent">checked</span> quotes' in html
+    assert 'href="/enquiries/new"' in html  # "Start an enquiry"
     assert 'action="/enquiries/sample"' in html
     assert "Not affiliated with or endorsed by any company" in html
     assert "Sign in" not in html  # hidden until login is built

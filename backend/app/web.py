@@ -16,6 +16,7 @@ from __future__ import annotations
 import hashlib
 import re
 from datetime import UTC, datetime
+from collections.abc import Callable
 from typing import Annotated, Any
 from urllib.parse import quote as url_quote
 
@@ -56,6 +57,7 @@ def render(request: Request, template: str, /, status_code: int = 200, headers: 
     base = {"app_name": request.app.state.settings.app_name, "kind_words": labels.KIND_WORDS,
             "field_label": labels.field_label, "display": labels.display, "source_words": labels.source_words,
             "method_words": labels.method_words, "money": services.money, "shown": enquiry.shown,
+            "value_source": labels.value_source, "distinct_sources": enquiry.distinct_sources,
             "short_date": labels.short_date, "drawing_hint": drawing_hint(request.app.state.settings)}
     return templates.TemplateResponse(request, template, {**base, **context}, status_code=status_code,
                                       headers=headers)
@@ -401,20 +403,41 @@ def _items(request: Request, session: Session, project: Project) -> list[enquiry
                                  enquiry.approved_substitutes(session, project.id))
 
 
+# The buttons under the tabs on Check: (key, label, count from the Check context or None).
+# Each view is the template partials/views/<key>.html; adding a view (Stock, Ask) is one line here.
+VIEWS: list[tuple[str, str, Callable[[dict[str, Any]], int | None]]] = [
+    ("decisions", "Decisions", lambda c: c["found"].cards),
+    ("items", "Items", lambda c: len(c["items"])),
+    ("report", "Report", lambda c: None),
+]
+DEFAULT_VIEW = VIEWS[0][0]
+
+
 def _check_context(request: Request, session: Session, project: Project, open_reason: str | None = None,
-                   error: str | None = None) -> dict[str, Any]:
+                   error: str | None = None, view: str | None = None) -> dict[str, Any]:
     found = enquiry.decisions(project)
     items = _items(request, session, project)
-    return {**enquiry_context(session, project, found), "items": items, "reasons": enquiry.REASONS,
-            "open_reason": open_reason if open_reason in found.reasons else None, "error": error,
-            "flags": enquiry.instruction_flags(project), "tab": "check"}
+    context = {**enquiry_context(session, project, found), "items": items, "reasons": enquiry.REASONS,
+               "open_reason": open_reason if open_reason in found.reasons else None, "error": error,
+               "flags": enquiry.instruction_flags(project), "tab": "check",
+               "view": view if view in {k for k, _, _ in VIEWS} else DEFAULT_VIEW}
+    context["views"] = [{"key": k, "label": label, "count": count(context)} for k, label, count in VIEWS]
+    if context["view"] == "report":
+        estimate = context["estimate"]
+        context["can_export"] = found.approved > 0
+        context["out_of_date"] = enquiry.quote_out_of_date(session, project.id, estimate)
+    return context
 
 
 @router.get("/enquiries/{project_id}/check", response_class=HTMLResponse)
 def check_page(request: Request, project_id: int, session: SessionDep, open: str | None = None,
-               error: str | None = None) -> HTMLResponse:
+               error: str | None = None, view: str | None = None) -> HTMLResponse:
+    """Check, with one view open (``?view=decisions|items|report``). A bar button swaps only the Check block."""
     project = project_or_404(session, project_id)
-    return render(request, "check.html", **_check_context(request, session, project, open, error))
+    context = _check_context(request, session, project, open, error, view)
+    if is_htmx(request) and request.headers.get("HX-Target") == "check-body":
+        return render(request, "partials/check_body.html", **context)
+    return render(request, "check.html", **context)
 
 
 def _after_decision(request: Request, session: Session, project_id: int, open_reason: str | None = None,
@@ -663,8 +686,13 @@ def _export_docx(request: Request, session: Session, project: Project, est: Esti
 
 @router.get("/enquiries/{project_id}/quote/report.docx")
 def export_latest_docx(request: Request, project_id: int, session: SessionDep) -> Response:
-    """The report of the current quote. The quote is rebuilt first if anything changed since it was built."""
+    """The report of the current quote. The quote is rebuilt first if anything changed since it was built.
+
+    Refused (409) while nothing is approved: a report of an empty quote helps no one.
+    """
     project = project_or_404(session, project_id)
+    if not enquiry.decisions(project).approved:
+        raise HTTPException(409, "Approve at least one value to export the report.")
     est = services.latest_estimate(session, project_id)
     if est is None or enquiry.quote_out_of_date(session, project_id, est):
         est = services.build_estimate(session, project_id, request.app.state.settings)

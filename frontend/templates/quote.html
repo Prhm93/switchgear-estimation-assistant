@@ -1,5 +1,5 @@
 {%- extends "layout_enquiry.html" -%}
-{%- from "macros.html" import icon with context -%}
+{%- from "macros.html" import icon, export_button with context -%}
 
 {%- block step %}
 {%- if out_of_date %}
@@ -24,7 +24,7 @@
     <div><dt>Margin <span class="muted">({{ estimate.margin_percent.normalize() }} %)</span></dt><dd class="mono">{{ money(estimate.margin) }}</dd></div>
   </dl>
   <div class="total__actions">
-    <a class="btn btn--primary" href="/enquiries/{{ project.id }}/quote/report.docx">{{ icon("download", "sm") }}Export Word report</a>
+    {{ export_button(project, found.approved > 0) }}
   </div>
 </section>
 

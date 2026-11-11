@@ -109,6 +109,23 @@ def review_groups(project: Project) -> OrderedDict[str, dict[str, Any]]:
     return groups
 
 
+def distinct_sources(values: list[Any]) -> list[Any]:
+    """The values of one conflict side with true duplicates merged: one per file and page.
+
+    A side holds values that agree, so the same file and page twice (the rules and the model reading the
+    same line) is one source. Two different files stay apart even when their words look alike, for
+    example the CAD drawing and a picture of the drawing.
+    """
+    seen: set[tuple[Any, Any]] = set()
+    out = []
+    for v in values:
+        key = (v.document_id, v.page)
+        if key not in seen:
+            seen.add(key)
+            out.append(v)
+    return out
+
+
 def missing_information(groups: OrderedDict[str, dict[str, Any]]) -> list[dict[str, str]]:
     """Required fields no document gives a value for."""
     stated = {f for f, g in groups.items() if any(v.value is not None for v in g["values"])}
@@ -264,13 +281,13 @@ class Item:
 
 def _approved(rows: list[ExtractedValueRow]) -> list[ApprovedValue]:
     return [ApprovedValue(value_id=r.id, field=r.field, value=r.approved_value, unit=r.approved_unit,
-                          source=labels.source_words(r.source_document, r.page)) for r in rows
+                          source=labels.value_source(r)) for r in rows
             if r.review_status in DONE]
 
 
 def _open(rows: list[ExtractedValueRow]) -> list[ApprovedValue]:
     return [ApprovedValue(value_id=r.id, field=r.field, value=r.value, unit=r.unit,
-                          source=labels.source_words(r.source_document, r.page)) for r in rows
+                          source=labels.value_source(r)) for r in rows
             if r.review_status == ReviewStatus.EXTRACTED.value and r.value is not None]
 
 
