@@ -1,15 +1,15 @@
-{#- The app: a top bar with the "More" link and the theme switch, the page, and a small footer.
+{#- The app: a top bar with plain links and the theme switch, the page, and a small footer.
     Child templates set `nav` ("enquiries" or "new") and fill the blocks heading and content. -#}
 {%- extends "base.html" -%}
-{%- from "macros.html" import icon, brand_mark, theme_button, more_menu with context -%}
+{%- from "macros.html" import icon, brand_mark, theme_button, nav_links with context -%}
 
 {%- block body %}
 <header class="topbar">
   <div class="topbar__inner">
     <a class="brand" href="/">{{ brand_mark(24) }}<span class="brand__name"><span class="brand__lead">Switchgear </span>Estimation Assistant</span></a>
     <nav class="topbar__nav" aria-label="Main">
-      {#- stage-simple: one small "More" link holds the other screens; the theme switch stays. -#}
-      {{ more_menu(project if project is defined else None) }}
+      {#- stage-simple: plain links in the bar (one menu under 700 px); the theme switch stays. -#}
+      {{ nav_links() }}
       {{ theme_button() }}
     </nav>
   </div>

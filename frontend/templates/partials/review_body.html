@@ -10,6 +10,7 @@
   <div class="review__progress">
     <p class="review__count"><strong>{{ done }} of {{ total }} groups checked</strong></p>
     {%- if total %}<progress class="review__bar" max="{{ total }}" value="{{ done }}">{{ done }} of {{ total }}</progress>{% endif %}
+    {%- if agree_counts %}<p class="small muted">Agreeing values: {{ agree_counts.approved }} approved, {{ agree_counts.changed }} changed, {{ agree_counts.still }} still to check.</p>{% endif %}
   </div>
   {%- if error %}<p class="alert alert--error" role="alert">{{ error }}</p>{% endif %}
 
@@ -17,19 +18,87 @@
   {%- set n = card["items"] | length %}
   <article class="review-card review-card--agreeing" id="card-agreeing">
     <div class="review-card__head"><h2 class="review-card__title">{{ n }} agreeing values</h2></div>
-    <p class="small muted">Read clearly from the files' text, with high confidence, and no file says otherwise. Each one is approved on its own and listed in Activity.</p>
-    <details class="agree-list">
-      <summary class="more__link">Show the {{ n }} values</summary>
-      <ul class="plain-list plain-list--tight">
-        {%- for it in card["items"] %}<li>{{ it.label }}: <span class="mono">{{ it.value }}</span> <span class="small muted">{{ it.source }}</span></li>{% endfor %}
-      </ul>
-    </details>
-    <form method="post" action="/enquiries/{{ project.id }}/review/agreeing" hx-post="/enquiries/{{ project.id }}/review/agreeing" hx-target="#review-body" hx-swap="outerHTML" class="review-card__actions">
+    <p class="review-card__note">Approve means: I checked this against the file and it is right. Only approved values are used in the quote.</p>
+    <p class="small muted">Read clearly from the files' text, with high confidence, and no file says otherwise. Untick any value you have not checked: it stays to check and is not priced.</p>
+    <ul class="agree-values">
       {%- for it in card["items"] %}
-      <input type="hidden" name="value_id" value="{{ it.v.id }}">
+      {%- set v = it.v %}
+      <li class="agree-value" id="agree-{{ v.id }}">
+        {%- if it.pending %}
+        <label class="agree-value__tick"><input type="checkbox" name="value_id" value="{{ v.id }}" checked data-tick form="agree-form">
+          <span>{{ it.label }}: <span class="mono">{{ it.value }}</span></span></label>
+        {%- else %}
+        <span class="agree-value__tick"><span>{{ it.label }}: <span class="mono">{{ it.value }}</span></span>
+          {%- if v.review_status == "edited" %} <span class="chip chip--review">changed by engineer</span> <span class="small muted">read as {{ display(v.value, v.unit) }}</span>
+          {%- elif v.review_status == "approved" %} <span class="chip chip--approved">Approved</span>
+          {%- else %} <span class="chip">still to check</span>{% endif %}</span>
+        {%- endif %}
+        <span class="small muted">{{ it.source }}</span>
+        {%- if v.review_status == "extracted" %}
+        {%- set value, unit = shown(v) %}
+        <details class="change-inline">
+          <summary class="link-like">Change</summary>
+          <form method="post" action="/enquiries/{{ project.id }}/review/one/change" hx-post="/enquiries/{{ project.id }}/review/one/change" hx-target="#review-body" hx-swap="outerHTML" class="inline-form">
+            <input type="hidden" name="value_id" value="{{ v.id }}">
+            <label class="field field--inline"><span class="field__label">Right value</span><input class="input mono" name="value" value="{{ value if value is not none else '' }}" required></label>
+            <label class="field field--inline field--unit"><span class="field__label">Unit</span><input class="input mono" name="unit" value="{{ unit or '' }}"></label>
+            <button class="btn btn--tonal btn--sm" type="submit">Save</button>
+          </form>
+        </details>
+        {%- endif %}
+      </li>
       {%- endfor %}
-      <button class="btn btn--primary" type="submit">Approve these {{ n }}</button>
+    </ul>
+    <form id="agree-form" method="post" action="/enquiries/{{ project.id }}/review/agreeing" hx-post="/enquiries/{{ project.id }}/review/agreeing" hx-target="#review-body" hx-swap="outerHTML" class="review-card__actions" data-tick-form>
+      {%- for it in card["items"] if it.pending %}
+      <input type="hidden" name="in_group" value="{{ it.v.id }}">
+      {%- endfor %}
+      <button class="btn btn--primary" type="submit">Yes, these are right (<span data-ticked>{{ card.ticked }}</span> ticked)</button>
+      <a class="btn btn--secondary" href="/enquiries/{{ project.id }}/review?one=1">Check one by one</a>
     </form>
+  </article>
+
+  {%- elif card and card.kind == "one" %}
+  {%- set it = card.item %}
+  {%- set v = it.v %}
+  {%- set value, unit = shown(v) %}
+  <article class="review-card" id="card-one">
+    <div class="review-card__head"><h2 class="review-card__title">{{ it.label }}</h2></div>
+    <div class="review-card__value mono">{{ it.value }}</div>
+    <p class="review-card__note">Approve means: I checked this against the file and it is right. Only approved values are used in the quote.</p>
+    <p class="small muted">Read from {{ it.source }} ({{ v.document.original_name }}).</p>
+    <figure class="review-card__proof">
+      {%- if it.crop %}
+      {%- set c = it.crop %}
+      <svg class="crop" viewBox="{{ c.view }}" role="img" aria-label="Where {{ it.label }} was read on the drawing">
+        <image href="{{ c.src }}" x="0" y="0" width="{{ c.width }}" height="{{ c.height }}"/>
+        <g class="sheet__box sheet__box--{{ c.kind }}"><rect x="{{ '%g' | format(c.x) }}" y="{{ '%g' | format(c.y) }}" width="{{ '%g' | format(c.w) }}" height="{{ '%g' | format(c.h) }}"/></g>
+      </svg>
+      {%- elif it.proof.mark %}
+      <pre class="proof-text">{{ it.proof.before }}<mark>{{ it.proof.mark }}</mark>{{ it.proof.after }}</pre>
+      {%- elif v.source_text %}
+      <pre class="proof-text"><mark>{{ v.source_text }}</mark></pre>
+      {%- endif %}
+      <figcaption class="small muted sheet__legend">{{ box_legend() }}</figcaption>
+    </figure>
+    <div class="review-card__actions">
+      <form method="post" action="/enquiries/{{ project.id }}/review/one/approve" hx-post="/enquiries/{{ project.id }}/review/one/approve" hx-target="#review-body" hx-swap="outerHTML">
+        <input type="hidden" name="value_id" value="{{ v.id }}">
+        <input type="hidden" name="one" value="1">
+        <button class="btn btn--primary" type="submit">Approve</button>
+      </form>
+      <details class="change">
+        <summary class="btn btn--secondary">Change</summary>
+        <form method="post" action="/enquiries/{{ project.id }}/review/one/change" hx-post="/enquiries/{{ project.id }}/review/one/change" hx-target="#review-body" hx-swap="outerHTML" class="inline-form">
+          <input type="hidden" name="value_id" value="{{ v.id }}">
+          <input type="hidden" name="one" value="1">
+          <label class="field field--inline"><span class="field__label">Right value</span><input class="input mono" name="value" value="{{ value if value is not none else '' }}" required></label>
+          <label class="field field--inline field--unit"><span class="field__label">Unit</span><input class="input mono" name="unit" value="{{ unit or '' }}"></label>
+          <button class="btn btn--tonal btn--sm" type="submit">Save</button>
+        </form>
+      </details>
+    </div>
+    <p class="small"><a href="/enquiries/{{ project.id }}/review">Back to the list</a></p>
   </article>
 
   {%- elif card and card.kind == "page" %}

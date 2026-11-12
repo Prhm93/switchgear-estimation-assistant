@@ -797,7 +797,8 @@ def _value_item(request: Request, v: ExtractedValueRow, sizes: dict) -> dict[str
             "kind": box_kind(v)}
 
 
-def _review_context(request: Request, session: Session, project: Project, error: str | None = None) -> dict[str, Any]:
+def _review_context(request: Request, session: Session, project: Project, error: str | None = None,
+                    one: bool = False) -> dict[str, Any]:
     """The Review page: groups checked out of all groups, and the first group still waiting, as one card.
 
     Order: the agreeing values (one button for all of them), each real conflict, then one card per file and
@@ -809,14 +810,26 @@ def _review_context(request: Request, session: Session, project: Project, error:
     waiting = [g for g in plan if not g.done(later)]
     context = {**enquiry_context(session, project, found), "busy": any(d.status in BUSY for d in project.documents),
                "total": len(plan), "done": len(plan) - len(waiting), "card": None, "error": error,
-               "later": len(later), "box_kinds": BOX_KINDS}
+               "later": len(later), "box_kinds": BOX_KINDS, "one": one, "agree_counts": None}
+    agreeing = next((g for g in plan if g.kind == "agreeing"), None)
+    if agreeing is not None:  # "N approved, N changed, N still to check": every agreeing value is in one of them
+        listed = [v for v in agreeing.values if v.review_status != ReviewStatus.REJECTED.value]
+        context["agree_counts"] = {
+            "approved": sum(v.review_status == ReviewStatus.APPROVED.value for v in listed),
+            "changed": sum(v.review_status == ReviewStatus.EDITED.value for v in listed),
+            "still": sum(v.review_status == ReviewStatus.EXTRACTED.value for v in listed)}
     if not waiting:
         return context
     group = waiting[0]
     sizes: dict = {}
-    if group.kind == "agreeing":
-        context["card"] = {"kind": "agreeing", "key": group.key,
-                           "items": [_value_item(request, v, sizes) | {"crop": None} for v in group.pending(later)]}
+    if group.kind == "agreeing" and one:  # "Check one by one": the first waiting value on its own card
+        v = group.pending(later)[0]
+        context["card"] = {"kind": "one", "item": _value_item(request, v, sizes)}
+    elif group.kind == "agreeing":
+        waiting_ids = {v.id for v in group.pending(later)}
+        items = [_value_item(request, v, sizes) | {"crop": None, "pending": v.id in waiting_ids}
+                 for v in group.values if v.review_status != ReviewStatus.REJECTED.value]
+        context["card"] = {"kind": "agreeing", "key": group.key, "items": items, "ticked": len(waiting_ids)}
     elif group.kind == "conflict":
         g = found.groups[group.field]
         sides = g["sides"]
@@ -838,20 +851,26 @@ def _review_context(request: Request, session: Session, project: Project, error:
     return context
 
 
-def _review_response(request: Request, session: Session, project_id: int, error: str | None = None) -> Response:
+def _review_response(request: Request, session: Session, project_id: int, error: str | None = None,
+                     one: bool = False) -> Response:
     if is_htmx(request):
         session.expire_all()
         return render(request, "partials/review_body.html",
-                      **_review_context(request, session, project_or_404(session, project_id), error))
-    target = f"/enquiries/{project_id}/review" + (f"?error={url_quote(error)}" if error else "")
+                      **_review_context(request, session, project_or_404(session, project_id), error, one))
+    params = "&".join(p for p in ("one=1" if one else "", f"error={url_quote(error)}" if error else "") if p)
+    target = f"/enquiries/{project_id}/review" + (f"?{params}" if params else "")
     return RedirectResponse(target, status_code=303)
 
 
 @router.get("/enquiries/{project_id}/review", response_class=HTMLResponse)
-def review_page(request: Request, project_id: int, session: SessionDep, error: str | None = None) -> HTMLResponse:
-    """One card per field that needs checking, one at a time, with its proof; reading first while files are read."""
+def review_page(request: Request, project_id: int, session: SessionDep, error: str | None = None,
+                one: int = 0) -> HTMLResponse:
+    """One card per group that needs checking, with its proof; reading first while files are read.
+
+    ``?one=1`` ("Check one by one") shows the agreeing values one at a time instead of as one list.
+    """
     project = project_or_404(session, project_id)
-    context = _review_context(request, session, project, error)
+    context = _review_context(request, session, project, error, bool(one))
     if is_htmx(request) and request.headers.get("HX-Target") == "review-body":
         return render(request, "partials/review_body.html", **context)
     return render(request, "review.html", **context)
@@ -893,16 +912,64 @@ def _group(session: Session, project_id: int, key: str) -> tuple[Project, enquir
 
 @router.post("/enquiries/{project_id}/review/agreeing")
 def review_agreeing(request: Request, project_id: int, session: SessionDep,
-                    value_id: Annotated[list[int], Form()] = []) -> Response:  # noqa: B006
-    """ "Approve these N": exactly the agreeing values the card listed that still wait, one approval and one audit
-    entry each. An id that is not an agreeing value waiting for a decision is never approved."""
-    _, group, later = _group(session, project_id, "agreeing")
+                    value_id: Annotated[list[int], Form()] = [],  # noqa: B006
+                    in_group: Annotated[list[int], Form()] = []) -> Response:  # noqa: B006
+    """ "Yes, these are right (N ticked)": exactly the ticked agreeing values that still wait, one approval and one
+    audit entry each. An id that is not an agreeing value waiting for a decision is never approved. A value the
+    card listed but left un-ticked stays to check (one audit entry), unapproved and never priced."""
+    project, group, later = _group(session, project_id, "agreeing")
     allowed = {v.id for v in group.pending(later)} if group else set()
-    for i in value_id:
-        if i in allowed:
-            services.review_value(session, i, "approve", reason="approved with the agreeing values")
+    ticked = set(value_id) & allowed
+    for i in sorted(ticked):
+        services.review_value(session, i, "approve", reason="approved with the agreeing values")
+    for i in sorted((set(in_group) & allowed) - ticked):
+        services.audit(session, "review_later", "extracted_value", i, project.id,
+                       reason="left un-ticked on the agreeing values card")
+    session.commit()
     services.refresh_quote(session, project_id, request.app.state.settings)
     return _review_response(request, session, project_id)
+
+
+def _waiting_value(session: Session, project_id: int, value_id: int) -> ExtractedValueRow | None:
+    v = session.get(ExtractedValueRow, value_id)
+    ok = v is not None and v.project_id == project_id and v.review_status == ReviewStatus.EXTRACTED.value
+    return v if ok else None
+
+
+@router.post("/enquiries/{project_id}/review/one/approve")
+def review_one_approve(request: Request, project_id: int, session: SessionDep, value_id: Annotated[int, Form()],
+                       one: Annotated[int, Form()] = 0) -> Response:
+    """Approve one value ("Check one by one"): its own approval and audit entry."""
+    project_or_404(session, project_id)
+    error = None
+    if _waiting_value(session, project_id, value_id) is None:
+        error = "That value was already decided; here is the next one."
+    else:
+        try:
+            services.review_value(session, value_id, "approve", reason="approved on its own Review card")
+            services.refresh_quote(session, project_id, request.app.state.settings)
+        except services.ReviewError as e:
+            error = str(e)
+    return _review_response(request, session, project_id, error, bool(one))
+
+
+@router.post("/enquiries/{project_id}/review/one/change")
+def review_one_change(request: Request, project_id: int, session: SessionDep, value_id: Annotated[int, Form()],
+                      value: Annotated[str, Form()] = "", unit: Annotated[str, Form()] = "",
+                      one: Annotated[int, Form()] = 0) -> Response:
+    """Change one value: the engineer's value is stored as approved ("changed by engineer"); the value read from
+    the file is kept on the record; its own review row and audit entry."""
+    project_or_404(session, project_id)
+    error = None
+    if _waiting_value(session, project_id, value_id) is None:
+        error = "That value was already decided."
+    else:
+        try:
+            services.review_value(session, value_id, "edit", value, unit, reason="changed by engineer on Review")
+            services.refresh_quote(session, project_id, request.app.state.settings)
+        except services.ReviewError as e:
+            error = str(e)
+    return _review_response(request, session, project_id, error, bool(one))
 
 
 @router.post("/enquiries/{project_id}/review/group")

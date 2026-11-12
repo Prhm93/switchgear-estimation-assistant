@@ -1051,13 +1051,6 @@ a.chip--neutral:hover { background: var(--veil-hover); color: var(--text); }
 .btn--xl { padding: 20px 34px; font-size: 18px; font-weight: 600; cursor: pointer; }
 .hero__add { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
 .hero__add.dropzone--over .btn--xl { box-shadow: 0 0 0 3px var(--focus); }
-.more { position: relative; }
-.more > summary { list-style: none; cursor: pointer; }
-.more > summary::-webkit-details-marker { display: none; }
-.more__link { padding: var(--space-1) var(--space-2); color: var(--text-soft); font-size: var(--fs-sm); box-shadow: inset 0 -1px 0 currentColor; border-radius: 0; }
-.more__link:hover, .more[open] .more__link { color: var(--text); }
-.more__list { right: 0; left: auto; min-width: 220px; }
-.more__rule { border: 0; height: 1px; margin: var(--space-1) 0; background: var(--hairline); }
 .simple-head { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-5); }
 .simple-head__text { max-width: 60ch; }
 .ask-soon { display: flex; gap: var(--space-2); align-items: center; }
@@ -1083,11 +1076,50 @@ a.chip--neutral:hover { background: var(--veil-hover); color: var(--text); }
 .change[open] > summary { margin-bottom: var(--space-3); }
 .review-done { padding: var(--space-5) 0; }
 .total--simple { margin-bottom: var(--space-4); }
-.agree-list { margin: var(--space-3) 0; }
-.agree-list > summary { list-style: none; cursor: pointer; display: inline-block; }
-.agree-list > summary::-webkit-details-marker { display: none; }
 .group-values { list-style: none; margin: var(--space-4) 0; padding: 0; display: grid; gap: var(--space-4); }
 .group-value { padding: var(--space-3); border-radius: var(--radius-sm); background: var(--row-bg); }
 .group-value__tick { display: flex; gap: var(--space-2); align-items: center; font-weight: 600; cursor: pointer; }
 .group-value__tick input { width: 18px; height: 18px; accent-color: var(--success); }
 .crop--small { max-height: 200px; margin-top: var(--space-2); }
+
+/* Top bar links (stage-simple fix): plain links in a row; one "Menu" under 700 px. */
+.nav-links { display: flex; align-items: center; gap: var(--space-1); }
+.nav-menu { display: none; position: relative; }
+.nav-menu > summary { list-style: none; cursor: pointer; }
+.nav-menu > summary::-webkit-details-marker { display: none; }
+.nav-menu__list { right: 0; left: auto; min-width: 200px; }
+.site-nav .nav-links { gap: 28px; }
+.site-nav .nav-links a { padding: 0; color: var(--text-nav); background: none; }
+.site-nav .nav-links a:hover { color: var(--text); }
+
+/* The chosen files on the home page, before "Read these files". */
+.file-picks { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.file-picks:empty { display: none; }
+.file-pick { display: flex; gap: var(--space-3); align-items: baseline; font-size: var(--fs-sm); }
+.file-pick a { color: var(--blue-text); }
+
+/* The agreeing values: one tick per value, a Change link each. */
+.agree-values { list-style: none; margin: var(--space-4) 0; padding: 0; display: grid; gap: var(--space-2); max-height: 480px; overflow: auto; }
+.agree-value { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); align-items: baseline; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--row-bg); }
+.agree-value__tick { display: flex; gap: var(--space-2); align-items: center; cursor: pointer; }
+.agree-value__tick input { width: 18px; height: 18px; accent-color: var(--success); }
+.change-inline > summary { list-style: none; cursor: pointer; }
+.change-inline > summary::-webkit-details-marker { display: none; }
+.change-inline[open] { flex-basis: 100%; }
+.link-like { color: var(--blue-text); font-size: var(--fs-sm); box-shadow: inset 0 -1px 0 currentColor; }
+
+/* The home sketch (stage-simple fix): on wide screens with motion, the hero is about two screens tall and the
+   drawing stays pinned near the top for one screen of scrolling while home.js opens and closes it with the
+   scroll. "overflow: clip" keeps the background inside without breaking the pin. Reduced motion: static. */
+@media (min-width: 901px) and (prefers-reduced-motion: no-preference) {
+  .hero { overflow: clip; min-height: calc(200svh - var(--nav-h)); justify-content: flex-start; }
+  .hero__inner { flex: 1; align-items: start; padding-top: var(--space-6); }
+  .hero__art { position: sticky; top: calc(var(--nav-h) + 16px); align-self: start; }
+}
+
+@media (max-width: 700px) {
+  .nav-links { display: none; }
+  .nav-menu { display: block; }
+}
+
+.sample-strip { padding: var(--space-6) 0 var(--space-8); color: var(--text-soft); }

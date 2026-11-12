@@ -52,7 +52,9 @@ def test_the_hero_is_the_prototype_headline_with_one_add_files_button_and_the_dr
     assert "Add the customer's files. Every value shows where it came from." in hero
     # stage-simple: one big button; the sample enquiry and the New enquiry page moved behind "More".
     assert re.findall(r'class="btn btn--primary btn--xl"[^>]*>.*?Add files', hero, re.S)
-    assert hero.count("btn--primary") == 1 and "<button" not in hero
+    # stage-simple fix: "Read these files" is in the hero too, hidden until files are chosen
+    assert re.findall(r'<button[^>]*\shidden[^>]*>\s*Read these files', hero)
+    assert len(re.findall(r"<button(?![^>]*\shidden)", hero)) == 0
     assert 'action="/enquiries/sample"' not in hero
     assert "Sample data only" in hero
     # The breaker drawing sits on the right, inline so the theme colours and the motion reach it.

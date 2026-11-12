@@ -85,3 +85,31 @@ Choices made without the owner (one line each):
 - The agreeing card lists its values behind a small "Show the N values" link, not one by one.
 - The ticked count updates with a few lines of our own script (`review.js`); without script the form still sends exactly the ticked values.
 - Full suite after the fix: database tests 5 passed; the rest 896 passed.
+
+## Fix: plain top bar, pinned sketch, file list before reading, agreeing values one tick each
+
+- **Top bar:** How it works, Safety, Measured and Enquiries as plain links on every page, the theme switch kept,
+  and one "Menu" in their place under 700 px. The More dropdown is removed.
+- **Home sketch:** on wide screens with motion allowed, the hero is about two screens tall and the drawing sits
+  near the top, pinned (`position: sticky`) for one screen of scrolling; the scroll through that part opens it
+  and closes it again (a half sine of the progress), so it never ends open and out of view. Reduced motion and
+  narrow screens: the still drawing, as before. The contour background and its guards are unchanged.
+- **Upload:** choosing or dropping files lists them (each with Remove); "Add files" becomes "Add more", and
+  reading starts only on "Read these files".
+- **Agreeing values:** the line "Approve means: I checked this against the file and it is right. Only approved
+  values are used in the quote."; one tick per value (all ticked); "Yes, these are right (N ticked)" with a live
+  count; "Check one by one" shows single cards with Approve and Change; a Change link per value stores the
+  engineer's value as approved ("changed by engineer"), keeps the value read, and writes its own audit entry; an
+  un-ticked value stays to check, is never priced, and is counted in "N approved, N changed, N still to check".
+- **Measured (showcase):** 6 clicks from upload to quote (Add files, Read these files, Yes these are right (130
+  ticked), Approve on the conflict, Approve 7 ticked, Make quote), plus choosing the files. Same draft total.
+
+Choices made without the owner (one line each):
+- The nav links point to the home page sections (`/#how`, `/#safety`, `/#accuracy`) from every page.
+- An enquiry's other screens (Summary, tabs, Activity, proof viewer) are one plain link, "All details of this enquiry", on Review and the short quote.
+- "Try the sample enquiry" moved to a quiet line after the numbers on the home page, so the hero keeps one button.
+- "Read these files" is in the page but hidden until files are chosen; without script, the page points to the full upload page.
+- Change on one agreeing value changes that value only; if the engineer then approves a sibling with the old value, Check shows the disagreement.
+- An un-ticked agreeing value is left for later the same way as on picture cards (a `review_later` audit entry).
+- "Check one by one" is a link (`?one=1`), not a stored setting.
+- Full suite after these fixes: database tests 5 passed; the rest 904 passed.

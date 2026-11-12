@@ -132,32 +132,20 @@
 </button>
 {%- endmacro %}
 
-{#- The one small "More" link (stage-simple): everything that is not Add files, Approve, Change, Make quote or Ask.
-    Inside an enquiry it lists that enquiry's other screens first. -#}
-{%- macro more_menu(project=None, home=False) -%}
-<details class="more">
-  <summary class="more__link">More</summary>
-  <div class="menu__list more__list">
-    {%- if project %}
-    <a href="/enquiries/{{ project.id }}/review">Review</a>
-    <a href="/enquiries/{{ project.id }}">Summary</a>
-    <a href="/enquiries/{{ project.id }}/check">All values</a>
-    <a href="/enquiries/{{ project.id }}/check?view=items">Parts list</a>
-    <a href="/enquiries/{{ project.id }}/quote">Quote with workings</a>
-    <a href="/enquiries/{{ project.id }}/check?view=report">Report</a>
-    <a href="/enquiries/{{ project.id }}/files">Files</a>
-    <a href="/enquiries/{{ project.id }}/proof">Proof viewer</a>
-    <a href="/enquiries/{{ project.id }}/activity">Activity</a>
-    <hr class="more__rule">
-    {%- endif %}
-    {%- if home %}
-    <a href="#how">How it works</a>
-    <a href="#safety">Safety</a>
-    <a href="#accuracy">Measured</a>
-    {%- endif %}
-    <a href="/enquiries">Enquiries</a>
-    <a href="/enquiries/new">New enquiry</a>
-    <form method="post" action="/enquiries/sample"><button class="menu__button" type="submit">Try the sample enquiry</button></form>
+{#- The top bar's plain links (stage-simple): shown in a row, and as one menu under 700 px. -#}
+{%- macro nav_links() -%}
+{%- set links = [("How it works", "/#how"), ("Safety", "/#safety"), ("Measured", "/#accuracy"), ("Enquiries", "/enquiries")] %}
+<div class="nav-links">
+  {%- for label, href in links %}
+  <a class="topbar__link" href="{{ href }}">{{ label }}</a>
+  {%- endfor %}
+</div>
+<details class="nav-menu">
+  <summary class="topbar__link nav-menu__label">Menu</summary>
+  <div class="menu__list nav-menu__list">
+    {%- for label, href in links %}
+    <a href="{{ href }}">{{ label }}</a>
+    {%- endfor %}
   </div>
 </details>
 {%- endmacro %}

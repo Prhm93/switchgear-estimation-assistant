@@ -4,7 +4,7 @@
     the breaker on, opens it with the scroll and sets the story step. Every word is in the HTML; reduced
     motion shows the finished drawing, still. -#}
 {%- extends "base.html" -%}
-{%- from "macros.html" import icon, brand_mark, theme_button, more_menu with context -%}
+{%- from "macros.html" import icon, brand_mark, theme_button, nav_links with context -%}
 
 {%- block title %}{{ app_name }}{% endblock -%}
 {%- block body_class %}page--home{% endblock -%}
@@ -22,7 +22,7 @@
   <div class="site-header__inner">
     <a class="brand" href="/">{{ brand_mark(26) }}<span class="brand__name"><span class="brand__lead">Switchgear </span>Estimation Assistant</span></a>
     <nav class="site-nav" aria-label="Main">
-      {{ more_menu(home=True) }}
+      {{ nav_links() }}
       {{ theme_button() }}
     </nav>
   </div>
@@ -35,12 +35,15 @@
         <div class="label-mono">An engineer-led way to estimate</div>
         <h1 id="hero-title" class="hero__title">Turn enquiries into <span class="accent">checked</span> estimates</h1>
         <p class="hero__lede">Add the customer's files. Every value shows where it came from.</p>
-        {#- stage-simple: one big button. Choosing files sends them at once (upload.js); then Review opens. -#}
-        <form class="hero__actions hero__add" method="post" action="/enquiries" enctype="multipart/form-data" data-dropzone data-autosubmit>
+        {#- stage-simple: one big button. Chosen files are listed here (each with Remove), "Add files" becomes
+            "Add more", and reading starts only on "Read these files" (upload.js). Several files can be dropped at once. -#}
+        <form class="hero__actions hero__add" method="post" action="/enquiries" enctype="multipart/form-data" data-file-picker>
           <input type="hidden" name="next" value="review">
-          <label class="btn btn--primary btn--xl">{{ icon("upload", "sm") }}Add files<input class="visually-hidden" type="file" name="files" multiple required accept=".pdf,.png,.jpg,.jpeg,.dxf,.docx" data-file-input></label>
-          <p class="small muted hero__add-hint">The specification, the drawing and the customer's letter (PDF, DXF, DOCX, PNG or JPG).</p>
-          <p class="small muted" data-file-summary aria-live="polite"></p>
+          <label class="btn btn--primary btn--xl" data-add-label>{{ icon("upload", "sm") }}<span data-add-text>Add files</span><input class="visually-hidden" type="file" name="files" multiple accept=".pdf,.png,.jpg,.jpeg,.dxf,.docx" data-file-input></label>
+          <ul class="file-picks" data-file-list aria-live="polite"></ul>
+          <button class="btn btn--primary btn--lg" type="submit" data-read hidden>Read these files</button>
+          <p class="small muted hero__add-hint">The specification, the drawing and the customer's letter (PDF, DXF, DOCX, PNG or JPG). You can also drop them here.</p>
+          <noscript><p class="small">Without script, use the <a href="/enquiries/new">upload page</a>.</p></noscript>
         </form>
       </div>
       <div class="hero__art" data-breaker="hero">{{ breaker }}</div>
@@ -102,6 +105,15 @@
         <div class="number"><dt class="number__value mono">0.813</dt><dd class="number__label">with the relaxed quote check, the app default: tuned on this set, so not a fair score (0.790 reworded, also tuned)</dd></div>
         <div class="number"><dt class="number__value mono">0.893</dt><dd class="number__label">drawing values read by OCR from a clean drawing; 0.863 scanned, 0.572 photographed (3 to 5 s per sheet). Test set; the linker was tuned on 3 of these drawings.</dd></div>
       </dl>
+    </div>
+  </section>
+
+  {#- The sample enquiry (stage-simple fix): out of the hero, so the hero keeps one button. -#}
+  <section class="sample-strip" aria-label="Sample enquiry">
+    <div class="wrap">
+      <form method="post" action="/enquiries/sample">
+        <p>No files to hand? <button class="link-button" type="submit">Try the sample enquiry</button>: an invented switchboard enquiry, with the specification, the letter and the drawing.</p>
+      </form>
     </div>
   </section>
 </main>
