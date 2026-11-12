@@ -319,3 +319,44 @@ Choices made without the owner (unattended run, 12 Nov 2026):
 
 **Results.** NOT RUN YET: no vision recordings exist. The scorer prints "NOT RUN YET" until the Colab
 cells have been run.
+
+## 9. Part C: symbol detector (template matching)
+
+**What was built.**
+- `backend/app/drawing/symbols.py`: one `SymbolDetector` interface, chosen by name (`SYMBOL_DETECTOR=off|template`,
+  `template` by default). The first detector matches one averaged template per class (acb, mccb, mcb,
+  switch-disconnector) by normalised cross-correlation at several sizes, numpy only, at half resolution, with
+  non-maximum suppression across classes. No learning and no downloaded weights.
+- Templates come from 80 **training** projects only (`python -m backend.drawings templates`, clean versions,
+  `symbol_templates.npz`, 8.5 kB). The threshold 0.75 was chosen on 10 training projects only
+  (`python -m backend.drawings tune-symbols`; F1 0.916 there, all three versions).
+- Honest note on the size range: the sizes searched are 0.7 to 2.0 times the training symbol sizes. This range
+  was set after looking at symbol **sizes** in the test answer keys, which showed the training drawings draw
+  symbols at about 0.6 times the test size. No score on a test set was used to choose it, but the test sets were
+  looked at, so the numbers below are not fully held out. The fresh Stage 7 set gives the fair number.
+- In the app, each symbol is linked to the nearest OCR way label and gives `way.<id>.device` (method
+  `detector`, low confidence, always reviewed, never taken by "Accept all") only for ways no other method gave a
+  device. It runs only on sheets OCR read.
+
+**Tests.** 11 tests: `tests/unit/test_symbol_detector.py`, `tests/integration/test_symbol_detector_drawings.py`.
+
+**Results** (`python -m backend.drawings symbols --set <set> --version <v>`, laptop, one version at a time;
+a box counts when its class matches and IoU is at least 0.5, the Part A scorer):
+
+| Set | Version | TP | FP | FN | P | R | F1 | mean IoU | s/sheet (mean) | peak Python MB |
+|---|---|---|---|---|---|---|---|---|---|---|
+| test | clean | 185 | 20 | 23 | 0.902 | 0.889 | 0.896 | 0.925 | 10.82 | 124 |
+| test | scanned | 189 | 19 | 19 | 0.909 | 0.909 | 0.909 | 0.903 | 10.99 | 117 |
+| test | photo | 174 | 17 | 34 | 0.911 | 0.837 | 0.872 | 0.853 | 3.92 | 97 |
+| reworded | clean | 173 | 26 | 27 | 0.869 | 0.865 | 0.867 | 0.924 | 10.33 | 123 |
+| reworded | scanned | 179 | 21 | 21 | 0.895 | 0.895 | 0.895 | 0.908 | 9.57 | 116 |
+| reworded | photo | 173 | 21 | 27 | 0.892 | 0.865 | 0.878 | 0.857 | 3.92 | 96 |
+
+Per class: mcb and switch-disconnector are near 1.000 except reworded clean mcb (R 0.462); mccb has R 0.92 to
+1.000 and P 0.85 to 0.89; **acb is almost never found** (0 to 3 of 20 per version). On every row the mccb false
+positives are close to the missed ACBs, which suggests ACBs are taken as MCCBs; this was not checked box by box,
+and nothing was changed after seeing these numbers (no tuning on test sets).
+
+**Limits.** ACB is the weak class; a trained detector (torchvision, BSD-3-Clause, from scratch) through the same
+interface is the next step. About 11 s per clean or scanned sheet on the laptop. Memory in the 384 MB app
+container: NOT RUN YET (measured at the Docker rebuild at the end of the run).

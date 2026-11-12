@@ -56,6 +56,9 @@ class Settings(BaseSettings):
     # SHA-256 matches the upload; "ollama" calls OLLAMA_URL (Colab). Off by default. Its values are "read from a
     # picture": low or medium confidence, only for fields OCR left empty, and always reviewed.
     vision_mode: Literal["off", "recorded", "ollama"] = Field(default="off", description="VISION_MODE")
+    # Symbol detector (Stage 4 Part C): "template" finds breaker and switch symbols on drawings OCR read, and
+    # gives a low-confidence device for ways no other method gave one. "off" skips it.
+    symbol_detector: Literal["off", "template"] = Field(default="template", description="SYMBOL_DETECTOR")
     vision_recorded_dir: Path = Field(default=REPO_ROOT / "data" / "recorded-vision",
                                       description="VISION_RECORDED_DIR")
     # The sample enquiry (Stage UX): "Try the sample enquiry" uploads the committed showcase files from here.

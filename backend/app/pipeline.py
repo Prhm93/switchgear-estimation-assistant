@@ -24,6 +24,11 @@ drawing sheet that OCR read, or every sheet when Tesseract is missing, also goes
 to a vision model. Its values (method ``vision``) only fill fields OCR left
 empty on that sheet (:mod:`backend.app.drawing.vision`). A failure keeps the OCR
 values and says why in the note.
+
+Symbols (Stage 4 Part C): with a symbol detector (SYMBOL_DETECTOR) each sheet
+OCR read is also searched for breaker and switch symbols; each is linked to the
+nearest OCR way label, and gives a ``way.<id>.device`` value (method
+``detector``, low confidence) only for ways no other method gave a device.
 """
 
 from __future__ import annotations
@@ -40,6 +45,7 @@ import backend.app.llm  # noqa: F401  (makes the AI engine importable)
 from backend.app.drawing.link import link_sheet
 from backend.app.drawing.ocr import TesseractMissing, drawing_identity, ocr_drawing
 from backend.app.drawing.reading import DrawingReading
+from backend.app.drawing.symbols import SymbolDetector, detector_values, link_to_ways
 from backend.app.drawing.vision import VisionClient, VisionUnavailable, vision_values
 from backend.app.extraction import extract
 from backend.app.injection import InstructionFlag, find_instructions
@@ -130,6 +136,27 @@ def add_vision(vision: VisionClient, file_type: FileType, data: bytes, display_n
     return added, vision.label, note
 
 
+def add_symbols(detector: SymbolDetector, file_type: FileType, data: bytes, display_name: str,
+                readings: list[DrawingReading], values: list[ExtractedValue]) -> tuple[list[ExtractedValue], str]:
+    """Detector devices for ways with no device yet; each reading keeps its linked symbols. One sheet at a time."""
+    from backend.app.drawing.render import sheet_image
+
+    version, _ = drawing_identity(display_name, file_type)
+    added: list[ExtractedValue] = []
+    found = 0
+    for reading in readings:
+        image = sheet_image(file_type, data, reading.sheet if file_type == FileType.PDF else 1).convert("L")
+        symbols = link_to_ways(detector.detect(image), reading.labels)
+        del image
+        reading.symbols = symbols
+        found += len(symbols)
+        filled = {v.field for v in values + added if v.source.page == reading.sheet}
+        added += detector_values(symbols, file=display_name, version=version, sheet=reading.sheet, filled=filled)
+    note = (f"The symbol detector ({detector.name}) found {found} breaker or switch symbol(s); {len(added)} way(s) "
+            "got a device from it, each to be checked.")
+    return added, note
+
+
 def run_label(provider: ModelProvider) -> str:
     if isinstance(provider, RecordedProvider):
         return provider.recording.label
@@ -140,7 +167,8 @@ def analyse_file(file_type: FileType, data: bytes, display_name: str,
                  provider: ModelProvider | None = None, *, system_prompt: str | None = None,
                  salvage: bool = True, quote_check: QuoteCheckMode = QuoteCheckMode.STRICT,
                  drawing_reading: DrawingReadingMode = "off", ocr_dpi: int = 300,
-                 tesseract_cmd: str | None = None, vision: VisionClient | None = None) -> Analysis:
+                 tesseract_cmd: str | None = None, vision: VisionClient | None = None,
+                 detector: SymbolDetector | None = None) -> Analysis:
     """Read, classify and extract. Files that cannot be read yet give no values.
 
     ``system_prompt`` and ``salvage`` are for the evaluation only (scoring an
@@ -168,6 +196,10 @@ def analyse_file(file_type: FileType, data: bytes, display_name: str,
             run = None
             if vision is not None:
                 added, run, note = add_vision(vision, file_type, data, display_name, ocr_result, values)
+                values = values + added
+                ocr_result.note = f"{ocr_result.note} {note}"
+            if detector is not None and readings:
+                added, note = add_symbols(detector, file_type, data, display_name, readings, values)
                 values = values + added
                 ocr_result.note = f"{ocr_result.note} {note}"
             flags = [f for page in ocr_result.pages for f in find_instructions(page.number, page.text)]

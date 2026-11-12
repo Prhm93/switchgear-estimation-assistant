@@ -22,6 +22,7 @@ from backend.app.estimate import ApprovedValue, Draft, build, load_rules
 from backend.app.llm.quote import QuoteCheckMode
 from backend.app.models import (AuditEvent, CatalogueItemRow, Document, EnquiryNote, Estimate, EstimateLineRow,
                                 ExtractedValueRow, Match, Page, Project, Review, utcnow)
+from backend.app.drawing.symbols import make_detector
 from backend.app.drawing.vision import VisionUnavailable, make_vision_client
 from backend.app.pipeline import analyse_file
 from backend.app.recordings import RecordingMismatch, find_recording
@@ -255,6 +256,7 @@ def process_document(sessions: sessionmaker[Session], storage: Storage, document
                        "tesseract_cmd": settings.tesseract_cmd} if settings else {}
             vision_note = None
             if settings is not None:
+                drawing["detector"] = make_detector(settings.symbol_detector)
                 try:
                     drawing["vision"] = make_vision_client(settings)
                 except VisionUnavailable as error:

@@ -23,6 +23,7 @@ ezdxf>=1.4.5            # MIT. Text entities of uploaded DXF drawings
 pytesseract>=0.3.13     # Apache-2.0. Calls the Tesseract binary (Apache-2.0; apt package in Docker and CI)
 pypdfium2>=5.14         # Apache-2.0 / BSD-3-Clause (PDFium: BSD-3-Clause). Drawing PDF page to image
 pillow>=13.0            # MIT-CMU. Images for OCR
+numpy>=2.3              # BSD-3-Clause. Symbol detector (template matching, Stage 4 Part C)
 
 # AI engine (live model mode only; not needed for the rules mode)
 ollama>=0.6.3
