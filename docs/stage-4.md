@@ -374,3 +374,11 @@ has no picture and shows as before.
 a box for each value with a region and links both ways; the sheet picture is served, a missing sheet or a
 text document gives 404 and shows no boxes; box colours follow confidence and use theme tokens.
 No screenshots were taken in this run (owner's rule for the unattended run).
+
+## 11. End of Parts C and D: full suite and strict numbers
+
+- Full suite in two halves (laptop, Docker Postgres, at least 800 MB free): database tests 5 passed; the rest
+  871 passed and 1 failed in 5 min 16 s. The failure was `tests/unit/test_crosscheck.py`, an uncommitted
+  Stage 5 draft (not part of this branch's commits); it is fixed on the Stage 5 branch.
+- Strict v2 numbers (`python -m backend.evaluate --set test|reworded --mode llm`, drawing reading off) reproduce
+  exactly: 0.778 and 0.561 on the test set (with and without the DXF), 0.727 and 0.497 on the reworded set.
