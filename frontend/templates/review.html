@@ -3,6 +3,7 @@
     Everything else is behind "More" in the top bar. -#}
 {%- extends "layout_app.html" -%}
 
+{%- block head %}<script src="{{ url_for('static', path='js/review.js') }}" defer></script>{% endblock -%}
 {%- block title %}Review · {{ project.name }} · {{ app_name }}{% endblock -%}
 
 {%- block heading %}

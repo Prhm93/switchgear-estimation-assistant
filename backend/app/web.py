@@ -759,16 +759,26 @@ def export_docx(request: Request, project_id: int, estimate_id: int, session: Se
 
 # --- the simple flow: Review, one card at a time, then the draft quote -----------------------------------
 
-def _crop(request: Request, v: ExtractedValueRow) -> dict[str, Any] | None:
-    """The drawing around a value's box, as an SVG view of the sheet picture: the box stays a see-through outline."""
+def _crop(request: Request, v: ExtractedValueRow, sizes: dict[tuple[int, int], Any] | None = None
+          ) -> dict[str, Any] | None:
+    """The drawing around a value's box, as an SVG view of the sheet picture: the box stays a see-through outline.
+
+    ``sizes`` keeps each sheet's size for one request, so a card with many boxes reads each file once.
+    """
     doc = v.document
     if not v.regions or not can_render(FileType(doc.file_type)):
         return None
     sheet = (v.page or 1) if doc.file_type == "pdf" else 1
-    try:
-        width, height = sheet_size(FileType(doc.file_type), request.app.state.storage.read(doc.storage_key), sheet)
-    except (OSError, ValueError):
+    sizes = {} if sizes is None else sizes
+    if (doc.id, sheet) not in sizes:
+        try:
+            sizes[(doc.id, sheet)] = sheet_size(FileType(doc.file_type),
+                                                request.app.state.storage.read(doc.storage_key), sheet)
+        except (OSError, ValueError):
+            sizes[(doc.id, sheet)] = None
+    if sizes[(doc.id, sheet)] is None:
         return None
+    width, height = sizes[(doc.id, sheet)]
     x0, y0, x1, y1 = v.regions[0]["bbox"]
     margin = max(x1 - x0, y1 - y0, 60) * 1.5
     vx, vy = max(0.0, x0 - margin), max(0.0, y0 - margin)
@@ -779,27 +789,52 @@ def _crop(request: Request, v: ExtractedValueRow) -> dict[str, Any] | None:
             + (f"&page={v.page}" if v.page else "")}
 
 
+def _value_item(request: Request, v: ExtractedValueRow, sizes: dict) -> dict[str, Any]:
+    """One value on a group card: its label, value, where it was read, and its box or its marked text."""
+    value, unit = enquiry.shown(v)
+    return {"v": v, "label": labels.field_label(v.field), "value": labels.display(value, unit),
+            "source": labels.value_source(v), "crop": _crop(request, v, sizes), "proof": proof_of(v, context_lines=1),
+            "kind": box_kind(v)}
+
+
 def _review_context(request: Request, session: Session, project: Project, error: str | None = None) -> dict[str, Any]:
-    """The Review page: progress, and the first field still waiting (disagreements first), with its proof."""
+    """The Review page: groups checked out of all groups, and the first group still waiting, as one card.
+
+    Order: the agreeing values (one button for all of them), each real conflict, then one card per file and
+    page with every value ticked (:func:`backend.app.enquiry.review_plan`).
+    """
     found = enquiry.decisions(project)
-    pending = sorted((g for g in found.groups.values() if g["pending"]), key=lambda g: not g["conflict"])
-    total = len(found.groups)
+    plan = enquiry.review_plan(project)
+    later = enquiry.left_for_later(session, project)
+    waiting = [g for g in plan if not g.done(later)]
     context = {**enquiry_context(session, project, found), "busy": any(d.status in BUSY for d in project.documents),
-               "total": total, "done": total - len(pending), "card": None, "error": error,
-               "box_kinds": BOX_KINDS}
-    if pending:
-        g = pending[0]
+               "total": len(plan), "done": len(plan) - len(waiting), "card": None, "error": error,
+               "later": len(later), "box_kinds": BOX_KINDS}
+    if not waiting:
+        return context
+    group = waiting[0]
+    sizes: dict = {}
+    if group.kind == "agreeing":
+        context["card"] = {"kind": "agreeing", "key": group.key,
+                           "items": [_value_item(request, v, sizes) | {"crop": None} for v in group.pending(later)]}
+    elif group.kind == "conflict":
+        g = found.groups[group.field]
         sides = g["sides"]
-        first = sides[0][0] if sides else g["values"][0]
-        proof_value = next((v for v in (sides[0] if sides else g["values"]) if v.regions), first)
-        between = found.between_files.get(g["field"])
+        first = sides[0][0] if sides else group.pending(later)[0]
+        proof_value = next((v for v in (sides[0] if sides else [first]) if v.regions), first)
+        between = found.between_files.get(group.field)
         others = [labels.display(*enquiry.shown(side[0])) for side in sides[1:]]
-        context["card"] = {"group": g, "first": first, "can_approve": first.value is not None,
-                           "proof": proof_of(proof_value), "proof_value": proof_value, "crop": _crop(request, proof_value),
-                           "kind": box_kind(proof_value),
+        context["card"] = {"kind": "conflict", "group": g, "first": first, "can_approve": first.value is not None,
+                           "proof": proof_of(proof_value), "proof_value": proof_value,
+                           "crop": _crop(request, proof_value, sizes), "kind_box": box_kind(proof_value),
                            "disagree": (between.message + "." if between else
-                                        f"Another reading of the same file says {', '.join(others)}." if others else None),
-                           "sources": len({(v.document_id, v.page) for v in g["values"]})}
+                                        f"Another reading of the same file says {', '.join(others)}." if others
+                                        else None)}
+    else:
+        doc = group.document
+        where = f"{'sheet' if doc.kind == 'schematic' else 'page'} {group.page or 1}"
+        context["card"] = {"kind": "page", "key": group.key, "document": doc, "page": group.page or 1, "where": where,
+                           "items": [_value_item(request, v, sizes) for v in group.pending(later)]}
     return context
 
 
@@ -848,6 +883,47 @@ def review_change(request: Request, project_id: int, session: SessionDep, field:
     except services.ReviewError as e:
         error = str(e)
     return _review_response(request, session, project_id, error)
+
+
+def _group(session: Session, project_id: int, key: str) -> tuple[Project, enquiry.ReviewGroup | None, set[int]]:
+    project = project_or_404(session, project_id)
+    group = next((g for g in enquiry.review_plan(project) if g.key == key), None)
+    return project, group, enquiry.left_for_later(session, project)
+
+
+@router.post("/enquiries/{project_id}/review/agreeing")
+def review_agreeing(request: Request, project_id: int, session: SessionDep,
+                    value_id: Annotated[list[int], Form()] = []) -> Response:  # noqa: B006
+    """ "Approve these N": exactly the agreeing values the card listed that still wait, one approval and one audit
+    entry each. An id that is not an agreeing value waiting for a decision is never approved."""
+    _, group, later = _group(session, project_id, "agreeing")
+    allowed = {v.id for v in group.pending(later)} if group else set()
+    for i in value_id:
+        if i in allowed:
+            services.review_value(session, i, "approve", reason="approved with the agreeing values")
+    services.refresh_quote(session, project_id, request.app.state.settings)
+    return _review_response(request, session, project_id)
+
+
+@router.post("/enquiries/{project_id}/review/group")
+def review_page_group(request: Request, project_id: int, session: SessionDep, key: Annotated[str, Form()],
+                      in_group: Annotated[list[int], Form()] = [],  # noqa: B006
+                      value_id: Annotated[list[int], Form()] = []) -> Response:  # noqa: B006
+    """ "Approve N ticked" on a file-and-page card: each ticked value is approved on its own; each value the card
+    showed but left un-ticked is left for later (one audit entry), stays unapproved and is never priced."""
+    project, group, later = _group(session, project_id, key)
+    if group is None or group.kind != "page":
+        return _review_response(request, session, project_id, "This card has changed; here is the next one.")
+    waiting = {v.id for v in group.pending(later)}
+    ticked = set(value_id) & waiting
+    for i in sorted(ticked):
+        services.review_value(session, i, "approve", reason="approved on its Review card")
+    for i in sorted((set(in_group) & waiting) - ticked):
+        services.audit(session, "review_later", "extracted_value", i, project.id,
+                       reason="left for later on its Review card")
+    session.commit()
+    services.refresh_quote(session, project_id, request.app.state.settings)
+    return _review_response(request, session, project_id)
 
 
 @router.post("/enquiries/{project_id}/review/quote")

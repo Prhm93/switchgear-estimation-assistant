@@ -1,5 +1,10 @@
 """The simple flow (stage-simple): Add files, then one Review card at a time, then Make quote.
 
+Review order: one card for the agreeing values ("Approve these N": the "Accept all" rule), one card per
+real conflict (Approve or Change), then one card per file and page for the values read from a picture or
+needing a closer look, each value ticked by default ("Approve N ticked"; un-ticking leaves it for later).
+Every value keeps its own approved status and its own audit entry; nothing is approved without a click.
+
 At most four buttons are visible on the flow's screens: Add files, Approve and Change on a card, Make quote,
 and Ask (disabled until the question box exists). Everything else sits behind one small "More" link.
 Background reading runs inside the request in the test client, so the files are read when the redirect lands.
@@ -60,7 +65,7 @@ def visible_buttons(html: str) -> list[str]:
 
 
 def progress(html: str) -> tuple[int, int]:
-    m = re.search(r"(\d+) of (\d+) checked", html)
+    m = re.search(r"(\d+) of (\d+) groups checked", html)
     assert m, "no progress line"
     return int(m.group(1)), int(m.group(2))
 
@@ -70,6 +75,41 @@ def card_form(html: str, action: str) -> dict[str, str]:
     assert form, f"no {action} form"
     fields = dict(re.findall(r'<input type="hidden" name="(\w+)" value="([^"]*)"', form.group(2)))
     return {"url": form.group(1), **fields}
+
+
+def form_lists(html: str, action: str) -> tuple[str, dict[str, list[str]]]:
+    """A card form's address and every field with all its values (hidden lists and ticked boxes)."""
+    form = re.search(rf'<form[^>]*action="([^"]*/review/{action})"[^>]*>(.*?)</form>', html, re.S)
+    assert form, f"no {action} form"
+    out: dict[str, list[str]] = {}
+    for tag in re.findall(r"<input[^>]*>", form.group(2)):
+        name, value = re.search(r'name="(\w+)"', tag), re.search(r'value="([^"]*)"', tag)
+        if name and value and ('type="hidden"' in tag or ('type="checkbox"' in tag and " checked" in tag)):
+            out.setdefault(name.group(1), []).append(value.group(1))
+    return form.group(1), out
+
+
+def statuses(client: TestClient, pid: int) -> dict[int, str]:
+    with client.app.state.sessions() as session:
+        return {r.id: r.review_status for r in session.scalars(
+            select(ExtractedValueRow).where(ExtractedValueRow.project_id == pid))}
+
+
+def audited(client: TestClient, pid: int, action: str) -> list[int]:
+    with client.app.state.sessions() as session:
+        return [int(e.entity_id) for e in session.scalars(select(AuditEvent).where(
+            AuditEvent.project_id == pid, AuditEvent.action == action))]
+
+
+def finish(client: TestClient, pid: int) -> tuple[str, int]:
+    """Press the one action of each card (Approve, Approve these N, Approve N ticked) until Make quote shows."""
+    html, clicks = client.get(f"/enquiries/{pid}/review").text, 0
+    while "Make quote" not in html and clicks < 100:
+        action = next(a for a in ("agreeing", "approve", "group") if f"/review/{a}\"" in html)
+        url, data = form_lists(html, action)
+        html = client.post(url, data=data, headers=HX).text
+        clicks += 1
+    return client.get(f"/enquiries/{pid}/review").text, clicks
 
 
 # --- home -------------------------------------------------------------------------------------------------
@@ -87,73 +127,64 @@ def test_home_has_one_big_add_files_button_and_the_rest_behind_more(client: Test
 
 # --- review -----------------------------------------------------------------------------------------------
 
-def test_upload_opens_review_with_one_card_progress_and_at_most_four_buttons(client: TestClient) -> None:
+def test_review_opens_on_the_agreeing_values_and_approves_nothing_by_itself(client: TestClient) -> None:
     pid = add_files(client)
     html = client.get(f"/enquiries/{pid}/review").text
     done, total = progress(html)
-    assert done == 0 and total > 10
-    assert html.count('<article class="review-card"') == 1
+    assert done == 0 and 2 <= total <= 8
+    assert html.count('<article class="review-card') == 1
+    count = int(re.search(r"(\d+) agreeing values", html).group(1))
     buttons = visible_buttons(html)
-    assert len(buttons) <= 4 and {"Approve", "Change", "Ask"} <= set(buttons), buttons
-    assert "Make quote" not in buttons  # only when every card is checked
+    assert f"Approve these {count}" in buttons and len(buttons) <= 4, buttons
     ask = re.search(r"<button[^>]*>\s*Ask\s*</button>", html).group(0)
     assert "disabled" in ask and "Coming soon" in html
-    # plain words: what a value is, and what the boxes mean
     assert "A value is one fact read from your files" in html
-    assert "Boxes show where each value was read." in html
+    assert set(statuses(client, pid).values()) == {"extracted"}  # opening Review approves nothing
     more = re.search(r'<details class="more[^"]*".*?</details>', html, re.S).group(0)
     for href in (f"/enquiries/{pid}", f"/enquiries/{pid}/check", f"/enquiries/{pid}/files",
                  f"/enquiries/{pid}/proof", f"/enquiries/{pid}/activity", f"/enquiries/{pid}/quote"):
         assert f'href="{href}"' in more, href
 
 
-def test_approve_checks_one_card_and_shows_the_next(client: TestClient) -> None:
+def test_approve_these_n_approves_exactly_the_n_shown_each_with_its_own_audit_entry(client: TestClient) -> None:
     pid = add_files(client)
     html = client.get(f"/enquiries/{pid}/review").text
-    form = card_form(html, "approve")
-    after = client.post(form["url"], data=form, headers=HX).text
-    assert progress(after)[0] == 1 and card_form(after, "approve")["field"] != form["field"]
+    count = int(re.search(r"Approve these (\d+)", html).group(1))
+    url, data = form_lists(html, "agreeing")
+    assert len(data["value_id"]) == count
+    after = client.post(url, data=data, headers=HX).text
+    approved = [i for i, s in statuses(client, pid).items() if s == "approved"]
+    assert sorted(approved) == sorted(int(i) for i in data["value_id"])
+    assert sorted(audited(client, pid, "approve")) == sorted(approved)  # one entry per value
+    assert progress(after)[0] == 1
     with client.app.state.sessions() as session:
-        rows = session.scalars(select(ExtractedValueRow).where(ExtractedValueRow.project_id == pid,
-                                                               ExtractedValueRow.field == form["field"])).all()
-        assert any(r.review_status == "approved" for r in rows)
-        assert session.scalars(select(AuditEvent).where(AuditEvent.project_id == pid,
-                                                        AuditEvent.action == "approve")).first() is not None
+        for v in session.scalars(select(ExtractedValueRow).where(ExtractedValueRow.id.in_(approved))):
+            assert v.confidence == "high" and v.method not in ("ocr", "vision", "detector")
+            assert v.quote_match != "words_on_page" and v.value is not None
 
 
-def test_change_approves_the_typed_value(client: TestClient) -> None:
+def test_a_real_conflict_gets_its_own_card_with_approve_and_change(client: TestClient) -> None:
     pid = add_files(client)
-    form = card_form(client.get(f"/enquiries/{pid}/review").text, "change")
+    url, data = form_lists(client.get(f"/enquiries/{pid}/review").text, "agreeing")
+    html = client.post(url, data=data, headers=HX).text
+    assert card_form(html, "approve")["field"] == "way.Q2.rating"
+    assert re.search(r"The specification says \d+ A; the drawing says \d+ A", html)
+    assert "/review/change" in html
+    form = card_form(html, "change")
     client.post(form["url"], data={**form, "value": "123", "unit": "A"}, headers=HX)
     with client.app.state.sessions() as session:
         rows = session.scalars(select(ExtractedValueRow).where(ExtractedValueRow.project_id == pid,
-                                                               ExtractedValueRow.field == form["field"])).all()
+                                                               ExtractedValueRow.field == "way.Q2.rating")).all()
     edited = [r for r in rows if r.review_status == "edited"]
     assert len(edited) == 1 and edited[0].approved_value == 123
 
 
-def test_the_planted_disagreement_shows_both_files_on_its_card(client: TestClient) -> None:
+def test_showcase_from_upload_to_quote_in_ten_clicks_or_fewer(client: TestClient) -> None:
     pid = add_files(client)
-    html = client.get(f"/enquiries/{pid}/review").text
-    assert card_form(html, "approve")["field"] == "way.Q2.rating"  # disagreements come first
-    assert re.search(r"The specification says \d+ A; the drawing says \d+ A", html)
-
-
-def test_when_all_are_checked_make_quote_leads_to_a_short_quote(client: TestClient) -> None:
-    pid = add_files(client)
-    html = client.get(f"/enquiries/{pid}/review").text
-    for _ in range(200):
-        if "Make quote" in html:
-            break
-        form = card_form(html, "approve") if "/review/approve" in html else None
-        if form is None:  # a card with no value to approve (TBC): type one
-            form = card_form(html, "change")
-            html = client.post(form["url"], data={**form, "value": "1"}, headers=HX).text
-        else:
-            html = client.post(form["url"], data=form, headers=HX).text
-    html = client.get(f"/enquiries/{pid}/review").text
+    html, clicks = finish(client, pid)
     done, total = progress(html)
     assert done == total
+    assert 1 + clicks + 1 <= 10, clicks  # Add files, the cards, Make quote
     assert sorted(visible_buttons(html)) == ["Ask", "Make quote"]
     quote = client.post(f"/enquiries/{pid}/review/quote", follow_redirects=True)
     assert quote.status_code == 200 and quote.url.path == f"/enquiries/{pid}/draft-quote"
@@ -163,6 +194,9 @@ def test_when_all_are_checked_make_quote_leads_to_a_short_quote(client: TestClie
     assert "Draft total" in page and re.search(r"GBP [\d,]+\.\d\d", page)
     assert f'href="/enquiries/{pid}/quote"' in page and "Show workings" in page
     assert len(visible_buttons(page)) <= 1  # Ask only
+    # every approved value has its own approve entry; nothing else was approved
+    approved = sorted(i for i, s in statuses(client, pid).items() if s in ("approved", "edited"))
+    assert sorted(set(audited(client, pid, "approve"))) == approved
 
 
 def test_review_says_it_is_reading_while_files_are_read(client: TestClient) -> None:
@@ -173,7 +207,7 @@ def test_review_says_it_is_reading_while_files_are_read(client: TestClient) -> N
         session.commit()
     html = client.get(f"/enquiries/{pid}/review").text
     assert "Reading your files" in html and 'hx-trigger="every 1s"' in html
-    assert "/review/approve" not in html
+    assert "/review/agreeing" not in html
 
 
 def test_a_new_enquiry_with_no_files_still_opens_files(client: TestClient) -> None:

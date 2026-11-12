@@ -59,3 +59,29 @@ purpose (box kinds, legend, symbol labels, thin see-through outlines), and so wa
   892 passed. The first run of the rest had one failure (a duplicate line under the Check views); it was fixed,
   and the rerun passed.
 - Strict numbers were not rerun: this stage changes only screens.
+
+## Fix: groups on Review (10 clicks or fewer)
+
+- **Order:** one card "N agreeing values" with "Approve these N" (the existing "Accept all" rule: high
+  confidence, no conflict, exact quote, not read from a picture); then one card per real conflict (Approve or
+  Change); then one card per file and page for every other value (read from a picture, by a model with a pieced
+  quote, or with lower confidence), each value listed with its box or its marked text and ticked by default,
+  and one button "Approve N ticked". The progress line counts groups: "2 of 6 groups checked".
+- **Safety kept:** nothing is approved without a click (opening Review changes nothing); each value is approved
+  on its own, with its own review row, approved status and audit entry; the server approves only ids that are on
+  that card and still waiting, so the count shown is the count approved; an un-ticked value is "left for later"
+  (one audit entry), stays unapproved and is never priced.
+- **Measured (showcase: specification, letter, DXF):** 3 groups: 130 agreeing values, 1 conflict (way Q2 rating),
+  7 values on one page. 5 clicks from upload to quote (Add files, Approve these 130, Approve, Approve 7 ticked,
+  Make quote), down from 73. Same draft total as before: GBP 20,978.75.
+- **Tests:** `tests/integration/test_simple_flow.py` (rewritten for groups) and the new
+  `tests/integration/test_review_groups.py` (one card per sheet, all ticked with boxes, un-tick leaves a value for
+  later, ids outside the card never approved, one file and page per group).
+
+Choices made without the owner (one line each):
+- Groups are worked out from what each value is, not its status, so the group count does not shrink as you go.
+- "Left for later" is stored as an audit entry (`review_later`), so no database change was needed.
+- Lower-confidence values read by rules from text also go into the file-and-page cards, since "Approve these N" must not take them.
+- The agreeing card lists its values behind a small "Show the N values" link, not one by one.
+- The ticked count updates with a few lines of our own script (`review.js`); without script the form still sends exactly the ticked values.
+- Full suite after the fix: database tests 5 passed; the rest 896 passed.

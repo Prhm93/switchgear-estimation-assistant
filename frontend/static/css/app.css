@@ -1083,3 +1083,11 @@ a.chip--neutral:hover { background: var(--veil-hover); color: var(--text); }
 .change[open] > summary { margin-bottom: var(--space-3); }
 .review-done { padding: var(--space-5) 0; }
 .total--simple { margin-bottom: var(--space-4); }
+.agree-list { margin: var(--space-3) 0; }
+.agree-list > summary { list-style: none; cursor: pointer; display: inline-block; }
+.agree-list > summary::-webkit-details-marker { display: none; }
+.group-values { list-style: none; margin: var(--space-4) 0; padding: 0; display: grid; gap: var(--space-4); }
+.group-value { padding: var(--space-3); border-radius: var(--radius-sm); background: var(--row-bg); }
+.group-value__tick { display: flex; gap: var(--space-2); align-items: center; font-weight: 600; cursor: pointer; }
+.group-value__tick input { width: 18px; height: 18px; accent-color: var(--success); }
+.crop--small { max-height: 200px; margin-top: var(--space-2); }

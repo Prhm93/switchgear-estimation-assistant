@@ -500,3 +500,77 @@ def status(session: Session, project: Project, estimate: Estimate | None, found:
         AuditEvent.project_id == project.id, AuditEvent.action == "export",
         AuditEvent.entity_id == str(estimate.id)))
     return Status("quoted", "Quoted", "approved") if exported else Status("ready", "Ready to quote", "review")
+
+
+# --- Review groups (stage-simple) ------------------------------------------------------------------------
+
+@dataclass
+class ReviewGroup:
+    """One Review card: the agreeing values, one real conflict, or the values of one file and page."""
+
+    kind: str  # "agreeing", "conflict" or "page"
+    key: str
+    values: list[ExtractedValueRow]  # every value of the group with a value, whatever its status
+    field: str | None = None  # conflict cards
+    document: Document | None = None  # page cards
+    page: int | None = None
+
+    def pending(self, later: set[int]) -> list[ExtractedValueRow]:
+        """Values still waiting: not yet decided and not left for later."""
+        return [v for v in self.values if v.review_status == ReviewStatus.EXTRACTED.value and v.id not in later]
+
+    def done(self, later: set[int]) -> bool:
+        return not self.pending(later)
+
+
+def _raw_key(v: ExtractedValueRow) -> tuple[Any, Any]:
+    return norm.value_key(v.value), norm.unit(v.unit)
+
+
+def review_plan(project: Project) -> list[ReviewGroup]:
+    """The Review cards in order: agreeing values, then each real conflict, then one card per file and page.
+
+    Groups are worked out from what each value is, not from its review status, so the number of groups stays
+    the same while the engineer works through them:
+
+    - **agreeing**: the values "Accept all" may take (high confidence, no conflict, exact quote, not read from
+      a picture; :func:`bulk_acceptable`'s rule), whatever their status now;
+    - **conflict**: a field whose files gave values that do not match (values approved or set aside since then
+      still count, so a settled conflict stays one checked group);
+    - **page**: every other value with a value, by file and page: values read from a picture, by a model with a
+      pieced quote, or with lower confidence. Each is ticked on its card and approved on its own.
+
+    A value marked TBC (no value) is in no group: it is on the missing-information list.
+    """
+    groups = review_groups(project)
+    conflicts = [f for f, g in groups.items() if len({_raw_key(v) for v in g["values"] if v.value is not None}) > 1]
+    agreeing: list[ExtractedValueRow] = []
+    pages: OrderedDict[tuple[int, int | None], list[ExtractedValueRow]] = OrderedDict()
+    for f, g in groups.items():
+        if f in conflicts:
+            continue
+        for v in g["values"]:
+            if v.value is None:
+                continue
+            if (not g["missing_from"] and not g["left_open"] and v.confidence == "high"
+                    and v.quote_match != "words_on_page" and v.method not in PICTURE_METHODS):
+                agreeing.append(v)
+            else:
+                pages.setdefault((v.document_id, v.page), []).append(v)
+    out: list[ReviewGroup] = []
+    if agreeing:
+        out.append(ReviewGroup("agreeing", "agreeing", agreeing))
+    for f in conflicts:
+        out.append(ReviewGroup("conflict", f"conflict:{f}", [v for v in groups[f]["values"] if v.value is not None],
+                               field=f))
+    order = {d.id: i for i, d in enumerate(project.documents)}
+    for (doc_id, page), values in sorted(pages.items(), key=lambda kv: (order.get(kv[0][0], 0), kv[0][1] or 0)):
+        out.append(ReviewGroup("page", f"page:{doc_id}:{page}", values, document=values[0].document, page=page))
+    return out
+
+
+def left_for_later(session: Session, project: Project) -> set[int]:
+    """Values the engineer un-ticked on a Review card ("for later") and has not decided since."""
+    ids = {int(e) for e in session.scalars(select(AuditEvent.entity_id).where(
+        AuditEvent.project_id == project.id, AuditEvent.action == "review_later"))}
+    return {v.id for v in project.values if v.id in ids and v.review_status == ReviewStatus.EXTRACTED.value}

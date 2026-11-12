@@ -1,6 +1,6 @@
 {%- from "macros.html" import box_legend with context -%}
 {#- The Review block: "Reading your files" while files are read (it asks for itself every second), then the
-    progress line and the first value still waiting, with its proof, Approve and Change. -#}
+    progress line and the first group still waiting: the agreeing values, a conflict, or one file and page. -#}
 <div id="review-body" class="review" aria-live="polite"
   {%- if busy %} hx-get="/enquiries/{{ project.id }}/review" hx-trigger="every 1s" hx-swap="outerHTML"{% endif %}>
 {%- if busy %}
@@ -8,12 +8,69 @@
   <p class="small muted">A few seconds per file; drawing pictures take longer. The first value to check opens here.</p>
 {%- else %}
   <div class="review__progress">
-    <p class="review__count"><strong>{{ done }} of {{ total }} checked</strong></p>
+    <p class="review__count"><strong>{{ done }} of {{ total }} groups checked</strong></p>
     {%- if total %}<progress class="review__bar" max="{{ total }}" value="{{ done }}">{{ done }} of {{ total }}</progress>{% endif %}
   </div>
   {%- if error %}<p class="alert alert--error" role="alert">{{ error }}</p>{% endif %}
 
-  {%- if card %}
+  {%- if card and card.kind == "agreeing" %}
+  {%- set n = card["items"] | length %}
+  <article class="review-card review-card--agreeing" id="card-agreeing">
+    <div class="review-card__head"><h2 class="review-card__title">{{ n }} agreeing values</h2></div>
+    <p class="small muted">Read clearly from the files' text, with high confidence, and no file says otherwise. Each one is approved on its own and listed in Activity.</p>
+    <details class="agree-list">
+      <summary class="more__link">Show the {{ n }} values</summary>
+      <ul class="plain-list plain-list--tight">
+        {%- for it in card["items"] %}<li>{{ it.label }}: <span class="mono">{{ it.value }}</span> <span class="small muted">{{ it.source }}</span></li>{% endfor %}
+      </ul>
+    </details>
+    <form method="post" action="/enquiries/{{ project.id }}/review/agreeing" hx-post="/enquiries/{{ project.id }}/review/agreeing" hx-target="#review-body" hx-swap="outerHTML" class="review-card__actions">
+      {%- for it in card["items"] %}
+      <input type="hidden" name="value_id" value="{{ it.v.id }}">
+      {%- endfor %}
+      <button class="btn btn--primary" type="submit">Approve these {{ n }}</button>
+    </form>
+  </article>
+
+  {%- elif card and card.kind == "page" %}
+  {%- set n = card["items"] | length %}
+  <article class="review-card review-card--group" id="card-{{ card.key | replace(':', '-') }}" data-doc="{{ card.document.id }}" data-page="{{ card.page }}">
+    <div class="review-card__head"><h2 class="review-card__title">{{ card.document.original_name }}, {{ card.where }}</h2></div>
+    <p class="small muted">Read from a picture, by a model, or with less certainty. Untick any value that looks wrong: it is left for later and not priced.</p>
+    <form method="post" action="/enquiries/{{ project.id }}/review/group" hx-post="/enquiries/{{ project.id }}/review/group" hx-target="#review-body" hx-swap="outerHTML" data-tick-form>
+      <input type="hidden" name="key" value="{{ card.key }}">
+      <ul class="group-values">
+        {%- for it in card["items"] %}
+        <li class="group-value" data-doc="{{ it.v.document_id }}" data-page="{{ it.v.page or 1 }}">
+          <input type="hidden" name="in_group" value="{{ it.v.id }}">
+          <label class="group-value__tick"><input type="checkbox" name="value_id" value="{{ it.v.id }}" checked data-tick>
+            <span>{{ it.label }}: <span class="mono">{{ it.value }}</span></span></label>
+          <div class="small muted">{{ it.source }}</div>
+          {%- if it.crop %}
+          {%- set c = it.crop %}
+          <svg class="crop crop--small" viewBox="{{ c.view }}" role="img" aria-label="Where {{ it.label }} was read on the drawing">
+            <image href="{{ c.src }}" x="0" y="0" width="{{ c.width }}" height="{{ c.height }}"/>
+            <g class="sheet__box sheet__box--{{ c.kind }}">
+              <rect x="{{ '%g' | format(c.x) }}" y="{{ '%g' | format(c.y) }}" width="{{ '%g' | format(c.w) }}" height="{{ '%g' | format(c.h) }}"/>
+              {%- if c.label %}<text class="sheet__label" x="{{ '%g' | format(c.x) }}" y="{{ '%g' | format(c.y - c.font * 0.3) }}" font-size="{{ '%g' | format(c.font) }}">{{ c.label }}</text>{% endif %}
+            </g>
+          </svg>
+          {%- elif it.proof.mark %}
+          <pre class="proof-text">{{ it.proof.before }}<mark>{{ it.proof.mark }}</mark>{{ it.proof.after }}</pre>
+          {%- elif it.v.source_text %}
+          <pre class="proof-text"><mark>{{ it.v.source_text }}</mark></pre>
+          {%- endif %}
+        </li>
+        {%- endfor %}
+      </ul>
+      <p class="small muted sheet__legend">{{ box_legend() }}</p>
+      <div class="review-card__actions">
+        <button class="btn btn--primary" type="submit">Approve <span data-ticked>{{ n }}</span> ticked</button>
+      </div>
+    </form>
+  </article>
+
+  {%- elif card %}
   {%- set g = card.group %}
   {%- set v = card.first %}
   {%- set value, unit = shown(v) %}
@@ -21,11 +78,11 @@
   <article class="review-card" id="card-{{ g.field }}">
     <div class="review-card__head">
       <h2 class="review-card__title">{{ g.label }}</h2>
-      {%- if g.conflict %}<span class="chip chip--conflict">The files disagree</span>{% endif %}
+      <span class="chip chip--conflict">The files disagree</span>
     </div>
     <div class="review-card__value mono">{{ display(value, unit) if v.value is not none else "Not given (marked TBC)" }}</div>
     {%- if card.disagree %}<p class="review-card__note">{{ card.disagree }} Approve keeps the value above; Change lets you type the right one.</p>{% endif %}
-    <p class="small muted">Read from {{ value_source(pv) }} ({{ pv.document.original_name }}){% if card.sources > 1 %}; found in {{ card.sources }} places{% endif %}.</p>
+    <p class="small muted">Read from {{ value_source(pv) }} ({{ pv.document.original_name }}).</p>
 
     <figure class="review-card__proof">
       {%- if card.crop %}
@@ -43,8 +100,6 @@
       <pre class="proof-text">{{ card.proof.before }}<mark>{{ card.proof.mark }}</mark>{{ card.proof.after }}</pre>
       {%- elif pv.source_text %}
       <pre class="proof-text"><mark>{{ pv.source_text }}</mark></pre>
-      {%- else %}
-      <p class="small muted">There is no text to show for this value.</p>
       {%- endif %}
       <figcaption class="small muted sheet__legend">{{ box_legend() }}</figcaption>
     </figure>
@@ -71,7 +126,8 @@
 
   {%- elif total %}
   <div class="review-done">
-    <p class="lead">All {{ total }} values are checked.</p>
+    <p class="lead">All {{ total }} groups are checked.</p>
+    {%- if later %}<p>{{ later }} value{{ "s" if later != 1 }} left for later: {{ "they are" if later != 1 else "it is" }} not priced until approved (More, then All values).</p>{% endif %}
     <form method="post" action="/enquiries/{{ project.id }}/review/quote">
       <button class="btn btn--primary btn--lg" type="submit">Make quote</button>
     </form>
