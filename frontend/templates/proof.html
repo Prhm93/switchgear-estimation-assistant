@@ -1,5 +1,7 @@
 {%- extends "layout_enquiry.html" -%}
-{%- from "macros.html" import icon, value_status with context -%}
+{%- from "macros.html" import icon, value_status, box_legend with context -%}
+
+{%- block head %}<script src="{{ url_for('static', path='js/proof.js') }}" defer></script>{% endblock -%}
 
 {%- block step %}
 <h2 class="block-title">Proof viewer</h2>
@@ -43,17 +45,27 @@
     </div>
     {%- if sheet %}
     {#- The drawing sheet with a box for every value read on it (Part D). Each box opens its value; each value with
-        a box links back to it. Box colours follow confidence; titles are autoescaped. -#}
+        a box links back to it (proof.js marks one box, one card and one text line at a time, and fills the
+        enlarged crop). Boxes are padded a little around the text; titles and values are autoescaped. -#}
     <figure class="sheet">
+      <div class="sheet__stage">
       <div class="sheet__frame">
         <img class="sheet__img" src="{{ sheet.src }}" alt="Sheet {{ page_no }} of {{ current.original_name }}" width="{{ sheet.width }}" height="{{ sheet.height }}" loading="lazy">
         <svg class="sheet__boxes" viewBox="0 0 {{ sheet.width }} {{ sheet.height }}" preserveAspectRatio="none" role="group" aria-label="Boxes for the values read on this sheet">
           {%- for b in sheet.boxes %}
-          <a class="sheet__box sheet__box--{{ b.tone }}" id="box-{{ b.id }}" href="#v-{{ b.id }}"><title>{{ b.title }}</title><rect x="{{ '%g' | format(b.x) }}" y="{{ '%g' | format(b.y) }}" width="{{ '%g' | format(b.w) }}" height="{{ '%g' | format(b.h) }}"/></a>
+          <a class="sheet__box sheet__box--{{ b.tone }}" id="box-{{ b.id }}" href="#v-{{ b.id }}" tabindex="0" data-box="{{ b.id }}" data-tone="{{ b.tone }}" data-read="{{ b.read }}" data-x="{{ '%g' | format(b.x) }}" data-y="{{ '%g' | format(b.y) }}" data-w="{{ '%g' | format(b.w) }}" data-h="{{ '%g' | format(b.h) }}" data-pad="{{ '%g' | format(sheet.pad) }}"><title>{{ b.title }}</title><rect x="{{ '%g' | format(b.x) }}" y="{{ '%g' | format(b.y) }}" width="{{ '%g' | format(b.w) }}" height="{{ '%g' | format(b.h) }}"/>
+            {%- if b.label %}<text class="sheet__label" x="{{ '%g' | format(b.x) }}" y="{{ '%g' | format(b.y - sheet.font * 0.3) }}" font-size="{{ '%g' | format(sheet.font) }}">{{ b.label }}</text>{% endif %}</a>
           {%- endfor %}
         </svg>
       </div>
-      <figcaption class="small muted">{{ sheet.boxes | length }} box{{ "es" if sheet.boxes | length != 1 }} on this sheet, coloured by confidence: <span class="sheet__key sheet__key--medium">medium</span> <span class="sheet__key sheet__key--low">low</span>. Select a box to see its value.</figcaption>
+      {#- The selected box enlarged about three times, turned upright when its text is vertical (proof.js). -#}
+      <div class="sheet-zoom" id="sheet-zoom" data-width="{{ sheet.width }}" aria-live="polite" hidden>
+        <p class="small muted sheet-zoom__title">Selected, enlarged</p>
+        <svg class="sheet-zoom__view" viewBox="0 0 1 1" role="img" aria-label="The selected box, enlarged"><g><image href="{{ sheet.src }}" x="0" y="0" width="{{ sheet.width }}" height="{{ sheet.height }}"/><rect class="sheet-zoom__box" x="0" y="0" width="0" height="0"/></g></svg>
+        <p class="sheet-zoom__value mono" data-zoom-value></p>
+      </div>
+      </div>
+      <figcaption class="small muted sheet__legend">{{ box_legend() }} Select a box to see its value.</figcaption>
     </figure>
     {%- endif %}
     {#- File text: every segment is autoescaped; highlighted spans are the sources of the values on the right. -#}
@@ -74,7 +86,7 @@
           <span class="value-line__value mono">{{ display(value, unit) }}</span>
           <span class="value-line__src">{{ method_words(v.method, v.agreement, v.quote_match) }}</span>
         </a>
-        {%- if sheet and v.id in sheet.ids %}<a class="value-line__box small" href="#box-{{ v.id }}">Show on the drawing</a>{% endif %}
+        {%- if sheet and v.id in sheet.ids %}<a class="value-line__box small" href="#box-{{ v.id }}" data-show="{{ v.id }}">Show on the drawing</a>{% endif %}
         {{ value_status(v) }}
       </div>
       {%- else %}

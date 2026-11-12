@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+from decimal import Decimal
 from datetime import UTC, datetime
 from collections.abc import Callable
 from typing import Annotated, Any
@@ -37,6 +38,7 @@ from backend.app.storage import FileType, UploadRejected
 
 router = APIRouter()
 BUSY = enquiry.BUSY
+PENNY = Decimal("0.01")
 PAGE_SIZE = 50  # rows per page in "Show all values" and Activity
 
 
@@ -169,7 +171,7 @@ async def _store_uploads(request: Request, session: Session, background: Backgro
 @router.post("/enquiries")
 async def create_enquiry(request: Request, session: SessionDep, background: BackgroundTasks,
                          name: Annotated[str, Form()] = "", reference: Annotated[str, Form()] = "",
-                         note: Annotated[str, Form()] = "",
+                         note: Annotated[str, Form()] = "", next: Annotated[str, Form()] = "",  # noqa: A002
                          files: Annotated[list[UploadFile], File()] = []) -> Response:  # noqa: B006
     """One step: an optional name, the files and a typed note, in any mix. With files it goes on to read
     them and then to Check; a note alone opens Files, which asks for the files (V4)."""
@@ -180,6 +182,8 @@ async def create_enquiry(request: Request, session: SessionDep, background: Back
     if errors:
         return render(request, "files.html", status_code=422, errors=errors, go=False,
                       **_files_context(request, session, project))
+    if next == "review" and project.documents:  # the simple flow: Add files, then Review
+        return RedirectResponse(f"/enquiries/{project.id}/review", status_code=303)
     return RedirectResponse(f"/enquiries/{project.id}/files" + ("?go=1" if project.documents else ""),
                             status_code=303)
 
@@ -753,6 +757,267 @@ def export_docx(request: Request, project_id: int, estimate_id: int, session: Se
     return _export_docx(request, session, project, est)
 
 
+# --- the simple flow: Review, one card at a time, then the draft quote -----------------------------------
+
+def _crop(request: Request, v: ExtractedValueRow, sizes: dict[tuple[int, int], Any] | None = None
+          ) -> dict[str, Any] | None:
+    """The drawing around a value's box, as an SVG view of the sheet picture: the box stays a see-through outline.
+
+    ``sizes`` keeps each sheet's size for one request, so a card with many boxes reads each file once.
+    """
+    doc = v.document
+    if not v.regions or not can_render(FileType(doc.file_type)):
+        return None
+    sheet = (v.page or 1) if doc.file_type == "pdf" else 1
+    sizes = {} if sizes is None else sizes
+    if (doc.id, sheet) not in sizes:
+        try:
+            sizes[(doc.id, sheet)] = sheet_size(FileType(doc.file_type),
+                                                request.app.state.storage.read(doc.storage_key), sheet)
+        except (OSError, ValueError):
+            sizes[(doc.id, sheet)] = None
+    if sizes[(doc.id, sheet)] is None:
+        return None
+    width, height = sizes[(doc.id, sheet)]
+    x0, y0, x1, y1 = v.regions[0]["bbox"]
+    margin = max(x1 - x0, y1 - y0, 60) * 1.5
+    vx, vy = max(0.0, x0 - margin), max(0.0, y0 - margin)
+    vw, vh = min(width, x1 + margin) - vx, min(height, y1 + margin) - vy
+    pad = vw * BOX_PAD * 1.25  # the crop is shown a little narrower than a proof viewer sheet
+    return {"src": f"/documents/{doc.id}/sheets/{sheet}.png", "width": width, "height": height,
+            "view": f"{vx:g} {vy:g} {vw:g} {vh:g}", "kind": box_kind(v), "label": symbol_label(v), "font": vw / 22,
+            "x": x0 - pad, "y": y0 - pad, "w": x1 - x0 + 2 * pad, "h": y1 - y0 + 2 * pad, "full": f"/enquiries/{v.project_id}/proof?doc={doc.id}"
+            + (f"&page={v.page}" if v.page else "")}
+
+
+def _value_item(request: Request, v: ExtractedValueRow, sizes: dict) -> dict[str, Any]:
+    """One value on a group card: its label, value, where it was read, and its box or its marked text."""
+    value, unit = enquiry.shown(v)
+    return {"v": v, "label": labels.field_label(v.field), "value": labels.display(value, unit),
+            "source": labels.value_source(v), "crop": _crop(request, v, sizes), "proof": proof_of(v, context_lines=1),
+            "kind": box_kind(v)}
+
+
+def _review_context(request: Request, session: Session, project: Project, error: str | None = None,
+                    one: bool = False) -> dict[str, Any]:
+    """The Review page: groups checked out of all groups, and the first group still waiting, as one card.
+
+    Order: the agreeing values (one button for all of them), each real conflict, then one card per file and
+    page with every value ticked (:func:`backend.app.enquiry.review_plan`).
+    """
+    found = enquiry.decisions(project)
+    plan = enquiry.review_plan(project)
+    later = enquiry.left_for_later(session, project)
+    waiting = [g for g in plan if not g.done(later)]
+    context = {**enquiry_context(session, project, found), "busy": any(d.status in BUSY for d in project.documents),
+               "total": len(plan), "done": len(plan) - len(waiting), "card": None, "error": error,
+               "later": len(later), "box_kinds": BOX_KINDS, "one": one, "agree_counts": None}
+    agreeing = next((g for g in plan if g.kind == "agreeing"), None)
+    if agreeing is not None:  # "N approved, N changed, N still to check": every agreeing value is in one of them
+        listed = [v for v in agreeing.values if v.review_status != ReviewStatus.REJECTED.value]
+        context["agree_counts"] = {
+            "approved": sum(v.review_status == ReviewStatus.APPROVED.value for v in listed),
+            "changed": sum(v.review_status == ReviewStatus.EDITED.value for v in listed),
+            "still": sum(v.review_status == ReviewStatus.EXTRACTED.value for v in listed)}
+    if not waiting:
+        return context
+    group = waiting[0]
+    sizes: dict = {}
+    if group.kind == "agreeing" and one:  # "Check one by one": the first waiting value on its own card
+        v = group.pending(later)[0]
+        context["card"] = {"kind": "one", "item": _value_item(request, v, sizes)}
+    elif group.kind == "agreeing":
+        waiting_ids = {v.id for v in group.pending(later)}
+        items = [_value_item(request, v, sizes) | {"crop": None, "pending": v.id in waiting_ids}
+                 for v in group.values if v.review_status != ReviewStatus.REJECTED.value]
+        context["card"] = {"kind": "agreeing", "key": group.key, "items": items, "ticked": len(waiting_ids)}
+    elif group.kind == "conflict":
+        g = found.groups[group.field]
+        sides = g["sides"]
+        first = sides[0][0] if sides else group.pending(later)[0]
+        proof_value = next((v for v in (sides[0] if sides else [first]) if v.regions), first)
+        between = found.between_files.get(group.field)
+        others = [labels.display(*enquiry.shown(side[0])) for side in sides[1:]]
+        context["card"] = {"kind": "conflict", "group": g, "first": first, "can_approve": first.value is not None,
+                           "proof": proof_of(proof_value), "proof_value": proof_value,
+                           "crop": _crop(request, proof_value, sizes), "kind_box": box_kind(proof_value),
+                           "disagree": (between.message + "." if between else
+                                        f"Another reading of the same file says {', '.join(others)}." if others
+                                        else None)}
+    else:
+        doc = group.document
+        where = f"{'sheet' if doc.kind == 'schematic' else 'page'} {group.page or 1}"
+        context["card"] = {"kind": "page", "key": group.key, "document": doc, "page": group.page or 1, "where": where,
+                           "items": [_value_item(request, v, sizes) for v in group.pending(later)]}
+    return context
+
+
+def _review_response(request: Request, session: Session, project_id: int, error: str | None = None,
+                     one: bool = False) -> Response:
+    if is_htmx(request):
+        session.expire_all()
+        return render(request, "partials/review_body.html",
+                      **_review_context(request, session, project_or_404(session, project_id), error, one))
+    params = "&".join(p for p in ("one=1" if one else "", f"error={url_quote(error)}" if error else "") if p)
+    target = f"/enquiries/{project_id}/review" + (f"?{params}" if params else "")
+    return RedirectResponse(target, status_code=303)
+
+
+@router.get("/enquiries/{project_id}/review", response_class=HTMLResponse)
+def review_page(request: Request, project_id: int, session: SessionDep, error: str | None = None,
+                one: int = 0) -> HTMLResponse:
+    """One card per group that needs checking, with its proof; reading first while files are read.
+
+    ``?one=1`` ("Check one by one") shows the agreeing values one at a time instead of as one list.
+    """
+    project = project_or_404(session, project_id)
+    context = _review_context(request, session, project, error, bool(one))
+    if is_htmx(request) and request.headers.get("HX-Target") == "review-body":
+        return render(request, "partials/review_body.html", **context)
+    return render(request, "review.html", **context)
+
+
+@router.post("/enquiries/{project_id}/review/approve")
+def review_approve(request: Request, project_id: int, session: SessionDep, field: Annotated[str, Form()],
+                   value_id: Annotated[int, Form()]) -> Response:
+    """Approve on a card: this value, and every source giving the same value; a different reading is set aside."""
+    project_or_404(session, project_id)
+    error = None
+    try:
+        services.resolve_field(session, project_id, field, keep_value_id=value_id)
+        services.refresh_quote(session, project_id, request.app.state.settings)
+    except services.ReviewError as e:
+        error = str(e)
+    return _review_response(request, session, project_id, error)
+
+
+@router.post("/enquiries/{project_id}/review/change")
+def review_change(request: Request, project_id: int, session: SessionDep, field: Annotated[str, Form()],
+                  value: Annotated[str, Form()] = "", unit: Annotated[str, Form()] = "") -> Response:
+    """Change on a card: the typed value is approved for this item; the values read from the files are set aside."""
+    project_or_404(session, project_id)
+    error = None
+    try:
+        services.resolve_field(session, project_id, field, typed_value=value, typed_unit=unit)
+        services.refresh_quote(session, project_id, request.app.state.settings)
+    except services.ReviewError as e:
+        error = str(e)
+    return _review_response(request, session, project_id, error)
+
+
+def _group(session: Session, project_id: int, key: str) -> tuple[Project, enquiry.ReviewGroup | None, set[int]]:
+    project = project_or_404(session, project_id)
+    group = next((g for g in enquiry.review_plan(project) if g.key == key), None)
+    return project, group, enquiry.left_for_later(session, project)
+
+
+@router.post("/enquiries/{project_id}/review/agreeing")
+def review_agreeing(request: Request, project_id: int, session: SessionDep,
+                    value_id: Annotated[list[int], Form()] = [],  # noqa: B006
+                    in_group: Annotated[list[int], Form()] = []) -> Response:  # noqa: B006
+    """ "Yes, these are right (N ticked)": exactly the ticked agreeing values that still wait, one approval and one
+    audit entry each. An id that is not an agreeing value waiting for a decision is never approved. A value the
+    card listed but left un-ticked stays to check (one audit entry), unapproved and never priced."""
+    project, group, later = _group(session, project_id, "agreeing")
+    allowed = {v.id for v in group.pending(later)} if group else set()
+    ticked = set(value_id) & allowed
+    for i in sorted(ticked):
+        services.review_value(session, i, "approve", reason="approved with the agreeing values")
+    for i in sorted((set(in_group) & allowed) - ticked):
+        services.audit(session, "review_later", "extracted_value", i, project.id,
+                       reason="left un-ticked on the agreeing values card")
+    session.commit()
+    services.refresh_quote(session, project_id, request.app.state.settings)
+    return _review_response(request, session, project_id)
+
+
+def _waiting_value(session: Session, project_id: int, value_id: int) -> ExtractedValueRow | None:
+    v = session.get(ExtractedValueRow, value_id)
+    ok = v is not None and v.project_id == project_id and v.review_status == ReviewStatus.EXTRACTED.value
+    return v if ok else None
+
+
+@router.post("/enquiries/{project_id}/review/one/approve")
+def review_one_approve(request: Request, project_id: int, session: SessionDep, value_id: Annotated[int, Form()],
+                       one: Annotated[int, Form()] = 0) -> Response:
+    """Approve one value ("Check one by one"): its own approval and audit entry."""
+    project_or_404(session, project_id)
+    error = None
+    if _waiting_value(session, project_id, value_id) is None:
+        error = "That value was already decided; here is the next one."
+    else:
+        try:
+            services.review_value(session, value_id, "approve", reason="approved on its own Review card")
+            services.refresh_quote(session, project_id, request.app.state.settings)
+        except services.ReviewError as e:
+            error = str(e)
+    return _review_response(request, session, project_id, error, bool(one))
+
+
+@router.post("/enquiries/{project_id}/review/one/change")
+def review_one_change(request: Request, project_id: int, session: SessionDep, value_id: Annotated[int, Form()],
+                      value: Annotated[str, Form()] = "", unit: Annotated[str, Form()] = "",
+                      one: Annotated[int, Form()] = 0) -> Response:
+    """Change one value: the engineer's value is stored as approved ("changed by engineer"); the value read from
+    the file is kept on the record; its own review row and audit entry."""
+    project_or_404(session, project_id)
+    error = None
+    if _waiting_value(session, project_id, value_id) is None:
+        error = "That value was already decided."
+    else:
+        try:
+            services.review_value(session, value_id, "edit", value, unit, reason="changed by engineer on Review")
+            services.refresh_quote(session, project_id, request.app.state.settings)
+        except services.ReviewError as e:
+            error = str(e)
+    return _review_response(request, session, project_id, error, bool(one))
+
+
+@router.post("/enquiries/{project_id}/review/group")
+def review_page_group(request: Request, project_id: int, session: SessionDep, key: Annotated[str, Form()],
+                      in_group: Annotated[list[int], Form()] = [],  # noqa: B006
+                      value_id: Annotated[list[int], Form()] = []) -> Response:  # noqa: B006
+    """ "Approve N ticked" on a file-and-page card: each ticked value is approved on its own; each value the card
+    showed but left un-ticked is left for later (one audit entry), stays unapproved and is never priced."""
+    project, group, later = _group(session, project_id, key)
+    if group is None or group.kind != "page":
+        return _review_response(request, session, project_id, "This card has changed; here is the next one.")
+    waiting = {v.id for v in group.pending(later)}
+    ticked = set(value_id) & waiting
+    for i in sorted(ticked):
+        services.review_value(session, i, "approve", reason="approved on its Review card")
+    for i in sorted((set(in_group) & waiting) - ticked):
+        services.audit(session, "review_later", "extracted_value", i, project.id,
+                       reason="left for later on its Review card")
+    session.commit()
+    services.refresh_quote(session, project_id, request.app.state.settings)
+    return _review_response(request, session, project_id)
+
+
+@router.post("/enquiries/{project_id}/review/quote")
+def review_make_quote(request: Request, project_id: int, session: SessionDep) -> Response:
+    """Make quote: build it from approved values only (the cost rules are unchanged), then show it."""
+    project_or_404(session, project_id)
+    services.build_estimate(session, project_id, request.app.state.settings)
+    return RedirectResponse(f"/enquiries/{project_id}/draft-quote", status_code=303)
+
+
+@router.get("/enquiries/{project_id}/draft-quote", response_class=HTMLResponse)
+def draft_quote(request: Request, project_id: int, session: SessionDep) -> HTMLResponse:
+    """The short quote: part, description, quantity and line total, and the draft total. The rest is in the workings."""
+    project = project_or_404(session, project_id)
+    context = enquiry_context(session, project)
+    est = context["estimate"]
+    lines = []
+    if est is not None:
+        for ln in est.lines:
+            total = (ln.materials + ln.labour_hours * est.labour_rate).quantize(PENNY)  # before the margin
+            lines.append({"code": ln.code, "description": ln.description, "qty": ln.quantity.normalize(),
+                          "unit": ln.unit, "total": total})
+    left_out = (len(est.unmatched) + len(est.pending)) if est is not None else 0
+    return render(request, "draft_quote.html", **context, lines=lines, left_out=left_out)
+
+
 # --- details: proof viewer and activity ----------------------------------------------------------------
 
 @router.get("/enquiries/{project_id}/proof", response_class=HTMLResponse)
@@ -778,6 +1043,30 @@ def proof_viewer(request: Request, project_id: int, session: SessionDep, doc: in
                   page_no=page_no, segments=segs, values=values, flags=flags, tab="details", sheet=sheet)
 
 
+# How a box is coloured: by how its value was read (the one-line legend under every drawing).
+BOX_KINDS = {"rules": "Read by rules", "picture": "Read from a picture, needs review", "symbol": "Symbol found"}
+SYMBOL_WORDS = {"acb": "ACB", "mccb": "MCCB", "mcb": "MCB", "switch_disconnector": "Switch-disconnector"}
+# Boxes are drawn a little larger than the text they mark, so the outline never sits on the letters: a share of
+# the width shown, about 4 px on screen when a sheet fills a column about 600 px wide.
+BOX_PAD = 1 / 150
+
+
+def box_kind(v: ExtractedValueRow) -> str:
+    """rules (text read from a file), picture (OCR or a vision model: always reviewed) or symbol (the detector)."""
+    if v.method == "detector":
+        return "symbol"
+    return "picture" if v.method in ("ocr", "vision") else "rules"
+
+
+def symbol_label(v: ExtractedValueRow) -> str | None:
+    """The short label on a symbol box, for example "MCCB 0.82": the device and the detector's score."""
+    if v.method != "detector":
+        return None
+    score = re.search(r"score (\d+\.\d+)", v.derivation or "")
+    name = SYMBOL_WORDS.get(str(v.value), str(v.value))
+    return f"{name} {score.group(1)}" if score else name
+
+
 def _sheet_boxes(request: Request, doc: Document, sheet: int | None, values: list[ExtractedValueRow]
                  ) -> dict[str, Any] | None:
     """A drawing sheet's picture and one box per value read on it with a region (Stage 4 Part D).
@@ -791,20 +1080,20 @@ def _sheet_boxes(request: Request, doc: Document, sheet: int | None, values: lis
         width, height = sheet_size(FileType(doc.file_type), request.app.state.storage.read(doc.storage_key), sheet)
     except (OSError, ValueError):
         return None
-    boxes = []
+    boxes, pad = [], width * BOX_PAD
     for v in values:
         region = next((r for r in v.regions or [] if r.get("sheet") in (None, sheet)), None)
         if region is None:
             continue
         x0, y0, x1, y1 = region["bbox"]
         value, unit = enquiry.shown(v)
-        tone = v.confidence if v.confidence in ("high", "medium", "low", "conflict") else "low"
-        title = f"{labels.field_label(v.field)}: {labels.display(value, unit)}"
-        if v.source_text:
-            title += f" (read: {v.source_text})"
-        boxes.append({"id": v.id, "tone": tone, "x": x0, "y": y0, "w": x1 - x0, "h": y1 - y0, "title": title})
+        read = f"{labels.field_label(v.field)}: {labels.display(value, unit)}"
+        title = read + (f" (read: {v.source_text})" if v.source_text else "")
+        boxes.append({"id": v.id, "tone": box_kind(v), "label": symbol_label(v), "x": x0 - pad, "y": y0 - pad,
+                      "w": x1 - x0 + 2 * pad, "h": y1 - y0 + 2 * pad, "title": title, "read": read})
     return {"src": f"/documents/{doc.id}/sheets/{sheet}.png", "width": width, "height": height, "boxes": boxes,
-            "ids": {b["id"] for b in boxes}}
+            "font": width / 70,  # symbol labels, in sheet units
+            "pad": pad, "ids": {b["id"] for b in boxes}}
 
 
 @router.get("/documents/{document_id}/sheets/{sheet}.png")

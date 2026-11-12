@@ -131,3 +131,29 @@
   <span class="theme-btn__sun">{{ icon("sun") }}</span><span class="theme-btn__moon">{{ icon("moon") }}</span>
 </button>
 {%- endmacro %}
+
+{#- The top bar's plain links (stage-simple): shown in a row, and as one menu under 700 px. -#}
+{%- macro nav_links() -%}
+{%- set links = [("How it works", "/#how"), ("Safety", "/#safety"), ("Measured", "/#accuracy"), ("Enquiries", "/enquiries")] %}
+<div class="nav-links">
+  {%- for label, href in links %}
+  <a class="topbar__link" href="{{ href }}">{{ label }}</a>
+  {%- endfor %}
+</div>
+<details class="nav-menu">
+  <summary class="topbar__link nav-menu__label">Menu</summary>
+  <div class="menu__list nav-menu__list">
+    {%- for label, href in links %}
+    <a href="{{ href }}">{{ label }}</a>
+    {%- endfor %}
+  </div>
+</details>
+{%- endmacro %}
+
+{#- The one-line colour key under every drawing (stage-simple). -#}
+{%- macro box_legend() -%}
+<span class="sheet__key sheet__key--rules">Read by rules</span>
+<span class="sheet__key sheet__key--picture">Read from a picture, needs review</span>
+<span class="sheet__key sheet__key--symbol">Symbol found</span>
+<span>Boxes show where each value was read.</span>
+{%- endmacro %}

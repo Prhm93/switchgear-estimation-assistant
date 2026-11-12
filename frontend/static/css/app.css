@@ -1028,16 +1028,117 @@ a.chip--neutral:hover { background: var(--veil-hover); color: var(--text); }
 .sheet__frame { position: relative; border-radius: var(--radius-sm); overflow: hidden; box-shadow: inset 0 0 0 1px var(--hairline); }
 .sheet__img { display: block; width: 100%; height: auto; }
 .sheet__boxes { position: absolute; inset: 0; width: 100%; height: 100%; }
-.sheet__box rect { fill: transparent; stroke-width: 2.5; vector-effect: non-scaling-stroke; transition: var(--transition); }
-.sheet__box:hover rect, .sheet__box:focus rect, .sheet__box:target rect { stroke-width: 4; fill: var(--tint-review); }
+/* stage-simple: 1 px outlines drawn a little larger than the text (web.BOX_PAD) and filled at most 6 percent, so
+   the text under a box stays readable. The colour says how the value was read (the legend under every drawing);
+   a box is never opaque. The selected box (proof.js) is a little thicker; one shown from its card pulses once. */
+.sheet__box { color: var(--blue-text); }
+.sheet__box rect { stroke: currentColor; stroke-width: 1; vector-effect: non-scaling-stroke; fill: currentColor; fill-opacity: 0.06; transition: var(--transition); }
+.sheet__box:hover rect, .sheet__box.is-active rect { stroke-width: 2; fill-opacity: 0.06; }
 .sheet__box:focus { outline: none; }
-.sheet__box:focus-visible rect { stroke: var(--focus); stroke-width: 4; }
-.sheet__box--high { stroke: var(--success); }
-.sheet__box--medium { stroke: var(--warning); }
-.sheet__box--low { stroke: var(--blue-text); }
-.sheet__box--conflict { stroke: var(--red); }
+.sheet__box:focus-visible rect { stroke: var(--focus); stroke-width: 2; fill-opacity: 0.06; }
+.sheet__box.is-pulse rect { animation: box-pulse 0.6s ease-out 2; }
+@keyframes box-pulse { 50% { stroke-width: 4; } }
+@media (prefers-reduced-motion: reduce) { .sheet__box.is-pulse rect { animation: none; } }
+.sheet__box--rules { color: var(--blue-text); }
+.sheet__box--picture { color: var(--warning); }
+.sheet__box--symbol { color: var(--success); }
+.sheet__label { fill: currentColor; font-family: var(--font-mono); font-weight: 600; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round; }
+.sheet__legend { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); align-items: center; margin-top: var(--space-2); }
 .sheet__key { padding: 0 var(--space-1); border-radius: var(--radius-xs); }
-.sheet__key--medium { box-shadow: inset 0 0 0 2px var(--warning); }
-.sheet__key--low { box-shadow: inset 0 0 0 2px var(--blue-text); }
+.sheet__key--rules { box-shadow: inset 0 0 0 2px var(--blue-text); }
+.sheet__key--picture { box-shadow: inset 0 0 0 2px var(--warning); }
+.sheet__key--symbol { box-shadow: inset 0 0 0 2px var(--success); }
 .value-line__box { align-self: center; white-space: nowrap; }
 .value-line:target { background: var(--row-hover); }
+/* The drawing and the selected box enlarged beside it (below it on narrow screens). */
+.sheet__stage { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: flex-start; }
+.sheet__stage > .sheet__frame { flex: 1 1 320px; min-width: 0; }
+.sheet-zoom { flex: 0 1 auto; max-width: 100%; }
+.sheet-zoom[hidden] { display: none; }
+.sheet-zoom__title { margin: 0 0 var(--space-1); }
+.sheet-zoom__view { display: block; max-width: 100%; height: auto; border-radius: var(--radius-sm); box-shadow: inset 0 0 0 1px var(--hairline); }
+.sheet-zoom { color: var(--blue-text); }
+.sheet-zoom[data-tone="picture"] { color: var(--warning); }
+.sheet-zoom[data-tone="symbol"] { color: var(--success); }
+.sheet-zoom__box { fill: none; stroke: currentColor; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.sheet-zoom__value { margin: var(--space-1) 0 0; color: var(--text); }
+/* The selected value's card and its text line: a clear outline, the same one as the focus ring. */
+.value-line.is-active { background: var(--row-hover); box-shadow: inset 0 0 0 2px var(--focus); }
+.doc-text mark.is-active { background: var(--tonal-hover); box-shadow: inset 0 0 0 2px var(--focus); }
+
+/* --- 14. The simple flow: one button on the home page, Review cards, the short quote (stage-simple) --------- */
+.btn--xl { padding: 20px 34px; font-size: 18px; font-weight: 600; cursor: pointer; }
+.hero__add { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+.hero__add.dropzone--over .btn--xl { box-shadow: 0 0 0 3px var(--focus); }
+.simple-head { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-5); }
+.simple-head__text { max-width: 60ch; }
+.ask-soon { display: flex; gap: var(--space-2); align-items: center; }
+.review { max-width: 820px; }
+.review__progress { margin-bottom: var(--space-4); }
+.review__count { margin: 0 0 var(--space-2); }
+.review__bar { width: 100%; height: 6px; appearance: none; border: 0; border-radius: var(--radius-pill); background: var(--tint-track); overflow: hidden; }
+.review__bar::-webkit-progress-bar { background: var(--tint-track); }
+.review__bar::-webkit-progress-value { background: var(--success); }
+.review__bar::-moz-progress-bar { background: var(--success); }
+.review-card { padding: var(--space-5); border-radius: var(--radius-card); background: var(--glass); box-shadow: var(--shadow-card), inset 0 0 0 1px var(--hairline); }
+.review-card__head { display: flex; gap: var(--space-3); align-items: center; justify-content: space-between; }
+.review-card__title { margin: 0; font-size: var(--fs-lg); }
+.review-card__value { margin: var(--space-3) 0 var(--space-2); font-size: var(--fs-xl); }
+.review-card__note { margin: 0 0 var(--space-2); }
+.review-card__proof { margin: var(--space-4) 0; }
+.crop-link { display: block; }
+.crop { display: block; width: 100%; max-height: 360px; border-radius: var(--radius-sm); box-shadow: inset 0 0 0 1px var(--hairline); }
+.review-card__actions { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: flex-start; }
+.review-card__actions form { margin: 0; }
+.change > summary { list-style: none; }
+.change > summary::-webkit-details-marker { display: none; }
+.change[open] > summary { margin-bottom: var(--space-3); }
+.review-done { padding: var(--space-5) 0; }
+.total--simple { margin-bottom: var(--space-4); }
+.group-values { list-style: none; margin: var(--space-4) 0; padding: 0; display: grid; gap: var(--space-4); }
+.group-value { padding: var(--space-3); border-radius: var(--radius-sm); background: var(--row-bg); }
+.group-value__tick { display: flex; gap: var(--space-2); align-items: center; font-weight: 600; cursor: pointer; }
+.group-value__tick input { width: 18px; height: 18px; accent-color: var(--success); }
+.crop--small { max-height: 200px; margin-top: var(--space-2); }
+
+/* Top bar links (stage-simple fix): plain links in a row; one "Menu" under 700 px. */
+.nav-links { display: flex; align-items: center; gap: var(--space-1); }
+.nav-menu { display: none; position: relative; }
+.nav-menu > summary { list-style: none; cursor: pointer; }
+.nav-menu > summary::-webkit-details-marker { display: none; }
+.nav-menu__list { right: 0; left: auto; min-width: 200px; }
+.site-nav .nav-links { gap: 28px; }
+.site-nav .nav-links a { padding: 0; color: var(--text-nav); background: none; }
+.site-nav .nav-links a:hover { color: var(--text); }
+
+/* The chosen files on the home page, before "Read these files". */
+.file-picks { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.file-picks:empty { display: none; }
+.file-pick { display: flex; gap: var(--space-3); align-items: baseline; font-size: var(--fs-sm); }
+.file-pick a { color: var(--blue-text); }
+
+/* The agreeing values: one tick per value, a Change link each. */
+.agree-values { list-style: none; margin: var(--space-4) 0; padding: 0; display: grid; gap: var(--space-2); max-height: 480px; overflow: auto; }
+.agree-value { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); align-items: baseline; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--row-bg); }
+.agree-value__tick { display: flex; gap: var(--space-2); align-items: center; cursor: pointer; }
+.agree-value__tick input { width: 18px; height: 18px; accent-color: var(--success); }
+.change-inline > summary { list-style: none; cursor: pointer; }
+.change-inline > summary::-webkit-details-marker { display: none; }
+.change-inline[open] { flex-basis: 100%; }
+.link-like { color: var(--blue-text); font-size: var(--fs-sm); box-shadow: inset 0 -1px 0 currentColor; }
+
+/* The home sketch (stage-simple fix): on wide screens with motion, the hero is about two screens tall and the
+   drawing stays pinned near the top for one screen of scrolling while home.js opens and closes it with the
+   scroll. "overflow: clip" keeps the background inside without breaking the pin. Reduced motion: static. */
+@media (min-width: 901px) and (prefers-reduced-motion: no-preference) {
+  .hero { overflow: clip; min-height: calc(200svh - var(--nav-h)); justify-content: flex-start; }
+  .hero__inner { flex: 1; align-items: start; padding-top: var(--space-6); }
+  .hero__art { position: sticky; top: calc(var(--nav-h) + 16px); align-self: start; }
+}
+
+@media (max-width: 700px) {
+  .nav-links { display: none; }
+  .nav-menu { display: block; }
+}
+
+.sample-strip { padding: var(--space-6) 0 var(--space-8); color: var(--text-soft); }

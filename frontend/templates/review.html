@@ -1,0 +1,22 @@
+{#- Review (stage-simple): after Add files, one card at a time for each value that needs checking, then Make quote.
+    The buttons on this screen: Approve, Change, Make quote (when all are checked) and Ask (coming soon).
+    Everything else is behind "More" in the top bar. -#}
+{%- extends "layout_app.html" -%}
+
+{%- block head %}<script src="{{ url_for('static', path='js/review.js') }}" defer></script>{% endblock -%}
+{%- block title %}Review · {{ project.name }} · {{ app_name }}{% endblock -%}
+
+{%- block heading %}
+<div class="simple-head">
+  <div class="simple-head__text">
+    <h1 class="page-title">{{ project.name }}</h1>
+    <a class="small" href="/enquiries/{{ project.id }}">All details of this enquiry</a>
+    <p class="small muted">Check each value, then make the quote. A value is one fact read from your files, such as a rating or a quantity.</p>
+  </div>
+  {% include "partials/ask_soon.html" %}
+</div>
+{% endblock -%}
+
+{%- block content %}
+{% include "partials/review_body.html" %}
+{% endblock -%}
