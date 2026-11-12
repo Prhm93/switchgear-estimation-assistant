@@ -1,0 +1,85 @@
+{%- from "macros.html" import box_legend with context -%}
+{#- The Review block: "Reading your files" while files are read (it asks for itself every second), then the
+    progress line and the first value still waiting, with its proof, Approve and Change. -#}
+<div id="review-body" class="review" aria-live="polite"
+  {%- if busy %} hx-get="/enquiries/{{ project.id }}/review" hx-trigger="every 1s" hx-swap="outerHTML"{% endif %}>
+{%- if busy %}
+  <p class="lead">Reading your files <span class="spinner" aria-hidden="true"></span></p>
+  <p class="small muted">A few seconds per file; drawing pictures take longer. The first value to check opens here.</p>
+{%- else %}
+  <div class="review__progress">
+    <p class="review__count"><strong>{{ done }} of {{ total }} checked</strong></p>
+    {%- if total %}<progress class="review__bar" max="{{ total }}" value="{{ done }}">{{ done }} of {{ total }}</progress>{% endif %}
+  </div>
+  {%- if error %}<p class="alert alert--error" role="alert">{{ error }}</p>{% endif %}
+
+  {%- if card %}
+  {%- set g = card.group %}
+  {%- set v = card.first %}
+  {%- set value, unit = shown(v) %}
+  {%- set pv = card.proof_value %}
+  <article class="review-card" id="card-{{ g.field }}">
+    <div class="review-card__head">
+      <h2 class="review-card__title">{{ g.label }}</h2>
+      {%- if g.conflict %}<span class="chip chip--conflict">The files disagree</span>{% endif %}
+    </div>
+    <div class="review-card__value mono">{{ display(value, unit) if v.value is not none else "Not given (marked TBC)" }}</div>
+    {%- if card.disagree %}<p class="review-card__note">{{ card.disagree }} Approve keeps the value above; Change lets you type the right one.</p>{% endif %}
+    <p class="small muted">Read from {{ value_source(pv) }} ({{ pv.document.original_name }}){% if card.sources > 1 %}; found in {{ card.sources }} places{% endif %}.</p>
+
+    <figure class="review-card__proof">
+      {%- if card.crop %}
+      {%- set c = card.crop %}
+      <a href="{{ c.full }}" class="crop-link" title="Open the whole drawing">
+      <svg class="crop" viewBox="{{ c.view }}" role="img" aria-label="The part of the drawing this value was read from">
+        <image href="{{ c.src }}" x="0" y="0" width="{{ c.width }}" height="{{ c.height }}"/>
+        <g class="sheet__box sheet__box--{{ c.kind }}">
+          <rect x="{{ '%g' | format(c.x) }}" y="{{ '%g' | format(c.y) }}" width="{{ '%g' | format(c.w) }}" height="{{ '%g' | format(c.h) }}"/>
+          {%- if c.label %}<text class="sheet__label" x="{{ '%g' | format(c.x) }}" y="{{ '%g' | format(c.y - c.font * 0.3) }}" font-size="{{ '%g' | format(c.font) }}">{{ c.label }}</text>{% endif %}
+        </g>
+      </svg>
+      </a>
+      {%- elif card.proof.mark %}
+      <pre class="proof-text">{{ card.proof.before }}<mark>{{ card.proof.mark }}</mark>{{ card.proof.after }}</pre>
+      {%- elif pv.source_text %}
+      <pre class="proof-text"><mark>{{ pv.source_text }}</mark></pre>
+      {%- else %}
+      <p class="small muted">There is no text to show for this value.</p>
+      {%- endif %}
+      <figcaption class="small muted sheet__legend">{{ box_legend() }}</figcaption>
+    </figure>
+
+    <div class="review-card__actions">
+      {%- if card.can_approve %}
+      <form method="post" action="/enquiries/{{ project.id }}/review/approve" hx-post="/enquiries/{{ project.id }}/review/approve" hx-target="#review-body" hx-swap="outerHTML">
+        <input type="hidden" name="field" value="{{ g.field }}">
+        <input type="hidden" name="value_id" value="{{ v.id }}">
+        <button class="btn btn--primary" type="submit">Approve</button>
+      </form>
+      {%- endif %}
+      <details class="change"{% if not card.can_approve %} open{% endif %}>
+        <summary class="btn btn--secondary">Change</summary>
+        <form method="post" action="/enquiries/{{ project.id }}/review/change" hx-post="/enquiries/{{ project.id }}/review/change" hx-target="#review-body" hx-swap="outerHTML" class="inline-form">
+          <input type="hidden" name="field" value="{{ g.field }}">
+          <label class="field field--inline"><span class="field__label">Right value</span><input class="input mono" name="value" value="{{ value if value is not none else '' }}" required></label>
+          <label class="field field--inline field--unit"><span class="field__label">Unit</span><input class="input mono" name="unit" value="{{ unit or '' }}"></label>
+          <button class="btn btn--tonal btn--sm" type="submit">Save</button>
+        </form>
+      </details>
+    </div>
+  </article>
+
+  {%- elif total %}
+  <div class="review-done">
+    <p class="lead">All {{ total }} values are checked.</p>
+    <form method="post" action="/enquiries/{{ project.id }}/review/quote">
+      <button class="btn btn--primary btn--lg" type="submit">Make quote</button>
+    </form>
+    <p class="small muted">The quote uses only the values you approved, with prices from the parts catalogue.</p>
+  </div>
+  {%- else %}
+  <p class="lead">Nothing could be read from these files.</p>
+  <p class="small muted">Open More, then Files, to add other files or read them again.</p>
+  {%- endif %}
+{%- endif %}
+</div>

@@ -39,6 +39,7 @@ def ocr_stand_in(file_type, data, name, dpi, cmd):
     values = [value("way.Q1.rating", 630, "A", "medium", "MCCB 630A <b>", [100, 200, 180, 260]),
               value("way.Q2.device", "mccb", None, "low", None, [300, 200, 340, 300], Method.DETECTOR),
               value("system.voltage", 400, "V", "medium", "400V 50Hz")]
+    values[1].derivation = "symbol found by the template detector (score 0.82), linked to way Q2"
     read = ReadResult(status=DocumentStatus.DONE, pages=[PageText(number=1, lines=["MCCB 630A <b>", "400V 50Hz"])],
                       note="Read by OCR (Tesseract, 300 dpi): every value needs the engineer's review.")
     return read, values, []
@@ -76,12 +77,18 @@ def test_the_drawing_sheet_shows_a_box_for_each_value_with_a_region(client: Test
     assert f'viewBox="0 0 {width} {height}"' in figure
     boxes = re.findall(r'<a class="sheet__box sheet__box--(\w+)" id="box-(\d+)" href="([^"]+)"', figure)
     assert sorted((tone, int(i)) for tone, i, _ in boxes) == sorted(
-        [("medium", ids["way.Q1.rating"]), ("low", ids["way.Q2.device"])])  # the voltage has no box
+        [("picture", ids["way.Q1.rating"]), ("symbol", ids["way.Q2.device"])])  # the voltage has no box
     assert all(href == f"#v-{i}" for _, i, href in boxes)  # a box opens the value it supports
     rect = re.search(rf'id="box-{ids["way.Q1.rating"]}".*?<rect x="100(\.0)?" y="200(\.0)?" width="80(\.0)?" '
                      rf'height="60(\.0)?"', figure, re.S)
     assert rect, "the box is drawn where the value was read"
     assert "&lt;b&gt;" in figure and "<b>" not in figure  # read text is escaped in the box title
+    symbol = re.search(rf'id="box-{ids["way.Q2.device"]}".*?</a>', figure, re.S).group(0)
+    assert re.search(r'<text[^>]*class="sheet__label"[^>]*>MCCB 0\.82</text>', symbol)  # symbol boxes are labelled
+    legend = re.search(r'<figcaption.*?</figcaption>', figure, re.S).group(0)
+    for words in ("Read by rules", "Read from a picture, needs review", "Symbol found",
+                  "Boxes show where each value was read."):
+        assert words in legend, words
     line = re.search(rf'<div class="value-line" id="v-{ids["way.Q1.rating"]}">.*?</div>', html, re.S).group(0)
     assert f'href="#box-{ids["way.Q1.rating"]}"' in line and "Show on the drawing" in line
     voltage = re.search(rf'<div class="value-line" id="v-{ids["system.voltage"]}">.*?</div>', html, re.S).group(0)
@@ -101,8 +108,13 @@ def test_the_sheet_picture_is_served_and_other_files_have_no_boxes(client: TestC
     assert client.get("/documents/99999/sheets/1.png").status_code == 404
 
 
-def test_box_colours_follow_confidence_and_use_theme_tokens() -> None:
+def test_boxes_are_thin_see_through_outlines_coloured_by_how_the_value_was_read() -> None:
     css = (Path(__file__).parents[2] / "frontend" / "static" / "css" / "app.css").read_text(encoding="utf-8")
-    for tone in ("high", "medium", "low", "conflict"):
-        rule = re.search(rf"\.sheet__box--{tone}\s*\{{([^}}]*)\}}", css)
+    base = re.search(r"\.sheet__box rect\s*\{([^}]*)\}", css).group(1)
+    assert "stroke-width: 2;" in base and "fill: currentColor" in base and "fill-opacity: 0.15" in base
+    sheet_rules = " ".join(line for line in css.splitlines() if ".sheet__box" in line)
+    for rule in re.findall(r"fill-opacity:\s*([\d.]+)", sheet_rules):
+        assert float(rule) <= 0.3, "a box never hides the text under it"
+    for kind in ("rules", "picture", "symbol"):
+        rule = re.search(rf"\.sheet__box--{kind}\s*\{{([^}}]*)\}}", css)
         assert rule and "var(--" in rule.group(1) and "#" not in rule.group(1)

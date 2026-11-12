@@ -35,6 +35,15 @@ A walk-through of the screens is in [Using the app](#using-the-app). Stop the ap
 
 ## Using the app
 
+The short path has four buttons at most:
+
+1. **Add files** on the home page. Choose the specification, the drawing and the letter; they are sent at once and read in the background.
+2. **Review** opens by itself: one card per value that needs checking, with the drawing or page it was read from (boxes show where each value was read), a progress line ("12 of 71 checked"), and **Approve** or **Change**. Values where the files disagree come first.
+3. **Make quote** appears when every card is checked. The quote shows Part, Description, Qty and Line total, and the draft total, from approved values only; "Show workings" opens the full Quote page.
+4. **Ask** is shown, switched off, until the question box exists.
+
+Everything else is behind the small **More** link in the top bar: the screens below.
+
 1. **+ New enquiry.** Drop the customer's files (specification PDF, drawing as DXF, PDF or image, letter as DOCX), type a sentence about the enquiry, or both. A typed note alone starts the enquiry, and it opens on Files asking for the files. **Try the sample enquiry** loads the showcase files instead.
 2. **Summary.** Six checks, each from the enquiry's own values:
    - what is quoted;

@@ -4,7 +4,7 @@
     the breaker on, opens it with the scroll and sets the story step. Every word is in the HTML; reduced
     motion shows the finished drawing, still. -#}
 {%- extends "base.html" -%}
-{%- from "macros.html" import icon, brand_mark, theme_button with context -%}
+{%- from "macros.html" import icon, brand_mark, theme_button, more_menu with context -%}
 
 {%- block title %}{{ app_name }}{% endblock -%}
 {%- block body_class %}page--home{% endblock -%}
@@ -22,10 +22,7 @@
   <div class="site-header__inner">
     <a class="brand" href="/">{{ brand_mark(26) }}<span class="brand__name"><span class="brand__lead">Switchgear </span>Estimation Assistant</span></a>
     <nav class="site-nav" aria-label="Main">
-      <a href="#how">How it works</a>
-      <a href="#safety">Safety</a>
-      <a href="#accuracy">Measured</a>
-      <a href="/enquiries">Enquiries</a>
+      {{ more_menu(home=True) }}
       {{ theme_button() }}
     </nav>
   </div>
@@ -37,13 +34,14 @@
       <div class="hero__body">
         <div class="label-mono">An engineer-led way to estimate</div>
         <h1 id="hero-title" class="hero__title">Turn enquiries into <span class="accent">checked</span> estimates</h1>
-        <p class="hero__lede">Drop the customer's files. Every value shows where it came from.</p>
-        <div class="hero__actions">
-          <a class="btn btn--primary btn--lg" href="/enquiries/new">Start an enquiry{{ icon("arrow-right", "sm") }}</a>
-          <form method="post" action="/enquiries/sample">
-            <button class="link-button" type="submit">Try the sample enquiry</button>
-          </form>
-        </div>
+        <p class="hero__lede">Add the customer's files. Every value shows where it came from.</p>
+        {#- stage-simple: one big button. Choosing files sends them at once (upload.js); then Review opens. -#}
+        <form class="hero__actions hero__add" method="post" action="/enquiries" enctype="multipart/form-data" data-dropzone data-autosubmit>
+          <input type="hidden" name="next" value="review">
+          <label class="btn btn--primary btn--xl">{{ icon("upload", "sm") }}Add files<input class="visually-hidden" type="file" name="files" multiple required accept=".pdf,.png,.jpg,.jpeg,.dxf,.docx" data-file-input></label>
+          <p class="small muted hero__add-hint">The specification, the drawing and the customer's letter (PDF, DXF, DOCX, PNG or JPG).</p>
+          <p class="small muted" data-file-summary aria-live="polite"></p>
+        </form>
       </div>
       <div class="hero__art" data-breaker="hero">{{ breaker }}</div>
     </div>

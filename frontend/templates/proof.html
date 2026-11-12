@@ -1,5 +1,5 @@
 {%- extends "layout_enquiry.html" -%}
-{%- from "macros.html" import icon, value_status with context -%}
+{%- from "macros.html" import icon, value_status, box_legend with context -%}
 
 {%- block step %}
 <h2 class="block-title">Proof viewer</h2>
@@ -49,11 +49,12 @@
         <img class="sheet__img" src="{{ sheet.src }}" alt="Sheet {{ page_no }} of {{ current.original_name }}" width="{{ sheet.width }}" height="{{ sheet.height }}" loading="lazy">
         <svg class="sheet__boxes" viewBox="0 0 {{ sheet.width }} {{ sheet.height }}" preserveAspectRatio="none" role="group" aria-label="Boxes for the values read on this sheet">
           {%- for b in sheet.boxes %}
-          <a class="sheet__box sheet__box--{{ b.tone }}" id="box-{{ b.id }}" href="#v-{{ b.id }}"><title>{{ b.title }}</title><rect x="{{ '%g' | format(b.x) }}" y="{{ '%g' | format(b.y) }}" width="{{ '%g' | format(b.w) }}" height="{{ '%g' | format(b.h) }}"/></a>
+          <a class="sheet__box sheet__box--{{ b.tone }}" id="box-{{ b.id }}" href="#v-{{ b.id }}"><title>{{ b.title }}</title><rect x="{{ '%g' | format(b.x) }}" y="{{ '%g' | format(b.y) }}" width="{{ '%g' | format(b.w) }}" height="{{ '%g' | format(b.h) }}"/>
+            {%- if b.label %}<text class="sheet__label" x="{{ '%g' | format(b.x) }}" y="{{ '%g' | format(b.y - sheet.font * 0.3) }}" font-size="{{ '%g' | format(sheet.font) }}">{{ b.label }}</text>{% endif %}</a>
           {%- endfor %}
         </svg>
       </div>
-      <figcaption class="small muted">{{ sheet.boxes | length }} box{{ "es" if sheet.boxes | length != 1 }} on this sheet, coloured by confidence: <span class="sheet__key sheet__key--medium">medium</span> <span class="sheet__key sheet__key--low">low</span>. Select a box to see its value.</figcaption>
+      <figcaption class="small muted sheet__legend">{{ box_legend() }} Select a box to see its value.</figcaption>
     </figure>
     {%- endif %}
     {#- File text: every segment is autoescaped; highlighted spans are the sources of the values on the right. -#}

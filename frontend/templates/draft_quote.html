@@ -1,0 +1,50 @@
+{#- The short quote (stage-simple): part, description, quantity and line total, and the draft total.
+    "Show workings" opens the full Quote page (unit prices, labour, margin, substitutes, the report). -#}
+{%- extends "layout_app.html" -%}
+
+{%- block title %}Quote · {{ project.name }} · {{ app_name }}{% endblock -%}
+
+{%- block heading %}
+<div class="simple-head">
+  <div class="simple-head__text">
+    <h1 class="page-title">{{ project.name }}</h1>
+    <p class="small muted">Draft quote, built only from the values you approved and the catalogue prices.</p>
+  </div>
+  {% include "partials/ask_soon.html" %}
+</div>
+{% endblock -%}
+
+{%- block content %}
+{%- if not estimate %}
+<p class="lead">No quote yet.</p>
+<p><a href="/enquiries/{{ project.id }}/review">Back to Review</a></p>
+{%- else %}
+<section class="total total--simple" aria-label="Draft total">
+  <div>
+    <div class="total__label">Draft total</div>
+    <div class="total__value mono">{{ estimate.currency }} {{ money(estimate.total) }}</div>
+    <div class="small muted">Includes labour and a margin of {{ estimate.margin_percent.normalize() }} %. A draft: check it before it goes to the customer.</div>
+  </div>
+</section>
+
+{%- if lines %}
+<div class="table-wrap gap-top">
+<table class="data-table">
+  <caption class="visually-hidden">Quote lines</caption>
+  <thead><tr><th scope="col">Part</th><th scope="col">Description</th><th scope="col" class="num">Qty</th><th scope="col" class="num">Line total</th></tr></thead>
+  <tbody>
+    {%- for ln in lines %}
+    <tr><td class="mono">{{ ln.code }}</td><td>{{ ln.description }}</td>
+      <td class="num">{{ ln.qty }}{% if ln.unit != "each" %} {{ ln.unit }}{% endif %}</td><td class="num">{{ money(ln.total) }}</td></tr>
+    {%- endfor %}
+  </tbody>
+</table>
+</div>
+<p class="small muted">A line total is the part's price and its labour, before the margin.</p>
+{%- else %}
+<p class="muted">No line yet: no approved value matched a part in the catalogue.</p>
+{%- endif %}
+{%- if left_out %}<p class="small">{{ left_out }} item{{ "s" if left_out != 1 }} not priced yet: see the workings.</p>{% endif %}
+<p class="small"><a href="/enquiries/{{ project.id }}/quote">Show workings</a></p>
+{%- endif %}
+{% endblock -%}

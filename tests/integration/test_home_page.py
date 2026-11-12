@@ -42,17 +42,18 @@ def section(html: str, marker: str) -> str:
     return re.search(rf"<section {marker}.*?</section>", html, re.S).group(0)
 
 
-def test_the_hero_is_the_prototype_headline_with_one_button_one_link_and_the_drawing(client: TestClient) -> None:
+def test_the_hero_is_the_prototype_headline_with_one_add_files_button_and_the_drawing(client: TestClient) -> None:
     html = client.get("/").text
     h1 = re.findall(r"<h1[^>]*>(.*?)</h1>", html, re.S)
     assert len(h1) == 1 and h1[0].count('class="accent"') == 1
     assert text_of(h1[0]) == "Turn enquiries into checked estimates"
     hero = section(html, 'class="hero"')
     assert "An engineer-led way to estimate" in hero
-    assert "Drop the customer's files. Every value shows where it came from." in hero
-    assert re.findall(r'class="btn btn--primary[^"]*"[^>]*>\s*Start an enquiry', hero)
-    assert hero.count("btn--primary") == 1 and 'href="/enquiries/new"' in hero
-    assert 'action="/enquiries/sample"' in hero and "Try the sample enquiry" in hero
+    assert "Add the customer's files. Every value shows where it came from." in hero
+    # stage-simple: one big button; the sample enquiry and the New enquiry page moved behind "More".
+    assert re.findall(r'class="btn btn--primary btn--xl"[^>]*>.*?Add files', hero, re.S)
+    assert hero.count("btn--primary") == 1 and "<button" not in hero
+    assert 'action="/enquiries/sample"' not in hero
     assert "Sample data only" in hero
     # The breaker drawing sits on the right, inline so the theme colours and the motion reach it.
     assert '<svg xmlns="http://www.w3.org/2000/svg" class="breaker"' in hero and "hero__art" in hero

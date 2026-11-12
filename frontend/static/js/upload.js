@@ -2,6 +2,7 @@
  * Drag and drop for the upload form. Without this script the form still works:
  * choose files, then press the button. With it, files dropped on the card are
  * put into the file input and sent at once (through HTMX when the form uses it).
+ * A form marked data-autosubmit also sends its files as soon as they are chosen.
  */
 (function () {
   "use strict";
@@ -26,7 +27,11 @@
   function init(form) {
     var input = form.querySelector("[data-file-input]");
     if (!input) return;
-    input.addEventListener("change", function () { summary(form, input.files); });
+    input.addEventListener("change", function () {
+      summary(form, input.files);
+      /* The home page's "Add files" (data-autosubmit): choosing the files sends them at once. */
+      if (form.hasAttribute("data-autosubmit") && input.files.length) submit(form);
+    });
 
     ["dragenter", "dragover"].forEach(function (name) {
       form.addEventListener(name, function (event) {
