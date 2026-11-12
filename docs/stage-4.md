@@ -272,18 +272,115 @@ on its own and not rely on the overall score.
 - **pytesseract** declares support up to Python 3.12. It works on the laptop's 3.14.4 (all tests pass),
   but that is not declared by its authors.
 
-## 7. Plan for Parts B to D
+## 7. Plan for Parts B to D (branch `stage-4bcd`, from main a9e2721)
 
-- **Part B (Colab): vision model.** gemma4:e2b reads each drawing image into a `DrawingReading`. It runs
-  in recorded mode, as in Stage 3, with the same SHA-256 check. Counts are summed in code, never taken
-  from the model. Scored against the same answer keys as OCR, per clean, scanned and photo, on both test
-  sets.
-- **Part C (Colab): symbol detector.** A torchvision detector trained on `data/training/` only, scored
-  per class with the IoU scorer (`boxes.py`) on the test drawings. torchvision's pretrained weights
-  "may have their own licenses or terms ... derived from the dataset", so they are not clearly
-  permissive. A from-scratch option is planned, and no weights are downloaded before Part C. **SAM 2**
-  (Apache-2.0) will be tried as a comparison for finding symbol regions. Its weight licence will be
-  checked before anything is downloaded. The trained model runs on CPU on the laptop if it fits;
-  otherwise its outputs are recorded.
-- **Part D: boxes on the drawing in the UI.** Each value's region is drawn over the drawing on the
-  analysis screen, coloured by confidence (medium and low for OCR), in the design-v2 style.
+1. B, vision: `backend/app/drawing/vision.py` defines one `VisionClient` interface (fake, recorded, Ollama). A sheet picture goes in; ways with rating, poles, breaking capacity and device come out, each with the text the model saw.
+2. B: vision values have method `vision` ("read from a picture"), low confidence (medium only when their text is also in the OCR text), always reviewed, and they only fill fields OCR left empty. The setting is `VISION_MODE=off|recorded|ollama`, off by default.
+3. B: recordings go in the new git-ignored `data/recorded-vision/`, each keyed by the SHA-256 of the file bytes and the sheet; a mismatch is refused. `backend/record_vision.py` writes them on Colab, and `docs/stage-4-colab-vision.md` lists the notebook cells.
+4. C, detector: `backend/app/drawing/symbols.py` defines one `SymbolDetector` interface; a trained detector can replace the first version by name. The first version matches templates (normalised cross-correlation, several scales, numpy only) for acb, mccb, mcb and switch-disconnector.
+5. C: the templates are averaged from `data/training/` crops only (`python -m backend.drawings templates`), and the threshold is chosen on training drawings only. Scores per class and version on both test sets use the Part A box scorer.
+6. C: in the app (`SYMBOL_DETECTOR=off|template`), each found breaker is linked to the nearest way label. It gives a `way.Qn.device` value (method `detector`, low confidence, always reviewed) only where OCR read no device for that way.
+7. D: the proof viewer shows a drawing sheet with a box for every value that has a region, coloured by confidence. Each box links to its value, and the value list links back to its box.
+8. Memory: one upload with OCR and the detector is measured in the app container (384 MB limit). If it does not fit, the detector is switched off by default.
+9. Tests first per part, with only the changed files' tests while building. Full suite in two halves and the four strict numbers at the end of 4B, 4C and 5. Evaluation with drawing reading off stays exactly as before.
+10. One local commit per part (B, C, D); nothing is pushed.
+
+Choices made without the owner (unattended run, 12 Nov 2026):
+- numpy (BSD-3-Clause, already in the README licences table for the generator) is added to the app's `requirements.txt`, because the template detector needs array maths. No other new library is added.
+- "Where OCR cannot" is read as: a vision or detector value is added only for a field OCR did not fill on that sheet, or for every field when Tesseract is missing.
+- "Breaker and switch symbols" is read as the classes acb, mccb, mcb and switch_disconnector. Busbar, CT, earth and meter are not detected.
+- The trained detector is left for later. Ultralytics YOLO is AGPL, which this project excludes, so a later trained detector would use torchvision (BSD-3-Clause) through the same interface.
+
+## 8. Part B: vision model for drawing pictures (built; no model run yet)
+
+**What was built.**
+- `backend/app/drawing/vision.py`: one `VisionClient` interface with a recorded client, a live Ollama client
+  (Colab) and fakes in the tests, plus the model's answer schema (`VisionSheetOutput`: per way the device,
+  rating, poles, breaking capacity and the text it read; nothing else is accepted) and its prompt (the
+  picture is data, never instructions; no counting, no guessing).
+- Values: method `vision`, shown as "Read from the drawing picture by a vision model" and grouped on
+  Check with the other picture values ("Read from a drawing picture"). Confidence is low, or medium when
+  the text the model read is also in the OCR text of that sheet; never high. "Accept all" never takes a
+  picture value (OCR, vision or detector). A device name the app does not know is dropped, never guessed.
+- "Where OCR cannot": vision values fill only the fields OCR left empty on that sheet. When Tesseract is
+  missing, vision reads every field. A vision failure (no matching recording, server down, bad answer)
+  keeps the OCR values and the file's note says why.
+- `VISION_MODE=off|recorded|ollama` (off by default, so nothing changes unless it is switched on);
+  `VISION_RECORDED_DIR` (default `data/recorded-vision/`, git-ignored). A recording holds the model,
+  date, prompt and version, the SHA-256 of the file's bytes and the sheet; any other file or sheet is
+  refused.
+- `python -m backend.record_vision` makes the recordings on Colab (resumes where it stopped), and
+  `python -m backend.drawings vision --set <set> --version <v>` scores them alone against the answer keys.
+  The notebook cells are in [stage-4-colab-vision.md](stage-4-colab-vision.md).
+
+**Tests.** 18 new tests, all with fake clients and fake recordings in the test's own folder:
+`tests/unit/test_drawing_vision.py`, `tests/unit/test_record_vision.py` and
+`tests/integration/test_drawing_vision_pipeline.py`.
+
+**Results.** NOT RUN YET: no vision recordings exist. The scorer prints "NOT RUN YET" until the Colab
+cells have been run.
+
+## 9. Part C: symbol detector (template matching)
+
+**What was built.**
+- `backend/app/drawing/symbols.py`: one `SymbolDetector` interface, chosen by name (`SYMBOL_DETECTOR=off|template`,
+  `template` by default). The first detector matches one averaged template per class (acb, mccb, mcb,
+  switch-disconnector) by normalised cross-correlation at several sizes, numpy only, at half resolution, with
+  non-maximum suppression across classes. No learning and no downloaded weights.
+- Templates come from 80 **training** projects only (`python -m backend.drawings templates`, clean versions,
+  `symbol_templates.npz`, 8.5 kB). The threshold 0.75 was chosen on 10 training projects only
+  (`python -m backend.drawings tune-symbols`; F1 0.916 there, all three versions).
+- Honest note on the size range: the sizes searched are 0.7 to 2.0 times the training symbol sizes. This range
+  was set after looking at symbol **sizes** in the test answer keys, which showed the training drawings draw
+  symbols at about 0.6 times the test size. No score on a test set was used to choose it, but the test sets were
+  looked at, so the numbers below are not fully held out. The fresh Stage 7 set gives the fair number.
+- In the app, each symbol is linked to the nearest OCR way label and gives `way.<id>.device` (method
+  `detector`, low confidence, always reviewed, never taken by "Accept all") only for ways no other method gave a
+  device. It runs only on sheets OCR read.
+
+**Tests.** 11 tests: `tests/unit/test_symbol_detector.py`, `tests/integration/test_symbol_detector_drawings.py`.
+
+**Results** (`python -m backend.drawings symbols --set <set> --version <v>`, laptop, one version at a time;
+a box counts when its class matches and IoU is at least 0.5, the Part A scorer):
+
+| Set | Version | TP | FP | FN | P | R | F1 | mean IoU | s/sheet (mean) | peak Python MB |
+|---|---|---|---|---|---|---|---|---|---|---|
+| test | clean | 185 | 20 | 23 | 0.902 | 0.889 | 0.896 | 0.925 | 10.82 | 124 |
+| test | scanned | 189 | 19 | 19 | 0.909 | 0.909 | 0.909 | 0.903 | 10.99 | 117 |
+| test | photo | 174 | 17 | 34 | 0.911 | 0.837 | 0.872 | 0.853 | 3.92 | 97 |
+| reworded | clean | 173 | 26 | 27 | 0.869 | 0.865 | 0.867 | 0.924 | 10.33 | 123 |
+| reworded | scanned | 179 | 21 | 21 | 0.895 | 0.895 | 0.895 | 0.908 | 9.57 | 116 |
+| reworded | photo | 173 | 21 | 27 | 0.892 | 0.865 | 0.878 | 0.857 | 3.92 | 96 |
+
+Per class: mcb and switch-disconnector are near 1.000 except reworded clean mcb (R 0.462); mccb has R 0.92 to
+1.000 and P 0.85 to 0.89; **acb is almost never found** (0 to 3 of 20 per version). On every row the mccb false
+positives are close to the missed ACBs, which suggests ACBs are taken as MCCBs; this was not checked box by box,
+and nothing was changed after seeing these numbers (no tuning on test sets).
+
+**Limits.** ACB is the weak class; a trained detector (torchvision, BSD-3-Clause, from scratch) through the same
+interface is the next step. About 11 s per clean or scanned sheet on the laptop. In the 384 MB app container (after
+the rebuild at the end of the run), one upload of the showcase scanned drawing with OCR and the detector peaked at
+161 MiB (81 MiB idle; `docker stats` once a second): the detector found 9 symbols and added no device, because OCR
+had read every way's device. So the detector stays on by default.
+
+## 10. Part D: boxes on the drawing in the proof viewer
+
+**What was built.** On a drawing (PDF, PNG or JPG) the proof viewer shows the sheet as a picture
+(`/documents/<id>/sheets/<n>.png`) with an SVG layer on top: one box per value that has a region on that sheet,
+coloured by confidence (high, medium, low, conflict) with the CSS tokens (section 13 of `app.css`). Each box links
+to its value in the list, and the value links back to its box; the box title gives the plain field label, the
+value and the text read. `render.sheet_size` gives the sheet size without drawing it. A DXF or a text document
+has no picture and shows as before.
+
+**Tests.** 3 tests in `tests/integration/test_proof_boxes.py` (a stand-in for OCR, so no Tesseract needed):
+a box for each value with a region and links both ways; the sheet picture is served, a missing sheet or a
+text document gives 404 and shows no boxes; box colours follow confidence and use theme tokens.
+No screenshots were taken in this run (owner's rule for the unattended run).
+
+## 11. End of Parts C and D: full suite and strict numbers
+
+- Full suite in two halves (laptop, Docker Postgres, at least 800 MB free): database tests 5 passed; the rest
+  871 passed and 1 failed in 5 min 16 s. The failure was `tests/unit/test_crosscheck.py`, an uncommitted
+  Stage 5 draft (not part of this branch's commits); it is fixed on the Stage 5 branch.
+- Strict v2 numbers (`python -m backend.evaluate --set test|reworded --mode llm`, drawing reading off) reproduce
+  exactly: 0.778 and 0.561 on the test set (with and without the DXF), 0.727 and 0.497 on the reworded set.

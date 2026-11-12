@@ -52,6 +52,15 @@ class Settings(BaseSettings):
     drawing_reading: Literal["off", "ocr"] = Field(default="ocr", description="DRAWING_READING")
     ocr_dpi: Literal[150, 300] = Field(default=300, description="OCR_DPI")
     tesseract_cmd: str | None = Field(default=None, description="TESSERACT_CMD: the Tesseract program if not on PATH")
+    # Vision model for drawing pictures (Stage 4 Part B): "recorded" replays data/recorded-vision/ answers whose
+    # SHA-256 matches the upload; "ollama" calls OLLAMA_URL (Colab). Off by default. Its values are "read from a
+    # picture": low or medium confidence, only for fields OCR left empty, and always reviewed.
+    vision_mode: Literal["off", "recorded", "ollama"] = Field(default="off", description="VISION_MODE")
+    # Symbol detector (Stage 4 Part C): "template" finds breaker and switch symbols on drawings OCR read, and
+    # gives a low-confidence device for ways no other method gave one. "off" skips it.
+    symbol_detector: Literal["off", "template"] = Field(default="template", description="SYMBOL_DETECTOR")
+    vision_recorded_dir: Path = Field(default=REPO_ROOT / "data" / "recorded-vision",
+                                      description="VISION_RECORDED_DIR")
     # The sample enquiry (Stage UX): "Try the sample enquiry" uploads the committed showcase files from here.
     sample_dir: Path = Field(default=REPO_ROOT / "data" / "projects" / "showcase", description="SAMPLE_DIR")
     # Developer pages (Stage UX visual pass): /debug/breaker shows the breaker drawing with its anchor

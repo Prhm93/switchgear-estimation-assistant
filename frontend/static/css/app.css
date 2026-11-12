@@ -1022,3 +1022,22 @@ a.chip--neutral:hover { background: var(--veil-hover); color: var(--text); }
   .tiles { grid-template-columns: 1fr; }
   .watermark { display: none; }
 }
+
+/* --- 13. Drawing sheet with boxes in the proof viewer (Stage 4 Part D) --------------------------------- */
+.sheet { margin: 0 0 var(--space-5); }
+.sheet__frame { position: relative; border-radius: var(--radius-sm); overflow: hidden; box-shadow: inset 0 0 0 1px var(--hairline); }
+.sheet__img { display: block; width: 100%; height: auto; }
+.sheet__boxes { position: absolute; inset: 0; width: 100%; height: 100%; }
+.sheet__box rect { fill: transparent; stroke-width: 2.5; vector-effect: non-scaling-stroke; transition: var(--transition); }
+.sheet__box:hover rect, .sheet__box:focus rect, .sheet__box:target rect { stroke-width: 4; fill: var(--tint-review); }
+.sheet__box:focus { outline: none; }
+.sheet__box:focus-visible rect { stroke: var(--focus); stroke-width: 4; }
+.sheet__box--high { stroke: var(--success); }
+.sheet__box--medium { stroke: var(--warning); }
+.sheet__box--low { stroke: var(--blue-text); }
+.sheet__box--conflict { stroke: var(--red); }
+.sheet__key { padding: 0 var(--space-1); border-radius: var(--radius-xs); }
+.sheet__key--medium { box-shadow: inset 0 0 0 2px var(--warning); }
+.sheet__key--low { box-shadow: inset 0 0 0 2px var(--blue-text); }
+.value-line__box { align-self: center; white-space: nowrap; }
+.value-line:target { background: var(--row-hover); }

@@ -6,6 +6,7 @@ Usage (PowerShell, from the repo folder)::
     .venv\\Scripts\\python.exe -m backend.drawings counts --set test      # the 20 test projects
     .venv\\Scripts\\python.exe -m backend.drawings counts --set reworded
     .venv\\Scripts\\python.exe -m backend.drawings ocr --set test --version scanned --dpi 300
+    .venv\\Scripts\\python.exe -m backend.drawings vision --set test --version scanned  # recorded answers
 
 ``counts`` prints the symbol classes per drawing version (clean, scanned,
 photo) as a Markdown table. Training data comes only from ``data/training/``;
@@ -31,8 +32,9 @@ import statistics
 import subprocess
 import sys
 import time
+from pathlib import Path
 
-from backend.app.drawing.data import DrawingSample, class_counts, count_table, evaluation_drawings, training_drawings
+from backend.app.drawing.data import DATA, DrawingSample, class_counts, count_table, evaluation_drawings, training_drawings
 from backend.app.evaluation import Score, score, total
 from backend.app.storage import FileType
 
@@ -189,6 +191,156 @@ def measure_ocr(samples: list[DrawingSample], dpi: int) -> str:
     return "\n".join(out)
 
 
+def measure_vision(samples: list[DrawingSample], folder: Path) -> str:
+    """Score the recorded vision answers alone (no OCR) against the answer keys, as for OCR.
+
+    Sheets without a recording are counted and listed as missing, never scored as empty readings.
+    """
+    import hashlib
+
+    from backend.app.drawing.vision import RecordedVisionClient, VisionUnavailable, vision_values
+
+    try:
+        client = RecordedVisionClient(folder)
+    except VisionUnavailable as error:
+        return f"NOT RUN YET: {error}. Make the recordings on Colab (docs/stage-4-colab-vision.md)."
+    grouped: dict[str, Score] = {}
+    missing = 0
+    for s in samples:
+        data = s.path.read_bytes()
+        try:
+            output = client.read(file_sha256=hashlib.sha256(data).hexdigest(), sheet=s.sheet, image=lambda: b"")
+        except VisionUnavailable:
+            missing += 1
+            continue
+        values = vision_values(output, file=s.path.name, version=s.version, sheet=s.sheet, ocr_text="", filled=set())
+        for g, sc in score(values, s.values).items():
+            grouped.setdefault(g, Score()).add(sc)
+    out = [f"{len(samples) - missing} of {len(samples)} sheets have a recording ({client.label})", "",
+           "| Group | TP | FP | FN | P | R | F1 |", "|---|---|---|---|---|---|---|"]
+    for name, s in _summary(grouped).items():
+        out.append(f"| {name} | {s.tp} | {s.fp} | {s.fn} | {_f(s.precision)} | {_f(s.recall)} | {_f(s.f1)} |")
+    a = total(grouped)
+    out.append(f"| **all vision fields** | {a.tp} | {a.fp} | {a.fn} | {_f(a.precision)} | {_f(a.recall)} | {_f(a.f1)} |")
+    return "\n".join(out)
+
+
+def _sheet(sample: DrawingSample):
+    from backend.app.drawing.render import sheet_image
+
+    file_type = FileType.PDF if sample.path.suffix.lower() == ".pdf" else FileType.PNG
+    return sheet_image(file_type, sample.path.read_bytes(), sample.page or 1)
+
+
+def build_symbol_templates(samples: list[DrawingSample], per_class: int = 60) -> dict:
+    """Average crops of the breaker classes from training drawings (clean versions only)."""
+    from backend.app.drawing.data import DataMixError
+    from backend.app.drawing.symbols import BREAKER_CLASSES, WORK_SCALE, build_templates, ink
+
+    if any(s.purpose != "training" for s in samples):
+        raise DataMixError("templates are built from training drawings only")
+    crops: dict = {c: [] for c in BREAKER_CLASSES}
+    for s in samples:
+        if s.version.value != "clean" or not any(sym.cls in crops for sym in s.symbols):
+            continue
+        if all(len(v) >= per_class for v in crops.values()):
+            break
+        picture = ink(_sheet(s))
+        for sym in s.symbols:
+            if sym.cls in crops and len(crops[sym.cls]) < per_class:
+                x0, y0, x1, y1 = (round(v * WORK_SCALE) for v in sym.bbox)
+                crops[sym.cls].append(picture[y0:y1, x0:x1].copy())
+    return build_templates(crops)
+
+
+def score_symbols(samples: list[DrawingSample], detector) -> tuple[dict, list[float]]:
+    """Per-class box scores (IoU at least 0.5) of the breaker classes, and seconds per sheet."""
+    from backend.app.drawing.boxes import Box, match_boxes
+    from backend.app.drawing.symbols import BREAKER_CLASSES
+
+    keep = {c.value for c in BREAKER_CLASSES}
+    totals: dict = {}
+    seconds = []
+    for s in samples:
+        image = _sheet(s)
+        start = time.perf_counter()
+        found = detector.detect(image)
+        seconds.append(time.perf_counter() - start)
+        pred = [Box(f.cls.value, f.bbox, f.score) for f in found if f.cls.value in keep]
+        truth = [Box(t.cls.value, t.bbox) for t in s.symbols if t.cls.value in keep]
+        for cls, sc in match_boxes(pred, truth).items():
+            t = totals.setdefault(cls, {"tp": 0, "fp": 0, "fn": 0, "iou": []})
+            t["tp"] += sc.tp
+            t["fp"] += sc.fp
+            t["fn"] += sc.fn
+            if sc.mean_iou is not None:
+                t["iou"] += [sc.mean_iou] * sc.tp
+    return totals, seconds
+
+
+def symbol_table(totals: dict) -> str:
+    def prf(t):
+        p = t["tp"] / (t["tp"] + t["fp"]) if t["tp"] + t["fp"] else None
+        r = t["tp"] / (t["tp"] + t["fn"]) if t["tp"] + t["fn"] else None
+        f = 2 * p * r / (p + r) if p and r else (0.0 if p is not None and r is not None else None)
+        return p, r, f
+    lines = ["| Class | TP | FP | FN | P | R | F1 | mean IoU |", "|---|---|---|---|---|---|---|---|"]
+    allt = {"tp": 0, "fp": 0, "fn": 0, "iou": []}
+    for cls in sorted(totals):
+        t = totals[cls]
+        for k in ("tp", "fp", "fn", "iou"):
+            allt[k] += t[k]
+        p, r, f = prf(t)
+        iou = statistics.mean(t["iou"]) if t["iou"] else None
+        lines.append(f"| {cls} | {t['tp']} | {t['fp']} | {t['fn']} | {_f(p)} | {_f(r)} | {_f(f)} | {_f(iou)} |")
+    p, r, f = prf(allt)
+    iou = statistics.mean(allt["iou"]) if allt["iou"] else None
+    lines.append(f"| **all four** | {allt['tp']} | {allt['fp']} | {allt['fn']} | {_f(p)} | {_f(r)} | {_f(f)} | {_f(iou)} |")
+    return "\n".join(lines)
+
+
+def _symbol_training(args) -> int:
+    """``templates`` and ``tune-symbols``: training drawings only, never a test set."""
+    from backend.app.drawing.symbols import TEMPLATES, TemplateDetector, save_templates
+
+    projects = sorted({s.project_id for s in training_drawings()})[:args.count]
+    samples = [s for s in training_drawings() if s.project_id in projects]
+    if not samples:
+        print("no training drawings: build them with python -m data_generator build --set training", file=sys.stderr)
+        return 2
+    if args.command == "templates":
+        templates = build_symbol_templates(samples)
+        save_templates(templates)
+        sizes = {k: v.shape for k, v in templates.items() if "__" not in k}
+        print(f"templates from {len(projects)} training projects written to {TEMPLATES.name}: {sizes}")
+        return 0
+    if args.version != "all":
+        samples = [s for s in samples if s.version.value == args.version]
+    print(f"## Threshold on training drawings ({len(projects)} projects, {len(samples)} sheets)\n")
+    from backend.app.drawing.boxes import Box, match_boxes
+    from backend.app.drawing.symbols import BREAKER_CLASSES, ink
+
+    thresholds = (0.50, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90)
+    keep = {c.value for c in BREAKER_CLASSES}
+    detector = TemplateDetector(threshold=min(thresholds))
+    counts = {t: [0, 0, 0] for t in thresholds}
+    for s in samples:  # candidates once per sheet at the lowest threshold, then filtered: the same peaks
+        image = _sheet(s)
+        found = detector.candidates(ink(image))
+        truth = [Box(t.cls.value, t.bbox) for t in s.symbols if t.cls.value in keep]
+        for threshold in thresholds:
+            pred = [Box(f.cls.value, f.bbox, f.score) for f in detector.select(found, image.size, threshold)]
+            for sc in match_boxes(pred, truth).values():
+                counts[threshold][0] += sc.tp
+                counts[threshold][1] += sc.fp
+                counts[threshold][2] += sc.fn
+    print("| Threshold | TP | FP | FN | F1 |\n|---|---|---|---|---|")
+    for threshold, (tp, fp, fn) in counts.items():
+        f1 = 2 * tp / (2 * tp + fp + fn) if tp else 0.0
+        print(f"| {threshold:.2f} | {tp} | {fp} | {fn} | {f1:.3f} |")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m backend.drawings", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -201,7 +353,23 @@ def main(argv: list[str] | None = None) -> int:
     o.add_argument("--version", choices=["clean", "scanned", "photo"], default="clean")
     o.add_argument("--dpi", type=int, choices=[150, 300], default=300)
     o.add_argument("--count", type=int, default=None, help="first N projects only")
+    v = sub.add_parser("vision", help="score the recorded vision answers of one drawing version")
+    v.add_argument("--set", dest="set_name", choices=["test", "reworded", "showcase"], default="test")
+    v.add_argument("--version", choices=["clean", "scanned", "photo"], default="scanned")
+    v.add_argument("--count", type=int, default=None, help="first N projects only")
+    v.add_argument("--recorded", type=Path, default=DATA / "recorded-vision")
+    t = sub.add_parser("templates", help="rebuild the symbol templates from training drawings only")
+    t.add_argument("--count", type=int, default=80, help="training projects to read at most")
+    u = sub.add_parser("tune-symbols", help="detector F1 per threshold on training drawings only")
+    u.add_argument("--count", type=int, default=10)
+    u.add_argument("--version", choices=["clean", "scanned", "photo", "all"], default="all")
+    d = sub.add_parser("symbols", help="score the symbol detector on one drawing version of a test set")
+    d.add_argument("--set", dest="set_name", choices=["test", "reworded", "showcase"], default="test")
+    d.add_argument("--version", choices=["clean", "scanned", "photo"], default="clean")
+    d.add_argument("--count", type=int, default=None, help="first N projects only")
     args = parser.parse_args(argv)
+    if args.command in ("templates", "tune-symbols"):
+        return _symbol_training(args)
     if args.command == "counts":
         samples = training_drawings() if args.set_name == "training" else evaluation_drawings(args.set_name)
     else:
@@ -217,6 +385,20 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "counts":
         print(f"## Symbol classes, {args.set_name} ({projects} projects, {len(samples)} drawing images)\n")
         print(count_table(class_counts(samples)))
+        return 0
+    if args.command == "symbols":
+        from backend.app.drawing.symbols import TemplateDetector
+
+        meter = PeakMemory()
+        totals, seconds = score_symbols(samples, TemplateDetector())
+        print(f"## Symbol detector (template), {args.set_name} set, {args.version} drawings ({projects} projects)\n")
+        print(f"{len(samples)} sheets; seconds per sheet: mean {statistics.mean(seconds):.2f}, max {max(seconds):.2f}; "
+              f"peak memory: Python {meter.self_mb():.0f} MB\n")
+        print(symbol_table(totals))
+        return 0
+    if args.command == "vision":
+        print(f"## Vision (recorded), {args.set_name} set, {args.version} drawings ({projects} projects)\n")
+        print(measure_vision(samples, args.recorded))
         return 0
     print(f"## OCR, {args.set_name} set, {args.version} drawings ({projects} projects)\n")
     print(measure_ocr(samples, args.dpi))

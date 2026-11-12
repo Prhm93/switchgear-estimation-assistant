@@ -8,7 +8,7 @@ The product is built in stages. Built so far:
 - Synthetic data: an invented parts catalogue and an enquiry generator with exact answer keys (Stage 1).
 - A working path from upload to Word report, with an audit log (Stage 2).
 - Model extraction with a quote check, replayed from recorded runs on the laptop (Stage 3).
-- OCR of drawing PDFs and images (Stage 4, Part A).
+- OCR of drawing PDFs and images, a vision-model reader replayed from recordings, a breaker symbol detector, and boxes on the drawing (Stage 4).
 - A redesign of every screen around one plain path, Files, Check, Quote (Stage UX).
 
 See [Status](#status).
@@ -116,7 +116,7 @@ Two settings change how values are read: `MODEL_MODE` (`rules`, the default, `re
 | Design v2 | Home page, sidebar app layout, project dashboard, glass design system (look only) | Done, then replaced by Stage UX: [report](docs/design-v2.md) |
 | UX Redesign | "Enquiry" everywhere, top bar, steps Files, Check and Quote, Summary with six checks, start page with notes, dark and light themes, home page with the breaker drawing, test isolation, delete, archive and rename | Done: [report](docs/stage-ux.md) |
 | 3 LLM extraction | Ollama and recorded modes, quote check, rules vs LLM scores | Done: Part A, 3b (cut-off fix, v2 Colab run and LLM scores) and 3c (relaxed quote check, the app default; strict v2 check kept as the baseline): [report](docs/stage-3.md) |
-| 4 Drawing understanding | OCR, vision reading, symbol detector | In progress: Part A (Tesseract OCR of drawing PDFs and images, 300 dpi default; values marked for review) built and measured per clean, scanned and photo version. Parts B (vision model), C (symbol detector) and D (boxes in the UI) not started: [report](docs/stage-4.md) |
+| 4 Drawing understanding | OCR, vision reading, symbol detector | In progress: Part A (Tesseract OCR of drawing PDFs and images, 300 dpi default; values marked for review) built and measured per clean, scanned and photo version. Part B (vision model, recorded mode; no recordings yet, NOT RUN YET), Part C (template symbol detector, all-class F1 0.867 to 0.909 per set and version; ACB almost never found) and Part D (boxes on the drawing in the proof viewer) built: [report](docs/stage-4.md) |
 | 5 Cross-document checks | Conflicts and missing information | Not started |
 | 6 Confidence and review | Approve, edit, reject; approved values only | Not started |
 | 7 Evaluation | One-command evaluation of all test projects | Not started (CI already runs the tests) |
@@ -228,7 +228,7 @@ Only permissive licences are used. AGPL libraries (for example PyMuPDF and Ultra
 | Pillow | 13.0.0 | MIT-CMU | Scan and photo effects; app: drawing images for OCR |
 | pytesseract | 0.3.13 | Apache-2.0 | App: calls Tesseract for drawing OCR (Stage 4). Declares Python up to 3.12 only; tested working on 3.14.4 |
 | Tesseract OCR (with the `eng` data) | 5.4.0 on the laptop (UB Mannheim build); Debian's `tesseract-ocr` package in Docker and CI | Apache-2.0 | App: drawing OCR, a separate program, not a Python package |
-| numpy | 2.5.4 | BSD-3-Clause | Scan and photo effects, homographies |
+| numpy | 2.5.4 | BSD-3-Clause | Scan and photo effects, homographies; app: the symbol detector (Stage 4 Part C) |
 | PostgreSQL | 16 | PostgreSQL Licence | Database (Docker image) |
 | pgvector | 0.8.7 | PostgreSQL Licence | Vector search extension |
 | IBM Plex Sans, IBM Plex Mono | 1.1.0 | SIL OFL 1.1 | Fonts, self-hosted (`frontend/static/fonts/OFL.txt`) |

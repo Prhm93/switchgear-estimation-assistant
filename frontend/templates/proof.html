@@ -41,6 +41,21 @@
         {%- endfor %}
       </nav>
     </div>
+    {%- if sheet %}
+    {#- The drawing sheet with a box for every value read on it (Part D). Each box opens its value; each value with
+        a box links back to it. Box colours follow confidence; titles are autoescaped. -#}
+    <figure class="sheet">
+      <div class="sheet__frame">
+        <img class="sheet__img" src="{{ sheet.src }}" alt="Sheet {{ page_no }} of {{ current.original_name }}" width="{{ sheet.width }}" height="{{ sheet.height }}" loading="lazy">
+        <svg class="sheet__boxes" viewBox="0 0 {{ sheet.width }} {{ sheet.height }}" preserveAspectRatio="none" role="group" aria-label="Boxes for the values read on this sheet">
+          {%- for b in sheet.boxes %}
+          <a class="sheet__box sheet__box--{{ b.tone }}" id="box-{{ b.id }}" href="#v-{{ b.id }}"><title>{{ b.title }}</title><rect x="{{ '%g' | format(b.x) }}" y="{{ '%g' | format(b.y) }}" width="{{ '%g' | format(b.w) }}" height="{{ '%g' | format(b.h) }}"/></a>
+          {%- endfor %}
+        </svg>
+      </div>
+      <figcaption class="small muted">{{ sheet.boxes | length }} box{{ "es" if sheet.boxes | length != 1 }} on this sheet, coloured by confidence: <span class="sheet__key sheet__key--medium">medium</span> <span class="sheet__key sheet__key--low">low</span>. Select a box to see its value.</figcaption>
+    </figure>
+    {%- endif %}
     {#- File text: every segment is autoescaped; highlighted spans are the sources of the values on the right. -#}
     <pre class="doc-text">{% for s in segments %}{% if s.marked and s.value_ids[0] < 0 %}<mark class="mark--flag" title="Instruction-like text: not followed">{{ s.text }}</mark>{% elif s.marked %}<mark id="src-{{ s.value_ids[0] }}" data-values="{{ s.value_ids | join(' ') }}">{{ s.text }}</mark>{% else %}{{ s.text }}{% endif %}{% endfor %}</pre>
   </section>
@@ -59,6 +74,7 @@
           <span class="value-line__value mono">{{ display(value, unit) }}</span>
           <span class="value-line__src">{{ method_words(v.method, v.agreement, v.quote_match) }}</span>
         </a>
+        {%- if sheet and v.id in sheet.ids %}<a class="value-line__box small" href="#box-{{ v.id }}">Show on the drawing</a>{% endif %}
         {{ value_status(v) }}
       </div>
       {%- else %}

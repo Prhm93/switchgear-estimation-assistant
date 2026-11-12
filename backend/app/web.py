@@ -27,7 +27,7 @@ from sqlalchemy.orm import Session
 
 from backend.app import enquiry, labels, services
 from backend.app.design.breaker import breaker_svg
-from backend.app.drawing.render import can_render, drawing_png
+from backend.app.drawing.render import can_render, drawing_png, sheet_size
 from backend.app.estimate import load_rules
 from backend.app.highlight import segments
 from backend.app.models import AuditEvent, Document, Estimate, ExtractedValueRow, Match, Project
@@ -773,8 +773,53 @@ def proof_viewer(request: Request, project_id: int, session: SessionDep, doc: in
         segs = segments(text, [(v.id, v.source_text or "", _anchor(v)) for v in values]
                         + [(-1 - i, t, None) for i, t in enumerate(flagged)])
     flags = enquiry.instruction_flags(project, current.id) if current is not None else []
+    sheet = _sheet_boxes(request, current, page_no, values) if current is not None else None
     return render(request, "proof.html", **enquiry_context(session, project), current=current, pages=pages,
-                  page_no=page_no, segments=segs, values=values, flags=flags, tab="details")
+                  page_no=page_no, segments=segs, values=values, flags=flags, tab="details", sheet=sheet)
+
+
+def _sheet_boxes(request: Request, doc: Document, sheet: int | None, values: list[ExtractedValueRow]
+                 ) -> dict[str, Any] | None:
+    """A drawing sheet's picture and one box per value read on it with a region (Stage 4 Part D).
+
+    Boxes are in the answer key's coordinates, so the SVG over the picture uses the sheet's size as its
+    viewBox. Only drawing pictures (PDF, PNG, JPG) have one; a DXF or a text document has none.
+    """
+    if doc.kind != "schematic" or sheet is None or not can_render(FileType(doc.file_type)):
+        return None
+    try:
+        width, height = sheet_size(FileType(doc.file_type), request.app.state.storage.read(doc.storage_key), sheet)
+    except (OSError, ValueError):
+        return None
+    boxes = []
+    for v in values:
+        region = next((r for r in v.regions or [] if r.get("sheet") in (None, sheet)), None)
+        if region is None:
+            continue
+        x0, y0, x1, y1 = region["bbox"]
+        value, unit = enquiry.shown(v)
+        tone = v.confidence if v.confidence in ("high", "medium", "low", "conflict") else "low"
+        title = f"{labels.field_label(v.field)}: {labels.display(value, unit)}"
+        if v.source_text:
+            title += f" (read: {v.source_text})"
+        boxes.append({"id": v.id, "tone": tone, "x": x0, "y": y0, "w": x1 - x0, "h": y1 - y0, "title": title})
+    return {"src": f"/documents/{doc.id}/sheets/{sheet}.png", "width": width, "height": height, "boxes": boxes,
+            "ids": {b["id"] for b in boxes}}
+
+
+@router.get("/documents/{document_id}/sheets/{sheet}.png")
+def sheet_png(request: Request, document_id: int, sheet: int, session: SessionDep) -> Response:
+    """One drawing sheet as a picture, for the proof viewer (the boxes are drawn over it in SVG)."""
+    doc = session.get(Document, document_id)
+    if doc is None or doc.kind != "schematic" or not can_render(FileType(doc.file_type)):
+        raise HTTPException(404, "This file has no drawing picture.")
+    if doc.file_type != "pdf" and sheet != 1:
+        raise HTTPException(404, "A drawing picture has one sheet.")
+    try:
+        png = drawing_png(FileType(doc.file_type), request.app.state.storage.read(doc.storage_key), sheet, [])
+    except (OSError, ValueError) as error:
+        raise HTTPException(404, "The drawing sheet could not be shown.") from error
+    return Response(png, media_type="image/png", headers={"Cache-Control": "private, max-age=300"})
 
 
 @router.get("/enquiries/{project_id}/activity", response_class=HTMLResponse)
