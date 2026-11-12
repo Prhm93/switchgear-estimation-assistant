@@ -5,6 +5,8 @@
  * that vector times --explode. A leader line ends on its part's anchor point, so when the part moves
  * the end of the leader moves with it: its last point is anchor + explode * (dx, dy).
  * Hovering or focusing a part or a label highlights both (matched by data-part).
+ * A page that sets the labels larger than the drawing's own 11 units calls fitLeaders, so each leader
+ * starts just clear of its (now wider) label instead of under it.
  */
 (function () {
   "use strict";
@@ -18,6 +20,25 @@
       var y = Number(d.ay) + v * Number(d.dy);
       leader.setAttribute("d", "M" + d.x + " " + d.y + "H" + d.elbow + "L" + x.toFixed(1) + " " + y.toFixed(1));
     });
+  }
+
+  /* Start each leader 8 units clear of its label's measured text; hidden labels are left alone. */
+  function fitLeaders(svg) {
+    svg.querySelectorAll(".bk-label").forEach(function (label) {
+      var text = label.querySelector("text");
+      var leader = label.querySelector(".bk-leader");
+      var box = text.getBBox();
+      if (!box.width) return;
+      var d = leader.dataset;
+      if (text.getAttribute("text-anchor") === "start") {
+        d.x = (box.x + box.width + 8).toFixed(1);
+        d.elbow = Math.max(Number(d.elbow), Number(d.x) + 8).toFixed(1);
+      } else {
+        d.x = (box.x - 8).toFixed(1);
+        d.elbow = Math.min(Number(d.elbow), Number(d.x) - 8).toFixed(1);
+      }
+    });
+    setExplode(svg, svg.style.getPropertyValue("--explode"));
   }
 
   function link(svg) {
@@ -41,7 +62,7 @@
     svg.classList.add("is-tripped");
   }
 
-  window.SeaBreaker = { setExplode: setExplode, trip: trip };
+  window.SeaBreaker = { setExplode: setExplode, fitLeaders: fitLeaders, trip: trip };
 
   document.querySelectorAll("[data-breaker]").forEach(function (frame) {
     var svg = frame.querySelector("svg.breaker");

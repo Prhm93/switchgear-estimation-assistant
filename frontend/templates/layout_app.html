@@ -6,7 +6,7 @@
 {%- block body %}
 <header class="topbar">
   <div class="topbar__inner">
-    <a class="brand" href="/">{{ brand_mark(24) }}<span class="brand__name">Estimation Assistant</span></a>
+    <a class="brand" href="/">{{ brand_mark(24) }}<span class="brand__name"><span class="brand__lead">Switchgear </span>Estimation Assistant</span></a>
     <nav class="topbar__nav" aria-label="Main">
       <a class="topbar__link" href="/enquiries"{% if nav is defined and nav == "enquiries" %} aria-current="page"{% endif %}>Enquiries</a>
       <a class="btn btn--primary btn--sm" href="/enquiries/new"{% if nav is defined and nav == "new" %} aria-current="page"{% endif %}>{{ icon("plus", "sm") }}New enquiry</a>
@@ -21,7 +21,7 @@
 </main>
 
 <footer class="footer">
-  <span>Demonstration with synthetic data only.</span>
+  <span><strong>{{ app_name }}</strong> · Demonstration with synthetic data only.</span>
   <a href="/health">System status</a>
 </footer>
 {% endblock -%}

@@ -62,6 +62,10 @@
   --label: #8597B8;           /* small upper-case labels in the sidebar */
   --label-table: #8FA2C4;     /* table headings */
   --word-dim: #7D8FB2;        /* statement words before the scroll reaches them: dimmer, still AA */
+  /* Hero background lines (hero-lines.js): faint strokes only, never text. */
+  --hero-grid: rgba(79, 134, 247, 0.082);
+  --hero-line: rgba(79, 134, 247, 0.105);
+  --hero-line-strong: rgba(79, 134, 247, 0.19);
 
   --red: #E31E24;
   --red-hover: #C8161C;
@@ -176,6 +180,9 @@
   --label: #55668A;
   --label-table: #4F6185;
   --word-dim: #5D6E8F;
+  --hero-grid: rgba(37, 88, 170, 0.092);
+  --hero-line: rgba(54, 96, 176, 0.095);
+  --hero-line-strong: rgba(54, 96, 176, 0.18);
   --red: #E31E24;
   --red-hover: #C8161C;
   --on-red: #FFFFFF;
@@ -281,7 +288,7 @@
   --fs-xl: 19px;
   --fs-title: 30px;     /* page titles in the app (sans) */
   --fs-section: 52px;   /* section headings on the home page */
-  --fs-hero: 84px;
+  --fs-hero: 72px;
   --lh-body: 1.6;
 
   /* Spacing. */
@@ -310,6 +317,7 @@
     box-shadow var(--dur) var(--ease);
 
   --row-bg: var(--glass);            /* rows on the page; cards and the panel set it to --deep */
+  --nav-h: 72px;              /* height of the sticky home page header; home.js measures it */
   --site-max: 1280px;
   --page-max: 1180px;
 }

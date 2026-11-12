@@ -26,6 +26,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from backend.app import enquiry, labels, services
+from backend.app.design.breaker import breaker_svg
 from backend.app.drawing.render import can_render, drawing_png
 from backend.app.estimate import load_rules
 from backend.app.highlight import segments
@@ -103,7 +104,7 @@ def enquiry_context(session: Session, project: Project, found: enquiry.Decisions
 @router.get("/", response_class=HTMLResponse)
 def home(request: Request) -> HTMLResponse:
     """The public home page. It needs no database: its numbers are the measured ones from the docs."""
-    return render(request, "home.html")
+    return render(request, "home.html", breaker=breaker_svg(), story_breaker=breaker_svg("story-"))
 
 
 OLD_SCREENS = {"upload": "files", "analysis": "proof", "review": "check", "estimate": "quote", "audit": "activity"}

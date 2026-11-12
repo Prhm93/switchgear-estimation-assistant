@@ -1,47 +1,88 @@
 /*
- * Home page motion, written by hand (no library).
+ * Home page motion, written by hand (no library). Needs breaker.js (window.SeaBreaker).
  *
- * - The statement: as it scrolls through the screen its words brighten in reading order. Every word
- *   is in the HTML and readable before that; only the colour changes.
- * - How it works: the switchboard line drawing draws itself with the scroll (stroke-dashoffset,
- *   driven by the --draw custom property, 0 to 1).
+ * - The top bar height goes into --nav-h, so the story card sticks just under it.
+ * - The hero drawing draws itself on load in about 3 s: the parts first, from the frame outwards, then
+ *   the leader lines, then the labels. After that, scrolling the first screen lifts the arc chutes and
+ *   slides the front plate forward (SeaBreaker.setExplode, 0 to 1).
+ * - The story: the step nearest the middle of the screen is worked out here, in one place, and set as
+ *   data-step on the section; CSS shows that step's text and caption from the same attribute.
  *
- * Work is done only while a part is on screen (IntersectionObserver) and at most once per frame.
- * With reduced motion, or without IntersectionObserver, nothing moves and everything is shown.
+ * With reduced motion the finished drawing is shown, still; the story step still follows the scroll
+ * (only which text is bright changes, nothing moves).
  */
 (function () {
   "use strict";
   var root = document.documentElement;
   var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (reduce || !("IntersectionObserver" in window)) {
-    root.classList.remove("js");
-    return;
-  }
-
-  var statement = document.querySelector(".statement");
-  var words = statement ? statement.querySelectorAll(".word") : [];
-  var figure = document.querySelector(".how__figure");
-  var visible = new Set();
+  var header = document.querySelector(".site-header");
+  var hero = document.querySelector(".hero");
+  var heroSvg = document.querySelector('[data-breaker="hero"] svg.breaker');
+  var story = document.querySelector(".story");
+  var steps = story ? story.querySelectorAll(".story__step") : [];
+  var exploding = false;
   var queued = false;
 
-  /* 0 when the top of el reaches the bottom of the screen, 1 when its middle reaches 40 % from the top. */
-  function progress(el) {
-    var box = el.getBoundingClientRect();
-    var screen = window.innerHeight || 1;
-    var span = screen * 0.6 + box.height * 0.5;
-    return Math.min(1, Math.max(0, (screen - box.top) / span));
+  /* Parts in drawing order: the frame first, then outwards. */
+  var ORDER = ["frame", "fixed-contacts", "moving-contacts", "arcing-contacts", "isolating-contacts",
+               "rear-terminals", "slide-rails", "arc-chutes", "auxiliary-switches", "front-plate",
+               "position-indicator"];
+  var PART_GAP = 160;   // ms between parts
+  var DRAW_END = 3200;  // ms: parts, then leaders (from 1900), then labels (from 2400)
+
+  function measureNav() {
+    if (header) root.style.setProperty("--nav-h", header.offsetHeight + "px");
+  }
+
+  function drawOn(svg, done) {
+    var parts = Array.prototype.slice.call(svg.querySelectorAll(".bk-art > .bk-part"));
+    parts.sort(function (a, b) {
+      return ORDER.indexOf(a.dataset.part) - ORDER.indexOf(b.dataset.part);
+    });
+    var strokes = [];
+    parts.forEach(function (part, i) {
+      part.style.setProperty("--delay", i * PART_GAP + "ms");
+      part.querySelectorAll("path:not(.f)").forEach(function (path) {
+        var length = path.getTotalLength();
+        path.style.strokeDasharray = length + " " + length;
+        path.style.strokeDashoffset = String(length);
+        strokes.push(path);
+      });
+    });
+    svg.classList.add("is-drawing");
+    root.classList.remove("hero-pending");  // hidden until now, so it never shows complete first
+    void svg.getBoundingClientRect();  // start from the hidden state
+    svg.classList.add("is-drawn");
+    strokes.forEach(function (path) { path.style.strokeDashoffset = "0"; });
+    window.setTimeout(function () {
+      svg.classList.remove("is-drawing", "is-drawn");
+      strokes.forEach(function (path) {
+        path.style.strokeDasharray = "";
+        path.style.strokeDashoffset = "";
+      });
+      done();
+    }, DRAW_END);
   }
 
   function update() {
     queued = false;
-    if (statement && visible.has(statement)) {
-      var lit = Math.round(progress(statement) * words.length);
-      for (var i = 0; i < words.length; i++) {
-        words[i].classList.toggle("is-on", i < lit);
-      }
+    if (exploding && hero && heroSvg) {
+      var v = (window.scrollY || 0) / Math.max(1, hero.offsetHeight * 0.6);
+      if (v <= 1.05) window.SeaBreaker.setExplode(heroSvg, v);
     }
-    if (figure && visible.has(figure)) {
-      figure.style.setProperty("--draw", progress(figure).toFixed(3));
+    if (story && steps.length) {
+      var middle = window.innerHeight * 0.5;
+      var best = 1;
+      var bestDistance = Infinity;
+      for (var i = 0; i < steps.length; i++) {
+        var box = steps[i].getBoundingClientRect();
+        var distance = Math.abs(box.top + box.height / 2 - middle);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          best = i + 1;
+        }
+      }
+      if (story.dataset.step !== String(best)) story.dataset.step = String(best);
     }
   }
 
@@ -52,18 +93,33 @@
     }
   }
 
-  var observer = new IntersectionObserver(function (entries) {
-    entries.forEach(function (entry) {
-      if (entry.isIntersecting) {
-        visible.add(entry.target);
-      } else {
-        visible.delete(entry.target);
-      }
-    });
+  /* The home page sets the labels larger than the drawing's own size; refit the leaders to them once
+     the fonts are in, and again when the width changes (labels hidden below 1100 px come back). */
+  function fitAll() {
+    if (!window.SeaBreaker) return;
+    document.querySelectorAll("[data-breaker] svg.breaker").forEach(window.SeaBreaker.fitLeaders);
+  }
+
+  measureNav();
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(fitAll);
+  } else {
+    fitAll();
+  }
+  window.addEventListener("resize", function () {
+    measureNav();
+    fitAll();
     schedule();
   });
-  if (statement) observer.observe(statement);
-  if (figure) observer.observe(figure);
   window.addEventListener("scroll", schedule, { passive: true });
-  window.addEventListener("resize", schedule);
+
+  if (heroSvg && window.SeaBreaker && !reduce) {
+    drawOn(heroSvg, function () {
+      exploding = true;
+      schedule();
+    });
+  } else {
+    root.classList.remove("hero-pending");
+  }
+  schedule();
 })();

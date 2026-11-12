@@ -301,3 +301,47 @@ Results (this laptop): database tests 5 passed, the rest 788 passed; the strict 
 (0.778, 0.561, 0.727, 0.497). Screenshots (`v2-*`, 1440 px, from a local run with `DEBUG_PAGES=true`):
 the page dark, with anchor points, with anchor points fully exploded (the leaders follow the lifted
 chutes and the plate), and light.
+
+### V3: the home page and its hero
+
+- The hero is the prototype's, rebuilt in the app's own templates: "An engineer-led way to estimate",
+  "Turn enquiries into checked estimates" (the one red word, -0.03em), "Drop the customer's files. Every
+  value shows where it came from.", one red button (Start an enquiry), one link (Try the sample enquiry),
+  "Sample data only" at the foot. The breaker drawing from V2 sits on the right, inlined, unchanged.
+- Background, changed on purpose: `static/js/hero-lines.js` (2D canvas, under 150 lines) replaces the
+  UX-V WebGL shader (`hero-shader.js` deleted; its tests replaced by `tests/integration/test_hero_lines.py`).
+  A faint 64 px grid and 34 thin contour lines, strokes only, no filled shapes. Colours are tokens
+  (`--hero-grid`, `--hero-line`, `--hero-line-strong`, one set per theme) and are read again on a theme
+  switch. Guards: pixel ratio capped at 1.5, at most 30 frames a second, nothing drawn while the tab is
+  hidden or the hero is off screen, one still frame for reduced motion.
+- The drawing draws itself on load in about 3 s (`static/js/home.js`): the parts' strokes in order from
+  the frame outwards, their paper fills with them, then the leader lines, then the labels. After that,
+  scrolling the first screen lifts the arc chutes and slides the front plate forward. Reduced motion
+  shows the finished drawing, still. Labels are set at 13 units (14 in the story) and
+  `SeaBreaker.fitLeaders` starts each leader just clear of its label. No mask or fade over any label;
+  below 1100 px the left-hand labels are hidden.
+- Below the hero: "Read. Check. Approve." (the second word blue); the story "The drawing stays in view."
+  with three steps (Drop the files, We read them, You approve) beside a card that sticks at the top bar
+  height + 16 px and never grows past the screen (100svh minus the bar minus 32 px). `home.js` works out
+  the active step in one place and sets `data-step` on the section; CSS brightens that step and shows
+  its caption (Files received, Values found, Decision needed) from the same attribute. The safety strip
+  ("Decisions, not guesses.", three lines), then the measured numbers with their exact UX-1 labels at
+  body size, each label beside its number, then the footer.
+- One product name: "Switchgear Estimation Assistant" in the top bar of every page, every tab title,
+  every footer and the README; under 700 px the top bar drops the first word (CSS only, the full name
+  stays in the HTML). `tests/integration/test_product_name.py` checks it.
+- The home header is sticky; `--nav-h` holds its height (measured by `home.js`).
+- Tests changed on purpose: `test_home_page.py` (new hero, statement, story, safety, numbers order,
+  unique ids, no mask, left labels hidden below 1100 px) and the headline line in `test_health_page.py`.
+- Until `home.js` starts the draw-on, a flag set before paint (`hero-pending`, only when motion is
+  allowed, cleared by a 4 s timer if script never runs) hides the hero drawing, so it never flashes
+  complete first.
+
+Results (this laptop): database tests 5 passed, the rest 803 passed; the strict v2 numbers reproduce
+(0.778, 0.561, 0.727, 0.497). Hero cost, headless Edge on the laptop's Intel UHD 620 at 1440 x 900: on
+screen 30.3 frames a second (the cap), 2.85 ms of script per frame, browser frames every 16.7 ms;
+scrolled off, 0 frames drawn. With software rendering (SwiftShader, no GPU) the script still takes 4.3 ms
+but the browser delivers only about 2 frames a second while the hero is on screen. Gap between the
+headline and the "Position indicator" label: 138 px at 1280, 140 px at 1440, 142 px at 1920 (2316 not
+measured: too little free memory). Screenshots (`v3-*`): home dark and light at 1280, 1440 and 1920,
+the hero mid draw-on, story steps 1 to 3 at 1440.

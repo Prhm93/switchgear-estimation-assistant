@@ -22,13 +22,13 @@ from fastapi.exceptions import HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from markupsafe import Markup
 from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import __version__, web
 from .config import Settings
 from .db import DatabaseStatus, check_database, migrate, session_factory
+from .design.breaker import breaker_svg
 from .paths import STATIC_DIR, TEMPLATES_DIR
 from .services import sync_catalogue
 from .storage import LocalStorage, Storage
@@ -126,10 +126,9 @@ def create_app(settings: Settings | None = None, storage: Storage | None = None)
         """The breaker drawing on its own, to judge the look. Only with DEBUG_PAGES on; 404 otherwise."""
         if not settings.debug_pages:
             raise HTTPException(404, "Not found.")
-        svg = (STATIC_DIR / "img" / "breaker.svg").read_text(encoding="utf-8")
         return templates.TemplateResponse(
             request, "debug_breaker.html",
-            {"app_name": settings.app_name, "breaker": Markup(svg), "anchors": bool(anchors)})
+            {"app_name": settings.app_name, "breaker": breaker_svg(), "anchors": bool(anchors)})
 
     @app.get("/system", include_in_schema=False)
     def old_health_page() -> RedirectResponse:
