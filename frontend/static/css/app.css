@@ -861,3 +861,44 @@ a.chip--neutral:hover { background: var(--veil-hover); color: var(--text); }
 .theme-btn__sun { display: none; }
 :root[data-theme="dark"] .theme-btn__sun { display: block; }
 :root[data-theme="dark"] .theme-btn__moon { display: none; }
+
+/* 11. The breaker drawing (frontend/static/img/breaker.svg, from tools/make_breaker_svg.py).
+   Pencil strokes in the ink colour; every face is filled with the paper colour so that nearer faces hide
+   what lies behind them. A part moves by its projected explode vector times --explode (0 to 1). */
+
+.breaker { display: block; width: 100%; height: auto; overflow: visible; color: var(--text-soft); --explode: 0; }
+.breaker .f { fill: var(--bg); stroke: none; }
+.breaker .h { stroke-width: 0.5; stroke-opacity: 0.35; }
+.breaker .c { stroke-width: 0.6; stroke-opacity: 0.18; stroke-dasharray: 6 4; }
+.breaker .bk-part,
+.breaker .bk-anchor {
+  transform: translate(calc(var(--explode) * var(--dx) * 1px), calc(var(--explode) * var(--dy) * 1px));
+}
+.breaker text { fill: var(--label-table); stroke: none; font: 500 11px var(--font-mono); letter-spacing: 0.06em; }
+.breaker .bk-note { fill: var(--text-muted); }
+.breaker .bk-leader { stroke-width: 0.8; stroke-opacity: 0.55; }
+/* Hover or focus on a part or its label: both turn blue (breaker.js links them by data-part). */
+.breaker .bk-part.is-active .s,
+.breaker .bk-label.is-active .bk-leader { stroke: var(--blue-text); stroke-opacity: 1; }
+.breaker .bk-label.is-active text { fill: var(--blue-text); }
+/* The one-time red trip flash on the trip indicator (a mark, not text). */
+.breaker .trip-marker { fill: var(--red); fill-opacity: 0; }
+.breaker.is-tripped .trip-marker { animation: bk-trip 600ms ease-out 1 both; }
+@keyframes bk-trip { 0% { fill-opacity: 0; } 18%, 45% { fill-opacity: 1; } 100% { fill-opacity: 0; } }
+/* The blue current-path pulse through the nearest pole. */
+.breaker .current-path { stroke: var(--blue-text); stroke-width: 3; stroke-opacity: 0; stroke-dasharray: 0.12 0.88; }
+.breaker.is-live .current-path { stroke-opacity: 0.7; animation: bk-flow 2.5s linear infinite; }
+@keyframes bk-flow { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+/* Anchor points of the leader lines: the debug page only. */
+.breaker .bk-anchor { fill: var(--red); stroke: none; display: none; }
+.show-anchors .breaker .bk-anchor { display: inline; }
+
+.breaker-frame { max-width: 1040px; margin-top: var(--space-6); }
+.debug-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-6); margin-top: var(--space-6); font-size: var(--fs-md); color: var(--text-soft); }
+.debug-controls__item { display: inline-flex; align-items: center; gap: var(--space-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  .breaker.is-tripped .trip-marker,
+  .breaker.is-live .current-path { animation: none; }
+  .breaker.is-live .current-path { stroke-opacity: 0; }
+}

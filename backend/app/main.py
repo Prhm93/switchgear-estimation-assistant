@@ -5,6 +5,7 @@ Routes:
     GET /health         System status (HTML): what runs and how files are read; /system redirects here.
     GET /health/design  Design samples, for developers (not served in production).
     GET /healthz        Machine-readable health status (JSON), used by Docker.
+    GET /debug/breaker  The breaker drawing with its anchor points; only with DEBUG_PAGES on.
 
 With no DATABASE_URL the app still starts: /, /health and /healthz work and
 the product screens answer 503 with a plain explanation.
@@ -21,6 +22,7 @@ from fastapi.exceptions import HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from markupsafe import Markup
 from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -118,6 +120,16 @@ def create_app(settings: Settings | None = None, storage: Storage | None = None)
         if settings.environment == "production":
             raise HTTPException(404, "Not found.")
         return templates.TemplateResponse(request, "health_design.html", {"app_name": settings.app_name})
+
+    @app.get("/debug/breaker", response_class=HTMLResponse, include_in_schema=False)
+    def breaker_drawing(request: Request, anchors: int = 0) -> HTMLResponse:
+        """The breaker drawing on its own, to judge the look. Only with DEBUG_PAGES on; 404 otherwise."""
+        if not settings.debug_pages:
+            raise HTTPException(404, "Not found.")
+        svg = (STATIC_DIR / "img" / "breaker.svg").read_text(encoding="utf-8")
+        return templates.TemplateResponse(
+            request, "debug_breaker.html",
+            {"app_name": settings.app_name, "breaker": Markup(svg), "anchors": bool(anchors)})
 
     @app.get("/system", include_in_schema=False)
     def old_health_page() -> RedirectResponse:

@@ -266,3 +266,38 @@ Results (this laptop): database tests 5 passed, the rest 774 passed; the strict 
 (0.778, 0.561, 0.727, 0.497). Screenshots in `ui-audit/after-v/` (`v1-*`): home in both themes at 1280,
 1440 and 1920 px, New enquiry and Check at 1440 px in both themes; the letters of the hero headline do
 not touch at -0.03em at any of the three widths. The home page is still the UX-V layout until V3.
+
+### V2: the breaker drawing
+
+- `tools/make_breaker_svg.py` (standard library only, seed 6021) writes `frontend/static/img/breaker.svg`:
+  an invented, generic withdrawable four-pole air circuit breaker in rough, illustrative proportions
+  ("Illustrative, not to scale" on the drawing; no names, logos, model numbers or real product shapes).
+  `python tools/make_breaker_svg.py --check` says whether the committed file is up to date; a test
+  checks the same and that two builds are byte-identical.
+- The model: a front plate with ON and OFF push buttons, a charging handle, a spring-charged window, a
+  trip indicator, an operations counter and a trip-unit window; a body with an open side (a cutaway)
+  showing fixed, moving and arcing contacts for each pole; four arc chutes with 14 thin splitter plates
+  each; finger-ring isolating contacts and four rear terminal stems at the back; auxiliary switches; a
+  position indicator; slide rails that run forward past the front plate.
+- One three-quarter view (36 degrees round, 24 degrees down), orthographic. Hidden edges: back to front,
+  every visible face filled with the paper colour (`--bg`, so it follows the theme); a solid's faces are
+  drawn together and surface details (windows, buttons) after their surface.
+- Pencil look in geometry, no SVG filter: two passes per edge (a full one and a lighter partial one, so
+  tone varies along the line), offsets up to 0.6 px, a gentle bend, ends overshooting 1 to 3 px, widths
+  0.8 to 1.3 and opacities 0.5 to 0.8; 45 degree hatching on shaded faces; faint dashed construction
+  lines. 120 KB on disk, 34 KB compressed.
+- Each part is a group `bk-<part>` with `data-part` and its 3D explode vector, projected (`--dx`, `--dy`):
+  the front plate and position indicator slide forward, the arc chutes lift. Leader lines end on 3D anchor
+  points and move with their part (`static/js/breaker.js`); hovering a part or its label turns both blue.
+  The blue current-path pulse and the one-time red trip flash are classes (`is-live`, `is-tripped`).
+- `/debug/breaker` (`?anchors=1` shows the anchor points) exists only with `DEBUG_PAGES=true`; it is off
+  by default and set to `"false"` in the compose file, and the route answers 404 then.
+- New tests: the drawing is exactly the generator's output, the generator imports only the standard
+  library, no filter, every part has an id and an explode vector, every leader ends on its part's anchor,
+  12 to 16 splitter plates per chute, only part labels as text, the debug page is 404 when off, and the
+  large-text-only red never colours small text (it is the `.accent` word in headings of 24 px or more).
+
+Results (this laptop): database tests 5 passed, the rest 788 passed; the strict v2 numbers reproduce
+(0.778, 0.561, 0.727, 0.497). Screenshots (`v2-*`, 1440 px, from a local run with `DEBUG_PAGES=true`):
+the page dark, with anchor points, with anchor points fully exploded (the leaders follow the lifted
+chutes and the plate), and light.

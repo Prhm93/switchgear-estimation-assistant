@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     tesseract_cmd: str | None = Field(default=None, description="TESSERACT_CMD: the Tesseract program if not on PATH")
     # The sample enquiry (Stage UX): "Try the sample enquiry" uploads the committed showcase files from here.
     sample_dir: Path = Field(default=REPO_ROOT / "data" / "projects" / "showcase", description="SAMPLE_DIR")
+    # Developer pages (Stage UX visual pass): /debug/breaker shows the breaker drawing with its anchor
+    # points. Off by default and in Docker; the route answers 404 when off.
+    debug_pages: bool = Field(default=False, description="DEBUG_PAGES")
 
     @property
     def max_upload_bytes(self) -> int:

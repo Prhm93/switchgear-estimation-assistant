@@ -228,3 +228,38 @@ def test_templates_have_no_emoji_or_magic_wording(path) -> None:
     assert not EMOJI.search(text), path.name
     for word in ("magic", "sparkle", "ai-powered", "powered by ai"):
         assert word not in text.lower(), (path.name, word)
+
+
+# Red on navy (3.8:1) and red on paper (4.3:1) pass AA for large text only (24 px and up, WCAG 1.4.3).
+LARGE_TEXT_PX = 24
+RED_MARKERS = {".legend .l-conflict::before"}  # a dot glyph in a legend: a mark, not words
+
+
+def _font_size_px(selector: str) -> float:
+    """The font size a rule sets, resolved through the --fs-* tokens."""
+    body = _rule(selector)
+    size = re.search(r"font-size:\s*([^;]+);", body).group(1).strip()
+    if m := re.fullmatch(r"var\((--[a-z0-9-]+)\)", size):
+        size = re.search(re.escape(m.group(1)) + r"\s*:\s*([^;]+);", CSS).group(1).strip()
+    return float(re.fullmatch(r"([\d.]+)px", size).group(1))
+
+
+def test_red_text_is_only_the_large_accent_word() -> None:
+    """The red that passes for large text only never colours small text: no rule sets red as a text
+    colour except .accent (and one legend dot), and every accent word sits in a heading of 24 px or more."""
+    for selector, body in _rules():
+        if re.search(r"(?<![a-z-])color:\s*var\(--red\)", body):
+            assert selector in {".accent"} | RED_MARKERS, selector
+        if re.search(r"fill:\s*var\(--red\)", body):
+            assert "text" not in selector, selector  # red fills are marks (the trip flash), never words
+    for path in TEMPLATES_DIR.rglob("*.html"):
+        for m in re.finditer(r'class="accent"', path.read_text(encoding="utf-8")):
+            text = path.read_text(encoding="utf-8")[: m.start()]
+            opener = list(re.finditer(r"<(h1|h2|p)\b([^>]*)>", text))[-1]
+            attrs = opener.group(2)
+            if (inline := re.search(r"font-size:\s*([\d.]+)px", attrs)):
+                size = float(inline.group(1))  # the design samples page sets its size inline
+            else:
+                cls = re.search(r'class="([^"]+)"', attrs).group(1).split()[0]
+                size = _font_size_px(f".{cls}")
+            assert size >= LARGE_TEXT_PX, (path.name, opener.group(0), size)
