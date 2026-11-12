@@ -360,3 +360,17 @@ and nothing was changed after seeing these numbers (no tuning on test sets).
 **Limits.** ACB is the weak class; a trained detector (torchvision, BSD-3-Clause, from scratch) through the same
 interface is the next step. About 11 s per clean or scanned sheet on the laptop. Memory in the 384 MB app
 container: NOT RUN YET (measured at the Docker rebuild at the end of the run).
+
+## 10. Part D: boxes on the drawing in the proof viewer
+
+**What was built.** On a drawing (PDF, PNG or JPG) the proof viewer shows the sheet as a picture
+(`/documents/<id>/sheets/<n>.png`) with an SVG layer on top: one box per value that has a region on that sheet,
+coloured by confidence (high, medium, low, conflict) with the CSS tokens (section 13 of `app.css`). Each box links
+to its value in the list, and the value links back to its box; the box title gives the plain field label, the
+value and the text read. `render.sheet_size` gives the sheet size without drawing it. A DXF or a text document
+has no picture and shows as before.
+
+**Tests.** 3 tests in `tests/integration/test_proof_boxes.py` (a stand-in for OCR, so no Tesseract needed):
+a box for each value with a region and links both ways; the sheet picture is served, a missing sheet or a
+text document gives 404 and shows no boxes; box colours follow confidence and use theme tokens.
+No screenshots were taken in this run (owner's rule for the unattended run).

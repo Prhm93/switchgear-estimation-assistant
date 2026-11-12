@@ -45,6 +45,29 @@ def sheet_image(file_type: FileType, data: bytes, sheet: int = 1):
     raise ValueError(f"a {file_type.value} file has no picture to show")
 
 
+def sheet_size(file_type: FileType, data: bytes, sheet: int = 1) -> tuple[int, int]:
+    """The width and height of a sheet in answer-key coordinates, without rendering it."""
+    import math
+
+    from PIL import Image
+
+    if file_type == FileType.PDF:
+        import pypdfium2 as pdfium
+
+        pdf = pdfium.PdfDocument(data)
+        try:
+            if not 1 <= sheet <= len(pdf):
+                raise ValueError(f"the drawing has no sheet {sheet}")
+            width, height = pdf[sheet - 1].get_size()
+            return math.ceil(width / 72 * ANSWER_DPI), math.ceil(height / 72 * ANSWER_DPI)
+        finally:
+            pdf.close()
+    if file_type in (FileType.PNG, FileType.JPG):
+        with Image.open(io.BytesIO(data)) as raw:
+            return raw.size
+    raise ValueError(f"a {file_type.value} file has no picture to show")
+
+
 def drawing_png(file_type: FileType, data: bytes, sheet: int, boxes: list[list[float]], crop: bool = False) -> bytes:
     """The sheet with every box outlined in red. ``crop`` keeps only the area around the boxes."""
     from PIL import ImageDraw
