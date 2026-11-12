@@ -36,6 +36,7 @@ REQUIRED = ["system.voltage", "system.fault_level", "enclosure.form", "enclosure
             "metering.meter", "ways.count"]
 WAY_REQUIRED = ["device", "rating", "poles", "cable"]
 WAY_FIELD = re.compile(r"^way\.(\w+)\.")
+PICTURE_METHODS = {"ocr", "vision", "detector"}  # read from a drawing picture: always reviewed one by one
 
 # Why a value is left for the engineer instead of being accepted with the agreeing ones.
 REASONS: OrderedDict[str, tuple[str, str]] = OrderedDict([
@@ -150,7 +151,7 @@ def bulk_acceptable(groups: OrderedDict[str, dict[str, Any]]) -> list[ExtractedV
         if g["conflict"] or g["missing_from"] or g["left_open"]:
             continue
         for v in g["values"]:
-            if v.quote_match == "words_on_page" or v.method == "ocr":
+            if v.quote_match == "words_on_page" or v.method in PICTURE_METHODS:
                 continue
             if v.review_status == ReviewStatus.EXTRACTED.value and v.confidence == "high" and v.value is not None:
                 out.append(v)
@@ -160,7 +161,7 @@ def bulk_acceptable(groups: OrderedDict[str, dict[str, Any]]) -> list[ExtractedV
 def _reason(v: ExtractedValueRow, g: dict[str, Any]) -> str:
     if v.value is None:
         return "open"
-    if v.method == "ocr":
+    if v.method in PICTURE_METHODS:
         return "ocr"
     if v.quote_match == "words_on_page":
         return "pieced"

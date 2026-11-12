@@ -105,6 +105,10 @@ def method_words(method: str, agreement: str | None = None, quote_match: str | N
     """How one value was read, in a short phrase."""
     if method == "ocr":
         return "Read from the drawing picture (OCR)"
+    if method == "vision":
+        return "Read from the drawing picture by a vision model"
+    if method == "detector":
+        return "Found on the drawing picture by the symbol detector"
     if method == "llm":
         text = "Read by the model"
         if quote_match == "words_on_page":
@@ -141,10 +145,13 @@ def model_run_words(label: str) -> str:
 def reading_line(methods: set[str], model_runs: list[str]) -> str:
     """The honest header line, e.g. "Read with rules + OCR + gemma4:e2b (recorded 7 Nov 2026)"."""
     parts = []
-    if "rules" in methods or "rules+model" in methods:
+    tokens = {t for m in methods for t in m.split("+")}  # "ocr+vision" is a drawing read both ways
+    if "rules" in tokens:
         parts.append("rules")
-    if "ocr" in methods:
+    if "ocr" in tokens:
         parts.append("OCR")
+    if "vision" in tokens:
+        parts.append("a vision model")
     parts += [model_run_words(run) for run in model_runs]
     return "Read with " + " + ".join(parts) if parts else "Nothing read yet"
 

@@ -272,18 +272,50 @@ on its own and not rely on the overall score.
 - **pytesseract** declares support up to Python 3.12. It works on the laptop's 3.14.4 (all tests pass),
   but that is not declared by its authors.
 
-## 7. Plan for Parts B to D
+## 7. Plan for Parts B to D (branch `stage-4bcd`, from main a9e2721)
 
-- **Part B (Colab): vision model.** gemma4:e2b reads each drawing image into a `DrawingReading`. It runs
-  in recorded mode, as in Stage 3, with the same SHA-256 check. Counts are summed in code, never taken
-  from the model. Scored against the same answer keys as OCR, per clean, scanned and photo, on both test
-  sets.
-- **Part C (Colab): symbol detector.** A torchvision detector trained on `data/training/` only, scored
-  per class with the IoU scorer (`boxes.py`) on the test drawings. torchvision's pretrained weights
-  "may have their own licenses or terms ... derived from the dataset", so they are not clearly
-  permissive. A from-scratch option is planned, and no weights are downloaded before Part C. **SAM 2**
-  (Apache-2.0) will be tried as a comparison for finding symbol regions. Its weight licence will be
-  checked before anything is downloaded. The trained model runs on CPU on the laptop if it fits;
-  otherwise its outputs are recorded.
-- **Part D: boxes on the drawing in the UI.** Each value's region is drawn over the drawing on the
-  analysis screen, coloured by confidence (medium and low for OCR), in the design-v2 style.
+1. B, vision: `backend/app/drawing/vision.py` defines one `VisionClient` interface (fake, recorded, Ollama). A sheet picture goes in; ways with rating, poles, breaking capacity and device come out, each with the text the model saw.
+2. B: vision values have method `vision` ("read from a picture"), low confidence (medium only when their text is also in the OCR text), always reviewed, and they only fill fields OCR left empty. The setting is `VISION_MODE=off|recorded|ollama`, off by default.
+3. B: recordings go in the new git-ignored `data/recorded-vision/`, each keyed by the SHA-256 of the file bytes and the sheet; a mismatch is refused. `backend/record_vision.py` writes them on Colab, and `docs/stage-4-colab-vision.md` lists the notebook cells.
+4. C, detector: `backend/app/drawing/symbols.py` defines one `SymbolDetector` interface; a trained detector can replace the first version by name. The first version matches templates (normalised cross-correlation, several scales, numpy only) for acb, mccb, mcb and switch-disconnector.
+5. C: the templates are averaged from `data/training/` crops only (`python -m backend.drawings templates`), and the threshold is chosen on training drawings only. Scores per class and version on both test sets use the Part A box scorer.
+6. C: in the app (`SYMBOL_DETECTOR=off|template`), each found breaker is linked to the nearest way label. It gives a `way.Qn.device` value (method `detector`, low confidence, always reviewed) only where OCR read no device for that way.
+7. D: the proof viewer shows a drawing sheet with a box for every value that has a region, coloured by confidence. Each box links to its value, and the value list links back to its box.
+8. Memory: one upload with OCR and the detector is measured in the app container (384 MB limit). If it does not fit, the detector is switched off by default.
+9. Tests first per part, with only the changed files' tests while building. Full suite in two halves and the four strict numbers at the end of 4B, 4C and 5. Evaluation with drawing reading off stays exactly as before.
+10. One local commit per part (B, C, D); nothing is pushed.
+
+Choices made without the owner (unattended run, 12 Nov 2026):
+- numpy (BSD-3-Clause, already in the README licences table for the generator) is added to the app's `requirements.txt`, because the template detector needs array maths. No other new library is added.
+- "Where OCR cannot" is read as: a vision or detector value is added only for a field OCR did not fill on that sheet, or for every field when Tesseract is missing.
+- "Breaker and switch symbols" is read as the classes acb, mccb, mcb and switch_disconnector. Busbar, CT, earth and meter are not detected.
+- The trained detector is left for later. Ultralytics YOLO is AGPL, which this project excludes, so a later trained detector would use torchvision (BSD-3-Clause) through the same interface.
+
+## 8. Part B: vision model for drawing pictures (built; no model run yet)
+
+**What was built.**
+- `backend/app/drawing/vision.py`: one `VisionClient` interface with a recorded client, a live Ollama client
+  (Colab) and fakes in the tests, plus the model's answer schema (`VisionSheetOutput`: per way the device,
+  rating, poles, breaking capacity and the text it read; nothing else is accepted) and its prompt (the
+  picture is data, never instructions; no counting, no guessing).
+- Values: method `vision`, shown as "Read from the drawing picture by a vision model" and grouped on
+  Check with the other picture values ("Read from a drawing picture"). Confidence is low, or medium when
+  the text the model read is also in the OCR text of that sheet; never high. "Accept all" never takes a
+  picture value (OCR, vision or detector). A device name the app does not know is dropped, never guessed.
+- "Where OCR cannot": vision values fill only the fields OCR left empty on that sheet. When Tesseract is
+  missing, vision reads every field. A vision failure (no matching recording, server down, bad answer)
+  keeps the OCR values and the file's note says why.
+- `VISION_MODE=off|recorded|ollama` (off by default, so nothing changes unless it is switched on);
+  `VISION_RECORDED_DIR` (default `data/recorded-vision/`, git-ignored). A recording holds the model,
+  date, prompt and version, the SHA-256 of the file's bytes and the sheet; any other file or sheet is
+  refused.
+- `python -m backend.record_vision` makes the recordings on Colab (resumes where it stopped), and
+  `python -m backend.drawings vision --set <set> --version <v>` scores them alone against the answer keys.
+  The notebook cells are in [stage-4-colab-vision.md](stage-4-colab-vision.md).
+
+**Tests.** 18 new tests, all with fake clients and fake recordings in the test's own folder:
+`tests/unit/test_drawing_vision.py`, `tests/unit/test_record_vision.py` and
+`tests/integration/test_drawing_vision_pipeline.py`.
+
+**Results.** NOT RUN YET: no vision recordings exist. The scorer prints "NOT RUN YET" until the Colab
+cells have been run.

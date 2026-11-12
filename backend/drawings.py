@@ -6,6 +6,7 @@ Usage (PowerShell, from the repo folder)::
     .venv\\Scripts\\python.exe -m backend.drawings counts --set test      # the 20 test projects
     .venv\\Scripts\\python.exe -m backend.drawings counts --set reworded
     .venv\\Scripts\\python.exe -m backend.drawings ocr --set test --version scanned --dpi 300
+    .venv\\Scripts\\python.exe -m backend.drawings vision --set test --version scanned  # recorded answers
 
 ``counts`` prints the symbol classes per drawing version (clean, scanned,
 photo) as a Markdown table. Training data comes only from ``data/training/``;
@@ -31,8 +32,9 @@ import statistics
 import subprocess
 import sys
 import time
+from pathlib import Path
 
-from backend.app.drawing.data import DrawingSample, class_counts, count_table, evaluation_drawings, training_drawings
+from backend.app.drawing.data import DATA, DrawingSample, class_counts, count_table, evaluation_drawings, training_drawings
 from backend.app.evaluation import Score, score, total
 from backend.app.storage import FileType
 
@@ -189,6 +191,40 @@ def measure_ocr(samples: list[DrawingSample], dpi: int) -> str:
     return "\n".join(out)
 
 
+def measure_vision(samples: list[DrawingSample], folder: Path) -> str:
+    """Score the recorded vision answers alone (no OCR) against the answer keys, as for OCR.
+
+    Sheets without a recording are counted and listed as missing, never scored as empty readings.
+    """
+    import hashlib
+
+    from backend.app.drawing.vision import RecordedVisionClient, VisionUnavailable, vision_values
+
+    try:
+        client = RecordedVisionClient(folder)
+    except VisionUnavailable as error:
+        return f"NOT RUN YET: {error}. Make the recordings on Colab (docs/stage-4-colab-vision.md)."
+    grouped: dict[str, Score] = {}
+    missing = 0
+    for s in samples:
+        data = s.path.read_bytes()
+        try:
+            output = client.read(file_sha256=hashlib.sha256(data).hexdigest(), sheet=s.sheet, image=lambda: b"")
+        except VisionUnavailable:
+            missing += 1
+            continue
+        values = vision_values(output, file=s.path.name, version=s.version, sheet=s.sheet, ocr_text="", filled=set())
+        for g, sc in score(values, s.values).items():
+            grouped.setdefault(g, Score()).add(sc)
+    out = [f"{len(samples) - missing} of {len(samples)} sheets have a recording ({client.label})", "",
+           "| Group | TP | FP | FN | P | R | F1 |", "|---|---|---|---|---|---|---|"]
+    for name, s in _summary(grouped).items():
+        out.append(f"| {name} | {s.tp} | {s.fp} | {s.fn} | {_f(s.precision)} | {_f(s.recall)} | {_f(s.f1)} |")
+    a = total(grouped)
+    out.append(f"| **all vision fields** | {a.tp} | {a.fp} | {a.fn} | {_f(a.precision)} | {_f(a.recall)} | {_f(a.f1)} |")
+    return "\n".join(out)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m backend.drawings", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -201,6 +237,11 @@ def main(argv: list[str] | None = None) -> int:
     o.add_argument("--version", choices=["clean", "scanned", "photo"], default="clean")
     o.add_argument("--dpi", type=int, choices=[150, 300], default=300)
     o.add_argument("--count", type=int, default=None, help="first N projects only")
+    v = sub.add_parser("vision", help="score the recorded vision answers of one drawing version")
+    v.add_argument("--set", dest="set_name", choices=["test", "reworded", "showcase"], default="test")
+    v.add_argument("--version", choices=["clean", "scanned", "photo"], default="scanned")
+    v.add_argument("--count", type=int, default=None, help="first N projects only")
+    v.add_argument("--recorded", type=Path, default=DATA / "recorded-vision")
     args = parser.parse_args(argv)
     if args.command == "counts":
         samples = training_drawings() if args.set_name == "training" else evaluation_drawings(args.set_name)
@@ -217,6 +258,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "counts":
         print(f"## Symbol classes, {args.set_name} ({projects} projects, {len(samples)} drawing images)\n")
         print(count_table(class_counts(samples)))
+        return 0
+    if args.command == "vision":
+        print(f"## Vision (recorded), {args.set_name} set, {args.version} drawings ({projects} projects)\n")
+        print(measure_vision(samples, args.recorded))
         return 0
     print(f"## OCR, {args.set_name} set, {args.version} drawings ({projects} projects)\n")
     print(measure_ocr(samples, args.dpi))

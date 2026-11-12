@@ -18,3 +18,6 @@ data/training/
 data/external/*
 !data/external/SOURCES.template.md
 storage/
+
+# Vision model recordings (Stage 4 Part B): made on Colab, never committed
+data/recorded-vision/

@@ -22,6 +22,7 @@ from backend.app.estimate import ApprovedValue, Draft, build, load_rules
 from backend.app.llm.quote import QuoteCheckMode
 from backend.app.models import (AuditEvent, CatalogueItemRow, Document, EnquiryNote, Estimate, EstimateLineRow,
                                 ExtractedValueRow, Match, Page, Project, Review, utcnow)
+from backend.app.drawing.vision import VisionUnavailable, make_vision_client
 from backend.app.pipeline import analyse_file
 from backend.app.recordings import RecordingMismatch, find_recording
 from backend.app.schemas import DocumentStatus, MatchStatus, ReviewStatus
@@ -252,18 +253,25 @@ def process_document(sessions: sessionmaker[Session], storage: Storage, document
             quote_check = QuoteCheckMode(settings.quote_check if settings and not sample else QuoteCheckMode.RELAXED)
             drawing = {"drawing_reading": settings.drawing_reading, "ocr_dpi": settings.ocr_dpi,
                        "tesseract_cmd": settings.tesseract_cmd} if settings else {}
+            vision_note = None
+            if settings is not None:
+                try:
+                    drawing["vision"] = make_vision_client(settings)
+                except VisionUnavailable as error:
+                    vision_note = f"Vision model off: {error}."
             analysis = analyse_file(FileType(doc.file_type), data, doc.original_name, provider,
                                     quote_check=quote_check, **drawing)
             del data  # the original stays in storage; keep memory low
             doc.status = DocumentStatus.EXTRACTING.value
             doc.kind = analysis.kind.value
             doc.page_count = len(analysis.read.pages) or None
-            notes = [analysis.read.note, model_note,
+            notes = [analysis.read.note, model_note, vision_note if analysis.kind.value == "schematic" else None,
                      f"Model run failed, read by the rules only: {analysis.llm_error}" if analysis.llm_error else None]
             doc.note = " ".join(n for n in notes if n) or None
             doc.model_run = analysis.model_run
             if analysis.read.status == DocumentStatus.DONE:
-                doc.read_method = "ocr" if analysis.drawings else ("rules+model" if analysis.llm else "rules")
+                picture = "+".join(m for m, on in (("ocr", analysis.drawings), ("vision", analysis.vision_run)) if on)
+                doc.read_method = picture or ("rules+model" if analysis.llm else "rules")
             if analysis.kind.value == "specification" and analysis.read.pages:
                 _name_from_specification(session, doc.project_id, analysis.read.pages[0].text)
             for page in analysis.read.pages:
