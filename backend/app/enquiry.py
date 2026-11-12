@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 from backend.app import labels
 from backend.app import normalise as norm
 from backend.app.catalogue import CatalogueItem
+from backend.app.crosscheck import Difference, differences, seen_from_rows
 from backend.app.estimate import ApprovedValue, Draft, EstimateRules, build
 from backend.app.injection import find_instructions
 from backend.app.models import AuditEvent, Document, Estimate, ExtractedValueRow, Match, Project
@@ -198,6 +199,9 @@ class Decisions:
     busy: bool
     total: int  # values that are not rejected
     approved: int
+    # Stage 5: conflicts where two files disagree (not two readings of one file), by field, with a sentence
+    # naming both files and their values. Flagged only: nothing is picked, approved or rejected here.
+    between_files: dict[str, Difference] = field(default_factory=dict)
 
     @property
     def to_review(self) -> int:
@@ -237,7 +241,8 @@ def decisions(project: Project) -> Decisions:
                                                                DocumentStatus.FAILED.value)],
         busy=any(d.status in BUSY for d in project.documents),
         total=sum(1 for v in project.values if v.review_status != ReviewStatus.REJECTED.value),
-        approved=sum(1 for v in project.values if v.review_status in DONE))
+        approved=sum(1 for v in project.values if v.review_status in DONE),
+        between_files={d.field: d for d in differences(seen_from_rows(project.values)) if d.field in groups})
 
 
 # --- how the enquiry was read -------------------------------------------------------------------------

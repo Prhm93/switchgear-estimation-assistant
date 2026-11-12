@@ -7,8 +7,10 @@
     <article class="decision decision--conflict" id="f-{{ g.field }}">
       <div class="decision__head">
         <h3 class="decision__title">{{ g.label }}</h3>
-        <span class="chip chip--conflict">The documents disagree</span>
+        {%- set between = found.between_files.get(g.field) %}
+        <span class="chip chip--conflict">{{ "The documents disagree" if between else "Two readings of one file differ" }}</span>
       </div>
+      {%- if between %}<p class="small muted">{{ between.message }}.</p>{% endif %}
       <div class="pair">
         {%- for side in g.sides %}
         {%- set first = side[0] %}
