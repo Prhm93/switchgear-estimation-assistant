@@ -20,6 +20,7 @@ from backend.app.config import Settings
 from backend.app.main import create_app
 from backend.app.models import Document, ExtractedValueRow
 from backend.app.reading import PageText, ReadResult
+from backend.app.web import BOX_PAD
 from backend.app.schemas import DocumentStatus, ExtractedValue, Method
 from data_generator.schemas import DocumentKind, DrawingVersionKind, Region, SourceRef
 from data_generator.sets import DATA
@@ -79,9 +80,17 @@ def test_the_drawing_sheet_shows_a_box_for_each_value_with_a_region(client: Test
     assert sorted((tone, int(i)) for tone, i, _ in boxes) == sorted(
         [("picture", ids["way.Q1.rating"]), ("symbol", ids["way.Q2.device"])])  # the voltage has no box
     assert all(href == f"#v-{i}" for _, i, href in boxes)  # a box opens the value it supports
-    rect = re.search(rf'id="box-{ids["way.Q1.rating"]}".*?<rect x="100(\.0)?" y="200(\.0)?" width="80(\.0)?" '
-                     rf'height="60(\.0)?"', figure, re.S)
-    assert rect, "the box is drawn where the value was read"
+    pad = width * BOX_PAD  # about 4 px on screen around the text, in the sheet's own units
+    rect = re.search(rf'id="box-{ids["way.Q1.rating"]}".*?<rect x="{100 - pad:g}" y="{200 - pad:g}" '
+                     rf'width="{80 + 2 * pad:g}" height="{60 + 2 * pad:g}"', figure, re.S)
+    assert rect, "the box is drawn where the value was read, a little larger than the text on every side"
+    for i in (ids["way.Q1.rating"], ids["way.Q2.device"]):
+        tag = re.search(rf'<a class="sheet__box[^"]*" id="box-{i}"[^>]*>', figure).group(0)
+        assert 'tabindex="0"' in tag and f'data-box="{i}"' in tag  # focusable; Enter selects it (proof.js)
+        assert re.search(r'data-read="[^"]+"', tag)  # the value shown under the enlarged crop
+    zoom = re.search(r'<div class="sheet-zoom" id="sheet-zoom".*?</div>', html, re.S).group(0)
+    assert " hidden" in zoom and f'href="/documents/{doc_id}/sheets/1.png"' in zoom
+    assert "js/proof.js" in html
     assert "&lt;b&gt;" in figure and "<b>" not in figure  # read text is escaped in the box title
     symbol = re.search(rf'id="box-{ids["way.Q2.device"]}".*?</a>', figure, re.S).group(0)
     assert re.search(r'<text[^>]*class="sheet__label"[^>]*>MCCB 0\.82</text>', symbol)  # symbol boxes are labelled
@@ -91,6 +100,7 @@ def test_the_drawing_sheet_shows_a_box_for_each_value_with_a_region(client: Test
         assert words in legend, words
     line = re.search(rf'<div class="value-line" id="v-{ids["way.Q1.rating"]}">.*?</div>', html, re.S).group(0)
     assert f'href="#box-{ids["way.Q1.rating"]}"' in line and "Show on the drawing" in line
+    assert f'data-show="{ids["way.Q1.rating"]}"' in line
     voltage = re.search(rf'<div class="value-line" id="v-{ids["system.voltage"]}">.*?</div>', html, re.S).group(0)
     assert "#box-" not in voltage
 
@@ -111,10 +121,17 @@ def test_the_sheet_picture_is_served_and_other_files_have_no_boxes(client: TestC
 def test_boxes_are_thin_see_through_outlines_coloured_by_how_the_value_was_read() -> None:
     css = (Path(__file__).parents[2] / "frontend" / "static" / "css" / "app.css").read_text(encoding="utf-8")
     base = re.search(r"\.sheet__box rect\s*\{([^}]*)\}", css).group(1)
-    assert "stroke-width: 2;" in base and "fill: currentColor" in base and "fill-opacity: 0.15" in base
-    sheet_rules = " ".join(line for line in css.splitlines() if ".sheet__box" in line)
-    for rule in re.findall(r"fill-opacity:\s*([\d.]+)", sheet_rules):
-        assert float(rule) <= 0.3, "a box never hides the text under it"
+    assert "stroke-width: 1;" in base and "fill: currentColor" in base and "fill-opacity: 0.06" in base
+    box_rules = [m.group(1) for m in re.finditer(r"([^{}]*\{[^}]*\})", css)
+                 if re.search(r"\.sheet__box|\.sheet-zoom__box", m.group(1).split("{")[0])]
+    assert len(box_rules) >= 5
+    for rule in box_rules:  # every box rule, on the drawing, in the enlarged crop and on Review cards
+        for opacity in re.findall(r"fill-opacity:\s*([\d.]+)", rule):
+            assert float(opacity) <= 0.06, f"a box never hides the text under it: {rule}"
+        for fill in re.findall(r"(?<![-\w])fill:\s*([^;}]+)", rule):
+            assert fill.strip() == "none" or (fill.strip() == "currentColor" and "fill-opacity" in rule), rule
+        assert "background" not in rule, f"no opaque fill on a box: {rule}"
     for kind in ("rules", "picture", "symbol"):
         rule = re.search(rf"\.sheet__box--{kind}\s*\{{([^}}]*)\}}", css)
         assert rule and "var(--" in rule.group(1) and "#" not in rule.group(1)
+    assert BOX_PAD > 0

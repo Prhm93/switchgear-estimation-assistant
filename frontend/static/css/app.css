@@ -1028,13 +1028,17 @@ a.chip--neutral:hover { background: var(--veil-hover); color: var(--text); }
 .sheet__frame { position: relative; border-radius: var(--radius-sm); overflow: hidden; box-shadow: inset 0 0 0 1px var(--hairline); }
 .sheet__img { display: block; width: 100%; height: auto; }
 .sheet__boxes { position: absolute; inset: 0; width: 100%; height: 100%; }
-/* stage-simple: thin see-through outlines, so the text under a box stays readable. The colour says how the
-   value was read (the legend under every drawing); a box is never opaque. */
+/* stage-simple: 1 px outlines drawn a little larger than the text (web.BOX_PAD) and filled at most 6 percent, so
+   the text under a box stays readable. The colour says how the value was read (the legend under every drawing);
+   a box is never opaque. The selected box (proof.js) is a little thicker; one shown from its card pulses once. */
 .sheet__box { color: var(--blue-text); }
-.sheet__box rect { stroke: currentColor; stroke-width: 2; vector-effect: non-scaling-stroke; fill: currentColor; fill-opacity: 0.15; transition: var(--transition); }
-.sheet__box:hover rect, .sheet__box:focus rect, .sheet__box:target rect { stroke-width: 3; fill-opacity: 0.25; }
+.sheet__box rect { stroke: currentColor; stroke-width: 1; vector-effect: non-scaling-stroke; fill: currentColor; fill-opacity: 0.06; transition: var(--transition); }
+.sheet__box:hover rect, .sheet__box.is-active rect { stroke-width: 2; fill-opacity: 0.06; }
 .sheet__box:focus { outline: none; }
-.sheet__box:focus-visible rect { stroke: var(--focus); stroke-width: 3; }
+.sheet__box:focus-visible rect { stroke: var(--focus); stroke-width: 2; fill-opacity: 0.06; }
+.sheet__box.is-pulse rect { animation: box-pulse 0.6s ease-out 2; }
+@keyframes box-pulse { 50% { stroke-width: 4; } }
+@media (prefers-reduced-motion: reduce) { .sheet__box.is-pulse rect { animation: none; } }
 .sheet__box--rules { color: var(--blue-text); }
 .sheet__box--picture { color: var(--warning); }
 .sheet__box--symbol { color: var(--success); }
@@ -1046,6 +1050,21 @@ a.chip--neutral:hover { background: var(--veil-hover); color: var(--text); }
 .sheet__key--symbol { box-shadow: inset 0 0 0 2px var(--success); }
 .value-line__box { align-self: center; white-space: nowrap; }
 .value-line:target { background: var(--row-hover); }
+/* The drawing and the selected box enlarged beside it (below it on narrow screens). */
+.sheet__stage { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: flex-start; }
+.sheet__stage > .sheet__frame { flex: 1 1 320px; min-width: 0; }
+.sheet-zoom { flex: 0 1 auto; max-width: 100%; }
+.sheet-zoom[hidden] { display: none; }
+.sheet-zoom__title { margin: 0 0 var(--space-1); }
+.sheet-zoom__view { display: block; max-width: 100%; height: auto; border-radius: var(--radius-sm); box-shadow: inset 0 0 0 1px var(--hairline); }
+.sheet-zoom { color: var(--blue-text); }
+.sheet-zoom[data-tone="picture"] { color: var(--warning); }
+.sheet-zoom[data-tone="symbol"] { color: var(--success); }
+.sheet-zoom__box { fill: none; stroke: currentColor; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.sheet-zoom__value { margin: var(--space-1) 0 0; color: var(--text); }
+/* The selected value's card and its text line: a clear outline, the same one as the focus ring. */
+.value-line.is-active { background: var(--row-hover); box-shadow: inset 0 0 0 2px var(--focus); }
+.doc-text mark.is-active { background: var(--tonal-hover); box-shadow: inset 0 0 0 2px var(--focus); }
 
 /* --- 14. The simple flow: one button on the home page, Review cards, the short quote (stage-simple) --------- */
 .btn--xl { padding: 20px 34px; font-size: 18px; font-weight: 600; cursor: pointer; }

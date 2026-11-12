@@ -783,9 +783,10 @@ def _crop(request: Request, v: ExtractedValueRow, sizes: dict[tuple[int, int], A
     margin = max(x1 - x0, y1 - y0, 60) * 1.5
     vx, vy = max(0.0, x0 - margin), max(0.0, y0 - margin)
     vw, vh = min(width, x1 + margin) - vx, min(height, y1 + margin) - vy
+    pad = vw * BOX_PAD * 1.25  # the crop is shown a little narrower than a proof viewer sheet
     return {"src": f"/documents/{doc.id}/sheets/{sheet}.png", "width": width, "height": height,
             "view": f"{vx:g} {vy:g} {vw:g} {vh:g}", "kind": box_kind(v), "label": symbol_label(v), "font": vw / 22,
-            "x": x0, "y": y0, "w": x1 - x0, "h": y1 - y0, "full": f"/enquiries/{v.project_id}/proof?doc={doc.id}"
+            "x": x0 - pad, "y": y0 - pad, "w": x1 - x0 + 2 * pad, "h": y1 - y0 + 2 * pad, "full": f"/enquiries/{v.project_id}/proof?doc={doc.id}"
             + (f"&page={v.page}" if v.page else "")}
 
 
@@ -1045,6 +1046,9 @@ def proof_viewer(request: Request, project_id: int, session: SessionDep, doc: in
 # How a box is coloured: by how its value was read (the one-line legend under every drawing).
 BOX_KINDS = {"rules": "Read by rules", "picture": "Read from a picture, needs review", "symbol": "Symbol found"}
 SYMBOL_WORDS = {"acb": "ACB", "mccb": "MCCB", "mcb": "MCB", "switch_disconnector": "Switch-disconnector"}
+# Boxes are drawn a little larger than the text they mark, so the outline never sits on the letters: a share of
+# the width shown, about 4 px on screen when a sheet fills a column about 600 px wide.
+BOX_PAD = 1 / 150
 
 
 def box_kind(v: ExtractedValueRow) -> str:
@@ -1076,21 +1080,20 @@ def _sheet_boxes(request: Request, doc: Document, sheet: int | None, values: lis
         width, height = sheet_size(FileType(doc.file_type), request.app.state.storage.read(doc.storage_key), sheet)
     except (OSError, ValueError):
         return None
-    boxes = []
+    boxes, pad = [], width * BOX_PAD
     for v in values:
         region = next((r for r in v.regions or [] if r.get("sheet") in (None, sheet)), None)
         if region is None:
             continue
         x0, y0, x1, y1 = region["bbox"]
         value, unit = enquiry.shown(v)
-        title = f"{labels.field_label(v.field)}: {labels.display(value, unit)}"
-        if v.source_text:
-            title += f" (read: {v.source_text})"
-        boxes.append({"id": v.id, "tone": box_kind(v), "label": symbol_label(v), "x": x0, "y": y0, "w": x1 - x0,
-                      "h": y1 - y0, "title": title})
+        read = f"{labels.field_label(v.field)}: {labels.display(value, unit)}"
+        title = read + (f" (read: {v.source_text})" if v.source_text else "")
+        boxes.append({"id": v.id, "tone": box_kind(v), "label": symbol_label(v), "x": x0 - pad, "y": y0 - pad,
+                      "w": x1 - x0 + 2 * pad, "h": y1 - y0 + 2 * pad, "title": title, "read": read})
     return {"src": f"/documents/{doc.id}/sheets/{sheet}.png", "width": width, "height": height, "boxes": boxes,
             "font": width / 70,  # symbol labels, in sheet units
-            "ids": {b["id"] for b in boxes}}
+            "pad": pad, "ids": {b["id"] for b in boxes}}
 
 
 @router.get("/documents/{document_id}/sheets/{sheet}.png")

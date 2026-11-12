@@ -113,3 +113,27 @@ Choices made without the owner (one line each):
 - An un-ticked agreeing value is left for later the same way as on picture cards (a `review_later` audit entry).
 - "Check one by one" is a link (`?one=1`), not a stored setting.
 - Full suite after these fixes: database tests 5 passed; the rest 904 passed.
+
+## Fix: proof viewer boxes, enlarged crop and two-way highlight
+
+- **Boxes:** 1 px outlines, filled at most 6 percent, drawn a little larger than the text on every side, on the
+  drawing, in the enlarged crop and on Review cards; symbol boxes the same. No box has an opaque fill.
+- **Enlarged crop:** selecting a box shows it about three times larger beside the drawing (below it on narrow
+  screens), turned upright when its text is vertical, with the value read under it.
+- **Two-way highlight:** a box (click, or Enter on a focused box) marks its card in "Read on this sheet" with an
+  outline and scrolls it into view; "Show on the drawing" on a card pulses its box and marks its line in the text
+  panel. One box, one card and one text line are active at a time (`frontend/static/js/proof.js`). Without
+  script, the links still jump between box and card. The legend and "Boxes show where each value was read." stay.
+- **Tests:** `tests/integration/test_proof_boxes.py` (padding, focusable boxes, crop panel, 1 px and 6 percent
+  limits on every box rule) and the new `tests/unit/test_proof_js.py` (runs `proof.js` in Node on a small fake
+  page: box to card, card to box and text line, one active at a time, Enter, crop size and turn; skipped without
+  Node).
+
+Choices made without the owner (one line each):
+- Padding is a share of the sheet width (`web.BOX_PAD`, 1/150), about 4 px when a sheet fills a column about 600 px wide; it is not measured in the browser.
+- Text counts as vertical when its box is more than 1.5 times taller than wide; it is turned a quarter clockwise (text that reads bottom to top).
+- The crop shows the padded box plus one more padding of drawing around it; its width is three times that region on screen, never wider than the column.
+- Space also selects a focused box, like Enter.
+- The text line is marked on every selection (from a box or a card); only the card or the box is scrolled into view, not the text.
+- The JavaScript test uses Node, already on the laptop, with a hand-made fake page instead of a browser library.
+- Full suite after this fix: database tests 5 passed; the rest 910 passed.
