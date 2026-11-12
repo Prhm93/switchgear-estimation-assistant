@@ -29,7 +29,9 @@ Then open these addresses:
 - <http://127.0.0.1:8000/health>: system status. It is also the "System status" link in the footer.
 - <http://127.0.0.1:8000/healthz>: the same status as JSON.
 
-Stop the app with `Ctrl+C` or `docker compose down`. Adding `-v` to `docker compose down` deletes the database volume, and with it every enquiry.
+A walk-through of the screens is in [Using the app](#using-the-app). Stop the app with `Ctrl+C` or `docker compose down`.
+
+> **Warning:** never add `-v` to `docker compose down`. It deletes the database volume, and with it every enquiry.
 
 ## Using the app
 
@@ -120,6 +122,19 @@ Two settings change how values are read: `MODEL_MODE` (`rules`, the default, `re
 | 7 Evaluation | One-command evaluation of all test projects | Not started (CI already runs the tests) |
 | 8 Hardening | Login, roles, upload checks, logging | Not started |
 | 9 Assistant | Questions about a project, with sources | Not started |
+
+Stage 9 (the question box) is listed after Stage 8. It is built before it, so that Stage 8's attack tests can run through the question box.
+
+### Strict baseline scores
+
+Strict quote check, fixed baseline. Not held out. Fair scores come from a fresh set in Stage 7.
+
+| Set | With the DXF | Without the DXF |
+|---|---|---|
+| Test (20 enquiries) | 0.778 | 0.561 |
+| Reworded (20 enquiries) | 0.727 | 0.497 |
+
+Each score is the F1 over every value, model reading replayed from recordings. Details are in [docs/stage-3.md](docs/stage-3.md).
 
 ### AI engine (carried over)
 
@@ -227,7 +242,8 @@ Transitive dependencies (for example AnyIO, Click, MarkupSafe, Mako, scramp, typ
 
 ## Limits
 
-- **Rules written for the generator.** The rules were written for the generator's wording, so their baseline (F1 1.000 with the DXF) measures template coverage, not generalisation. The model scores are on the reworded set in [docs/stage-3.md](docs/stage-3.md); on the laptop the model runs are replayed from recordings.
+- **Rules written for the generator.** The rules were written after reading the generator's templates, so their score on the generator's own wording measures template coverage, not how well they read new wording. The reworded set tests that.
+- **Model runs are recorded.** A recorded model mode replays saved model outputs on the laptop; live model calls run on Colab only. The relaxed quote check is the app default; the strict check is kept as the fixed baseline above.
 - **Not built yet.** The Ask column on the Summary is an empty placeholder, there is no stock list and no PDF report (Word only), and there is no login. Drawing PDFs and images are read by OCR since Stage 4 Part A; OCR values are medium confidence at most and always need the engineer's review, and reworded rating styles are not read yet. See [docs/stage-2.md](docs/stage-2.md#known-limits) and [docs/stage-4.md](docs/stage-4.md#6-known-limits).
 - **Synthetic data is cleaner than real data.** See [docs/stage-1.md](docs/stage-1.md#limits) for how it differs.
 - **Engine, small tests.** Real-model results come from a few questions on four notes. They show the parts work, not how often.
