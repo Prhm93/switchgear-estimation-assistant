@@ -10,7 +10,8 @@ These keep the look consistent as the stylesheet grows:
 * card radii of 18 and 20px, pill buttons, a red primary button with a shadow;
 * IBM Plex Sans everywhere and no serif (Stage UX-V); Plex Mono for numbers, codes,
   document text and small uppercase labels only;
-* "+" crosshair marks and the corner drawing are SVG, never gradients;
+* two colour themes in tokens.css (Stage UX visual pass): dark, the default, and light, with a
+  switch in every top bar that remembers the choice; headings set tight (-0.02em, the hero -0.03em);
 * 150 ms transitions, none for reduced-motion users, and a visible focus ring;
 * no emoji or "magic" wording in the templates.
 """
@@ -20,9 +21,10 @@ import re
 import pytest
 
 from backend.app.design.contrast import load_rgba_tokens, load_tokens
-from backend.app.paths import STYLESHEET, TEMPLATES_DIR
+from backend.app.paths import STATIC_DIR, STYLESHEET, TEMPLATES_DIR, TOKENS
 
-CSS = STYLESHEET.read_text(encoding="utf-8")
+# tokens.css (fonts, the two themes, type and motion) and app.css (everything else), read as one sheet.
+CSS = TOKENS.read_text(encoding="utf-8") + "\n" + STYLESHEET.read_text(encoding="utf-8")
 # Stage UX-V: the hero glow, the card sheen and the call-to-action panel are gone (the shader and
 # hairline sections replace them); the red-to-blue upload border is the one gradient left.
 ALLOWED_GRADIENTS = {".upload-box"}
@@ -49,7 +51,7 @@ def _rule(selector: str) -> str:
     for sel, body in _rules():
         if sel == selector:
             return body
-    raise AssertionError(f"rule {selector!r} not found in app.css")
+    raise AssertionError(f"rule {selector!r} not found in tokens.css or app.css")
 
 
 def _media_blocks(query: str) -> list[str]:
@@ -77,12 +79,14 @@ def test_brand_palette_tokens_are_unchanged() -> None:
     assert tokens["on-red"] == "#FFFFFF"
 
 
-def test_hairline_tokens_are_faint_light_blue() -> None:
-    rgba = load_rgba_tokens()
-    for name in ("hairline", "hairline-strong"):
-        r, g, b, a = rgba[name]
-        assert (r, g, b) == (156, 192, 255), name
-        assert 0.10 <= a <= 0.18, name
+def test_hairline_tokens_are_faint() -> None:
+    """Dark theme: faint light blue. Light theme (changed on purpose): faint navy-blue on paper."""
+    for theme, colour, (low, high) in (("dark", (156, 192, 255), (0.10, 0.18)), ("light", (27, 69, 140), (0.10, 0.22))):
+        rgba = load_rgba_tokens(theme)
+        for name in ("hairline", "hairline-strong"):
+            r, g, b, a = rgba[name]
+            assert (r, g, b) == colour, (theme, name)
+            assert low <= a <= high, (theme, name)
 
 
 def test_every_border_is_none_or_a_hairline() -> None:
@@ -103,9 +107,10 @@ def test_gradients_only_in_the_allowed_rule() -> None:
             assert selector in ALLOWED_GRADIENTS, f"gradient in {selector!r}"
             found.add(selector)
     assert found == ALLOWED_GRADIENTS
-    # The 56px background grid is an SVG tile, not a gradient.
-    assert "background-size: 56px 56px" in _rule("body")
+    # The 56px background grid is an SVG tile (one per theme), not a gradient.
+    assert "background-size: 56px 56px" in _rule("body") and "var(--grid-tile)" in _rule("body")
     assert "gradient(" not in _rule("body") and "gradient(" not in _rule("body.page--home")
+    assert TOKENS.read_text(encoding="utf-8").count("--grid-tile: url(\"data:image/svg+xml") == 2  # dark, light
 
 
 def test_the_upload_box_border_runs_red_to_blue() -> None:
@@ -162,22 +167,41 @@ def test_mono_is_only_for_numbers_codes_and_document_text() -> None:
         assert "var(--font-mono)" in body and "text-transform: uppercase" in body and "var(--fs-xs)" in body
 
 
-def test_crosshair_marks_are_svg_in_four_corners() -> None:
-    body = _rule(".xmarks")
-    assert body.count("url(\"data:image/svg+xml") + body.count("var(--xmark)") >= 1 and "gradient(" not in body
-    for corner in ("left top", "right top", "left bottom", "right bottom"):
-        assert corner in body, corner
+def test_the_ux_v_crosshair_marks_and_corner_drawing_are_gone() -> None:
+    """Changed on purpose: the visual pass replaces the "+" marks and the corner single-line drawing
+    (a faint breaker drawing takes their place on the Start and Enquiry pages)."""
+    assert ".xmarks" not in RULES_CSS and "--xmark" not in RULES_CSS and ".corner-drawing" not in RULES_CSS
+    for path in TEMPLATES_DIR.rglob("*.html"):
+        text = path.read_text(encoding="utf-8")
+        assert "xmarks" not in text and "corner_drawing" not in text, path.name
 
 
-def test_app_pages_have_the_corner_drawing_with_its_title_block() -> None:
-    layout = (TEMPLATES_DIR / "layout_app.html").read_text(encoding="utf-8")
-    macros = (TEMPLATES_DIR / "macros.html").read_text(encoding="utf-8")
-    assert "{{ corner_drawing() }}" in layout
-    assert '<div class="corner-drawing" aria-hidden="true">' in macros
-    assert "DRAWING NO. SEA/MSB-2" in macros and "SCALE 1:2" in macros
+def test_headings_are_set_tight_in_em() -> None:
+    """-0.02em for headings, -0.03em for the hero headline, so the spacing scales with the size."""
+    assert "letter-spacing: -0.02em" in _rule("h1, h2, h3")
+    for selector in (".page-title", ".section-title"):
+        assert "letter-spacing: -0.02em" in _rule(selector), selector
+    assert "letter-spacing: -0.03em" in _rule(".hero__title")
+
+
+def test_both_themes_and_a_switch_in_every_top_bar() -> None:
+    assert _rule(':root[data-theme="light"]') and "color-scheme: light" in _rule(':root[data-theme="light"]')
+    base = (TEMPLATES_DIR / "base.html").read_text(encoding="utf-8")
+    assert '<html lang="en-GB" data-theme="dark">' in base  # dark without script or storage
+    head = base.split("</head>")[0]
+    assert head.index("css/tokens.css") < head.index("css/app.css")
+    # The stored choice is applied before paint, and storage errors are caught.
+    assert re.search(r'<script>try \{ if \(localStorage\.getItem\("sea-theme"\)', head)
+    assert "catch (e)" in head
+    for layout in ("layout_app.html", "home.html"):
+        assert "{{ theme_button() }}" in (TEMPLATES_DIR / layout).read_text(encoding="utf-8"), layout
+    js = (STATIC_DIR / "js" / "theme.js").read_text(encoding="utf-8")
+    assert js.count("try {") >= 1 and "localStorage.setItem" in js and "catch (e)" in js
+    assert "localStorage" not in js.split("try {")[0]  # no storage call outside a try block
 
 
 def test_transitions_are_150ms_and_off_for_reduced_motion() -> None:
+    """The motion tokens live in tokens.css; reduced motion sets them to zero."""
     assert re.search(r"--dur\s*:\s*150ms", CSS)
     reduced = "".join(_media_blocks("(prefers-reduced-motion: reduce)"))
     assert re.search(r"--dur\s*:\s*0ms", reduced)

@@ -11,7 +11,7 @@
 <section class="section-block" aria-label="Decisions">
 
     {%- for g in found.conflicts %}
-    <article class="decision decision--conflict xmarks" id="f-{{ g.field }}">
+    <article class="decision decision--conflict" id="f-{{ g.field }}">
       <div class="decision__head">
         <h3 class="decision__title">{{ g.label }}</h3>
         <span class="chip chip--conflict">The documents disagree</span>
@@ -47,7 +47,7 @@
     {%- endfor %}
 
     {%- for key, rows in found.reasons.items() %}
-    <article class="decision xmarks" id="g-{{ key }}">
+    <article class="decision" id="g-{{ key }}">
       <div class="decision__head">
         <h3 class="decision__title">{{ reasons[key][0] }}</h3>
         <span class="chip chip--review">{{ rows | length }} value{{ "s" if rows | length != 1 }}</span>
@@ -66,7 +66,7 @@
 
 
     {%- if found.missing %}
-    <article class="decision xmarks" id="missing">
+    <article class="decision" id="missing">
       <div class="decision__head">
         <h3 class="decision__title">Missing from the files</h3>
         <span class="chip chip--missing">{{ found.missing | length }}</span>

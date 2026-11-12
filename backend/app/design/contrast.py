@@ -1,8 +1,10 @@
-"""WCAG 2.2 contrast checks for the colour tokens in app.css.
+"""WCAG 2.2 contrast checks for the colour tokens in tokens.css, in both themes.
 
-The stylesheet is the single source of truth for colours. This module reads
-the colour tokens from its ``:root`` block and checks every foreground and
-background pair the UI actually uses against the AA thresholds:
+tokens.css is the single source of truth for colours. It has two theme blocks,
+``:root[data-theme="dark"]`` (also plain ``:root``, the default) and
+``:root[data-theme="light"]``, with the same token names. This module reads the
+colour tokens of a theme and checks every foreground and background pair the UI
+actually uses, in each theme, against the AA thresholds:
 
 * 4.5:1 for normal text (WCAG 1.4.3),
 * 3:1 for UI components, focus rings and large text (WCAG 1.4.11).
@@ -24,13 +26,14 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from ..paths import STYLESHEET
+from ..paths import TOKENS
 
 TEXT_AA = 4.5
 NON_TEXT_AA = 3.0
 LARGE_TEXT_AA = 3.0  # WCAG 1.4.3: text of 24 px, or 18.7 px bold, and larger
 
-_ROOT_BLOCK = re.compile(r":root\s*\{(?P<body>.*?)\}", re.DOTALL)
+THEMES: tuple[str, ...] = ("dark", "light")
+_BLOCK = re.compile(r"(?P<selector>[^{}]+)\{(?P<body>[^{}]*)\}")
 _HEX_TOKEN = re.compile(r"--(?P<name>[a-z0-9-]+)\s*:\s*(?P<value>#[0-9a-fA-F]{6})\s*;")
 _RGBA_TOKEN = re.compile(
     r"--(?P<name>[a-z0-9-]+)\s*:\s*rgba\(\s*(?P<r>\d+)\s*,\s*(?P<g>\d+)\s*,\s*(?P<b>\d+)\s*,\s*(?P<a>[0-9.]+)\s*\)\s*;"
@@ -48,7 +51,7 @@ class ContrastPair(BaseModel):
     usage: str
 
 
-# Every colour pairing used by the components. Keep in step with app.css.
+# Every colour pairing used by the components, checked in both themes. Keep in step with app.css.
 REQUIRED_PAIRS: tuple[ContrastPair, ...] = tuple(
     ContrastPair(foreground=fg, background=bg, minimum=minimum, usage=usage)
     for fg, bg, minimum, usage in (
@@ -212,22 +215,25 @@ def contrast_ratio(first: str, second: str) -> float:
     return (lighter + 0.05) / (darker + 0.05)
 
 
-def _root(stylesheet: Path) -> str:
-    match = _ROOT_BLOCK.search(stylesheet.read_text(encoding="utf-8"))
-    if not match:
-        raise ValueError(f"no :root block in {stylesheet}")
-    return match["body"]
+def _theme_block(theme: str, stylesheet: Path) -> str:
+    """The body of the rule whose selector list names ``:root[data-theme="<theme>"]``."""
+    css = re.sub(r"/\*.*?\*/", "", stylesheet.read_text(encoding="utf-8"), flags=re.S)
+    wanted = f':root[data-theme="{theme}"]'
+    for m in _BLOCK.finditer(css):
+        if wanted in [part.strip() for part in m["selector"].split(",")]:
+            return m["body"]
+    raise ValueError(f"no {wanted} block in {stylesheet}")
 
 
-def load_tokens(stylesheet: Path = STYLESHEET) -> dict[str, str]:
-    """Return the hex colour tokens from the first ``:root`` block, without ``--``."""
-    return {m["name"]: m["value"] for m in _HEX_TOKEN.finditer(_root(stylesheet))}
+def load_tokens(theme: str = "dark", stylesheet: Path = TOKENS) -> dict[str, str]:
+    """Return the hex colour tokens of one theme, without ``--``."""
+    return {m["name"]: m["value"] for m in _HEX_TOKEN.finditer(_theme_block(theme, stylesheet))}
 
 
-def load_rgba_tokens(stylesheet: Path = STYLESHEET) -> dict[str, Rgba]:
-    """Return the rgba() colour tokens from the first ``:root`` block, without ``--``."""
+def load_rgba_tokens(theme: str = "dark", stylesheet: Path = TOKENS) -> dict[str, Rgba]:
+    """Return the rgba() colour tokens of one theme, without ``--``."""
     return {m["name"]: (int(m["r"]), int(m["g"]), int(m["b"]), float(m["a"]))
-            for m in _RGBA_TOKEN.finditer(_root(stylesheet))}
+            for m in _RGBA_TOKEN.finditer(_theme_block(theme, stylesheet))}
 
 
 def composite(rgba: Rgba, base: str) -> str:
@@ -238,18 +244,19 @@ def composite(rgba: Rgba, base: str) -> str:
 
 
 def main() -> None:
-    """Print the ratio of every required pair as a Markdown table."""
-    tokens = load_tokens()
-    print("| Foreground | Background | Ratio | Minimum | Result | Used for |")
-    print("|---|---|---|---|---|---|")
-    for pair in REQUIRED_PAIRS:
-        ratio = contrast_ratio(tokens[pair.foreground], tokens[pair.background])
-        result = "pass" if ratio >= pair.minimum else "FAIL"
-        print(
-            f"| `--{pair.foreground}` {tokens[pair.foreground]} "
-            f"| `--{pair.background}` {tokens[pair.background]} "
-            f"| {ratio:.2f} | {pair.minimum} | {result} | {pair.usage} |"
-        )
+    """Print the ratio of every required pair in each theme as a Markdown table."""
+    print("| Theme | Foreground | Background | Ratio | Minimum | Result | Used for |")
+    print("|---|---|---|---|---|---|---|")
+    for theme in THEMES:
+        tokens = load_tokens(theme)
+        for pair in REQUIRED_PAIRS:
+            ratio = contrast_ratio(tokens[pair.foreground], tokens[pair.background])
+            result = "pass" if ratio >= pair.minimum else "FAIL"
+            print(
+                f"| {theme} | `--{pair.foreground}` {tokens[pair.foreground]} "
+                f"| `--{pair.background}` {tokens[pair.background]} "
+                f"| {ratio:.2f} | {pair.minimum} | {result} | {pair.usage} |"
+            )
 
 
 if __name__ == "__main__":

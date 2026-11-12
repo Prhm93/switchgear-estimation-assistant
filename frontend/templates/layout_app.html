@@ -1,7 +1,7 @@
 {#- The app: a top bar with two links, the page, and a small footer.
     Child templates set `nav` ("enquiries" or "new") and fill the blocks heading and content. -#}
 {%- extends "base.html" -%}
-{%- from "macros.html" import icon, brand_mark, corner_drawing with context -%}
+{%- from "macros.html" import icon, brand_mark, theme_button with context -%}
 
 {%- block body %}
 <header class="topbar">
@@ -10,6 +10,7 @@
     <nav class="topbar__nav" aria-label="Main">
       <a class="topbar__link" href="/enquiries"{% if nav is defined and nav == "enquiries" %} aria-current="page"{% endif %}>Enquiries</a>
       <a class="btn btn--primary btn--sm" href="/enquiries/new"{% if nav is defined and nav == "new" %} aria-current="page"{% endif %}>{{ icon("plus", "sm") }}New enquiry</a>
+      {{ theme_button() }}
     </nav>
   </div>
 </header>
@@ -20,7 +21,6 @@
 </main>
 
 <footer class="footer">
-  {{ corner_drawing() }}
   <span>Demonstration with synthetic data only.</span>
   <a href="/health">System status</a>
 </footer>

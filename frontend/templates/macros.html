@@ -125,29 +125,9 @@
 {%- endif %}
 {%- endmacro %}
 
-{#- A small original line drawing of a switchboard single-line diagram with its title block, drawn in the
-    corner of the app pages. Decoration only: hidden from screen readers. -#}
-{% macro corner_drawing() -%}
-<div class="corner-drawing" aria-hidden="true">
-  <svg viewBox="0 0 230 150" focusable="false" fill="none" stroke="#9CC0FF" stroke-opacity=".5" stroke-width="1">
-    <path d="M30 6V30M18 30H182"/>
-    <rect x="25" y="12" width="10" height="10"/>
-    <path d="M30 2l-3 4h6z" fill="#9CC0FF" fill-opacity=".5" stroke="none"/>
-    <g>
-      <path d="M58 30V76M88 30V76M118 30V76M148 30V76M174 30V64"/>
-      <path d="M54 46l8 8M62 46l-8 8M84 46l8 8M92 46l-8 8M114 46l8 8M122 46l-8 8M144 46l8 8M152 46l-8 8"/>
-      <circle cx="174" cy="68" r="4"/>
-      <path d="M55 76h6M85 76h6M115 76h6M145 76h6" stroke-width="1.5"/>
-    </g>
-    <path d="M0.5 92.5H229.5V149.5H0.5ZM0.5 110.5H229.5M0.5 129.5H229.5M150.5 92.5V149.5" stroke-opacity=".35"/>
-    <g font-family="IBM Plex Mono, monospace" font-size="7" fill="#8FA2C4" stroke="none" letter-spacing=".6">
-      <text x="6" y="104">ESTIMATION ASSISTANT</text>
-      <text x="156" y="104">REV A</text>
-      <text x="6" y="123">DRAWING NO. SEA/MSB-2</text>
-      <text x="156" y="123">SHEET 1/1</text>
-      <text x="6" y="142">SINGLE-LINE, SCHEMATIC ONLY</text>
-      <text x="156" y="142">SCALE 1:2</text>
-    </g>
-  </svg>
-</div>
+{#- The theme switch for the top bar (dark and light). Hidden until static/js/theme.js shows it. -#}
+{%- macro theme_button() -%}
+<button class="theme-btn" type="button" data-theme-toggle hidden aria-label="Switch to light theme">
+  <span class="theme-btn__sun">{{ icon("sun") }}</span><span class="theme-btn__moon">{{ icon("moon") }}</span>
+</button>
 {%- endmacro %}

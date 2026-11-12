@@ -11,3 +11,4 @@ FRONTEND_DIR: Path = REPO_ROOT / "frontend"
 TEMPLATES_DIR: Path = FRONTEND_DIR / "templates"
 STATIC_DIR: Path = FRONTEND_DIR / "static"
 STYLESHEET: Path = STATIC_DIR / "css" / "app.css"
+TOKENS: Path = STATIC_DIR / "css" / "tokens.css"  # fonts, the two colour themes, type and motion

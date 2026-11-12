@@ -130,10 +130,10 @@ sample enquiry" works in the container. The recordings stay outside the image, m
 - Screens were checked with headless Edge at 1280 px and at Edge's narrowest window (518 px); a real
   390 px phone was not tested.
 
-## UX-V: the technical-drawing style (in progress)
+## UX-V: the technical-drawing style
 
-Parts 1 to 3 are built and committed as a checkpoint; part 4 (the hero shader), the screenshots and the
-Docker rebuild are still to do.
+Parts 1 to 3 were committed as a checkpoint, part 4 (the hero shader) in its own commit. The visual pass
+below replaces most of this look; what it keeps is listed there.
 
 ### Decision reversed: no serif
 
@@ -215,4 +215,54 @@ one button, one link, the statement in the HTML, three steps and the labelled dr
 labels, own scripts only and no animation library, reduced motion). Results below come from the
 checkpoint run.
 
-RESULTS_UXV
+### Part 4: the hero shader
+
+`frontend/static/js/hero-shader.js`, 134 lines of hand-written WebGL: drifting contour lines, blue with
+one red level, at half resolution with the device pixel ratio capped at 1.5. No frames while the tab is
+hidden or the hero is off screen; with reduced motion, without WebGL or if the shader fails to compile,
+the static line art stays. Tests: `tests/integration/test_hero_shader.py`.
+
+### Results (run on this laptop)
+
+After the checkpoint: database tests 5 passed, the rest 627 passed. The strict v2 numbers reproduce
+exactly: 0.778 and 0.561 on the test set (with and without the CAD file), 0.727 and 0.497 on the
+reworded set. One home screenshot with the shader was taken in headless Edge with a software renderer;
+the rest were not, because the visual pass below replaced the look first.
+
+## Visual pass (V1 to V4)
+
+The owner's design prototype is a visual reference only: no code, sample numbers or replies are
+copied from it, and nothing from its vendor folder (React 16.0.0 and ReactDOM 16.0.1, MIT, with a
+Modernizr 3.0.0pre piece, MIT). Kept from UX-V: the view logic (`?view=`, swapped in place, Back works),
+the "Drawing (CAD)" and "Drawing (picture)" source labels with only true duplicates merged, the Export
+rule (disabled, and refused with 409, while nothing is approved), no serif, and the tests' intent.
+Replaced: the view bar (by six tiles, V4), the "+" marks and the corner single-line drawing (gone in V1),
+the isometric switchboard and the static contour art (by the breaker drawing, V2 and V3).
+
+### V1: tokens, two themes, fonts
+
+- `frontend/static/css/tokens.css` holds the fonts, the colour tokens of the **dark** theme (the default,
+  unchanged values) and a new **light** theme (the same navy, red and blue on near-white paper), and the
+  type, spacing, shape and motion tokens. `app.css` uses tokens only; its two last literal colours (the
+  missing segment and its legend) became tokens.
+- The theme is `data-theme` on `<html>`. A one-line script in `base.html` applies the stored choice before
+  the page paints; `static/js/theme.js` shows a sun or moon switch in the top bar of every page, flips the
+  theme and stores it in `localStorage`. Every storage call is inside `try`/`catch`; without storage or
+  script the page is dark and works.
+- Contrast: every pair in `backend/app/design/contrast.py` is now checked in both themes (86 pairs, 172
+  checks), and every solid twin is recomputed per theme. All pass AA; the lowest light-theme text pair
+  is 4.69:1, and the red accent word is 4.34:1 on paper (large text only, minimum 3).
+- Headings: -0.02em, the hero headline -0.03em (in em, so the spacing scales with the size).
+- Fonts: IBM Plex Sans 400, 500 and 600 and IBM Plex Mono 400 and 500 were already self-hosted (woff2,
+  `font-display: swap`, licence `frontend/static/fonts/OFL.txt`, SIL Open Font License 1.1, listed in the
+  README licences table); nothing was downloaded.
+- Tests changed on purpose: the hairline test (the light theme's hairlines are faint navy, 0.10 to 0.22);
+  the crosshair and corner-drawing tests were replaced by one that checks they are gone; the contrast tests
+  run per theme. New: no external address in any template or static file (only SVG namespace names;
+  licence texts are not loaded), the five fonts on disk and each `@font-face` swaps, reduced motion turns
+  transitions off, heading spacing, both themes define the same tokens, and the switch in every top bar.
+
+Results (this laptop): database tests 5 passed, the rest 774 passed; the strict v2 numbers reproduce
+(0.778, 0.561, 0.727, 0.497). Screenshots in `ui-audit/after-v/` (`v1-*`): home in both themes at 1280,
+1440 and 1920 px, New enquiry and Check at 1440 px in both themes; the letters of the hero headline do
+not touch at -0.03em at any of the three widths. The home page is still the UX-V layout until V3.

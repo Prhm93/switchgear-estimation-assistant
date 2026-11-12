@@ -3,7 +3,7 @@
     Motion is hand-written (static/js/home.js, static/js/hero-shader.js): the full text is in the HTML and
     only its reveal is animated. Reduced motion, or no WebGL, gives the static page. -#}
 {%- extends "base.html" -%}
-{%- from "macros.html" import icon, brand_mark with context -%}
+{%- from "macros.html" import icon, brand_mark, theme_button with context -%}
 
 {%- block title %}{{ app_name }}{% endblock -%}
 {%- block body_class %}page--home{% endblock -%}
@@ -23,12 +23,13 @@
       <a href="#accuracy">Measured</a>
       <a href="#trust">Trust &amp; safety</a>
       <a href="/enquiries">Enquiries</a>
+      {{ theme_button() }}
     </nav>
   </div>
 </header>
 
 <main id="main" class="site-main">
-  <section class="hero xmarks" aria-labelledby="hero-title">
+  <section class="hero" aria-labelledby="hero-title">
     <div class="hero__art" aria-hidden="true">
       <svg class="hero__lines" viewBox="0 0 1440 700" preserveAspectRatio="xMidYMid slice" focusable="false">
       <path d="M0 90 L40 101 L80 111 L120 118 L160 123 L200 125 L240 124 L280 121 L320 116 L360 110 L400 105 L440 100 L480 98 L520 96 L560 96 L600 96 L640 97 L680 97 L720 95 L760 91 L800 86 L840 79 L880 71 L920 63 L960 56 L1000 51 L1040 49 L1080 51 L1120 55 L1160 63 L1200 72 L1240 83 L1280 93 L1320 102 L1360 109 L1400 114 L1440 116"/>
@@ -61,7 +62,7 @@
     <p class="statement__text"><span class="word">A</span> <span class="word">customer</span> <span class="word">enquiry</span> <span class="word">arrives</span> <span class="word">as</span> <span class="word">three</span> <span class="word">documents</span> <span class="word">that</span> <span class="word">rarely</span> <span class="word">agree.</span> <span class="word">The</span> <span class="word">assistant</span> <span class="word">reads</span> <span class="word">each</span> <span class="word">one,</span> <span class="word">shows</span> <span class="word">where</span> <span class="word">every</span> <span class="word">value</span> <span class="word">came</span> <span class="word">from,</span> <span class="word">puts</span> <span class="word">disagreements</span> <span class="word">side</span> <span class="word">by</span> <span class="word">side</span> <span class="word">and</span> <span class="word">leaves</span> <span class="word">every</span> <span class="word">decision</span> <span class="word">to</span> <span class="word">the</span> <span class="word">engineer.</span> <span class="word">Nothing</span> <span class="word">reaches</span> <span class="word">the</span> <span class="word">quote</span> <span class="word">until</span> <span class="word">it</span> <span class="word">is</span> <span class="word">approved.</span></p>
   </section>
 
-  <section id="how" class="how xmarks" aria-labelledby="how-title">
+  <section id="how" class="how" aria-labelledby="how-title">
     <div class="how__text">
       <div class="label-mono">01 · How it works</div>
       <h2 id="how-title" class="section-title">Three steps, one <span class="accent">checked</span> quote</h2>
@@ -123,7 +124,7 @@
     </figure>
   </section>
 
-  <section id="accuracy" class="numbers xmarks" aria-labelledby="accuracy-title">
+  <section id="accuracy" class="numbers" aria-labelledby="accuracy-title">
     <div class="numbers__head">
       <div class="label-mono">02 · Measured, not promised</div>
       <h2 id="accuracy-title" class="section-title">Scored against an <span class="accent">answer</span> key</h2>
@@ -137,7 +138,7 @@
     </dl>
   </section>
 
-  <section id="trust" class="trust xmarks" aria-labelledby="trust-title">
+  <section id="trust" class="trust" aria-labelledby="trust-title">
     <div class="label-mono">03 · Trust &amp; safety</div>
     <h2 id="trust-title" class="section-title">The engineer <span class="accent">decides</span></h2>
     <ul class="trust__list">
