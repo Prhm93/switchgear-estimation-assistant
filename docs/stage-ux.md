@@ -384,3 +384,33 @@ the hero mid draw-on, story steps 1 to 3 at 1440.
 Results (this laptop): database tests 5 passed, the rest 824 passed; the strict v2 numbers reproduce
 (0.778, 0.561, 0.727, 0.497). No V4 screenshots were taken here (headless Edge skipped to save memory;
 the owner takes them).
+
+### V4, second part: the tile detail and the Summary buttons
+
+Steps 6 and 7 of the visual-pass brief, finished after the first V4 commit.
+
+- A tile opens its detail below the tiles (`?tile=<key>` in the address, so Back works; with script only
+  the report block is swapped, from `/enquiries/<id>/tiles/<key>`). The agreement tile opens first.
+  - What is quoted: the tile is now one line from the values ("ACB incomer 1250 A, 400 V, form 4a, IP54";
+    a field the documents disagree on is left out, and "Nothing read from the files yet" when nothing was
+    read). The detail lists the board-wide required fields with their value, "Documents disagree" or
+    "Not found".
+  - Parts found: the parts with quantity and state. Drawing attached: each drawing as "Drawing (CAD)" or
+    "Drawing (picture)", with a link to the proof viewer.
+  - Do they agree?: each conflict with its sides and sources, and "Use this", which calls the existing
+    decision action (`/fields/use`) and comes back to the Summary. Typing another value stays on Check.
+    The tile has a red outline while any conflict is open.
+  - Estimated cost: the draft total from approved values only and the lines not priced yet, or "Waiting
+    for approvals". Required, not found: the fields, then the TBC ones apart.
+- Buttons under the detail: Report (the Word report; disabled with a reason until a value is approved,
+  the same rule as the Quote page), View drawing (the proof viewer on the first drawing read) and View all
+  values (Check).
+- Kept as decided on 12 Nov 2026: the Check view bar ("To check", "Parts list", "Report") stays on Check;
+  the tiles live on the Summary. "Try the sample enquiry" makes a fresh sample enquiry as in UX-1, and
+  reading progress is the real per-file state, polled every second.
+- Tests: the tile links and their HTMX swap, real rows in every detail, "Use this" from the Summary,
+  the Report button off until something is approved, and the cost tile never showing a price built from
+  unapproved values. Changed on purpose: the tile hrefs and the "What is quoted" value.
+
+Results (this laptop): database tests 5 passed, the rest 832 passed; the strict v2 numbers reproduce
+(0.778, 0.561, 0.727, 0.497). No screenshots taken here (the owner takes them).

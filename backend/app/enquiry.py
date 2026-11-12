@@ -398,6 +398,43 @@ REQUIRED_NOTE = "From the app's list of required fields, not from the specificat
 NOT_FOUND = "Not found in any file read"
 
 
+def _settled(groups: Any, field_name: str) -> Any:
+    """The one value a field has when its documents agree, else None (a conflict is named elsewhere)."""
+    g = groups.get(field_name)
+    if not g or g.get("conflict") or not g.get("sides"):
+        return None
+    value, unit = shown(g["sides"][0][0])
+    return None if value is None else labels.display(value, unit)
+
+
+def quoted_line(groups: Any) -> str:
+    """What is quoted, in one line from the values: "ACB incomer 1250 A, 400 V, form 4a, IP54"."""
+    if not groups:
+        return "Nothing read from the files yet"
+    device, rating = _settled(groups, "incomer.device"), _settled(groups, "incomer.rating")
+    incomer = " ".join(p for p in (device, "incomer" if device else None, rating) if p)
+    form = _settled(groups, "enclosure.form")
+    parts = [incomer, _settled(groups, "system.voltage"), f"form {form}" if form else None,
+             _settled(groups, "enclosure.ip_rating")]
+    return ", ".join(p for p in parts if p) or "No main ratings found yet"
+
+
+def main_values(groups: Any) -> list[dict[str, str]]:
+    """The board-wide required fields in reading order: each with its value, "Documents disagree" or
+    "Not found", for the detail of the "What is quoted" tile."""
+    out = []
+    for f in REQUIRED:
+        g = groups.get(f)
+        if not g or not g.get("sides"):
+            out.append({"label": labels.field_label(f), "value": "Not found", "state": "missing"})
+        elif g.get("conflict"):
+            out.append({"label": labels.field_label(f), "value": "Documents disagree", "state": "conflict"})
+        else:
+            out.append({"label": labels.field_label(f), "value": _settled(groups, f) or "Not found",
+                        "state": "approved" if g.get("pending") is False else "extracted"})
+    return out
+
+
 def summary_tiles(project: Any, found: Any, items: list[Any], estimate: Any, blockers: list[Any]) -> list[Tile]:
     """The six tiles, from what the enquiry holds now. The cost uses approved values only (owner, 12 Nov
     2026): "Waiting for approvals" until something is approved, then the draft total and how many of the
@@ -424,7 +461,7 @@ def summary_tiles(project: Any, found: Any, items: list[Any], estimate: Any, blo
                    f"{base}/check#missing", note=REQUIRED_NOTE,
                    extra=f"Marked TBC: {len(tbc)}" if tbc else None, tone="review" if required else "neutral")
     return [
-        Tile("quoted", "What is quoted", project.name, f"{base}/check?view=items",
+        Tile("quoted", "What is quoted", quoted_line(found.groups), f"{base}/check?view=items",
              note=f"{len(ways)} outgoing ways found" if ways else None),
         Tile("parts", "Parts found", str(len(items)), f"{base}/check?view=items"),
         Tile("drawing", "Drawing attached", f"Yes: {', '.join(kinds)}" if drawings else "No", f"{base}/files"),

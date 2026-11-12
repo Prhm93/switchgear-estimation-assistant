@@ -197,19 +197,46 @@ def create_sample(request: Request, session: SessionDep, background: BackgroundT
     return RedirectResponse(f"/enquiries/{project.id}/files?go=1", status_code=303)
 
 
-@router.get("/enquiries/{project_id}", response_class=HTMLResponse)
-def open_enquiry(request: Request, project_id: int, session: SessionDep) -> Response:
-    """The enquiry's Summary: six tiles and the Ask column (V4). Without files it opens Files instead."""
-    project = project_or_404(session, project_id)
-    if not project.documents:
-        return RedirectResponse(f"/enquiries/{project_id}/files", status_code=303)
+TILE_KEYS = ("quoted", "parts", "drawing", "agree", "cost", "missing")
+
+
+def _summary_context(request: Request, session: Session, project: Project, tile: str | None) -> dict[str, Any]:
+    """Everything the Summary shows: the six tiles, the open tile's detail and the buttons under them."""
     found = enquiry.decisions(project)
     context = enquiry_context(session, project, found)
     estimate = context["estimate"]
-    tiles = enquiry.summary_tiles(project, found, _items(request, session, project), estimate,
-                                  enquiry.quote_blockers(estimate) if estimate else [])
-    return render(request, "summary.html", **context, tab="summary", tiles=tiles,
+    items = _items(request, session, project)
+    blockers = enquiry.quote_blockers(estimate) if estimate else []
+    drawings = [d for d in project.documents if d.kind == "schematic"]
+    return {**context, "tab": "summary", "items": items, "blockers": blockers, "drawings": drawings,
+            "tiles": enquiry.summary_tiles(project, found, items, estimate, blockers),
+            "open_tile": tile if tile in TILE_KEYS else "agree",
+            "main_values": enquiry.main_values(found.groups),
+            "proof_drawing": next((d for d in drawings if d.pages), None)}
+
+
+@router.get("/enquiries/{project_id}", response_class=HTMLResponse)
+def open_enquiry(request: Request, project_id: int, session: SessionDep, tile: str | None = None) -> Response:
+    """The enquiry's Summary: six tiles, the open tile's detail below, and the Ask column (V4).
+
+    ``?tile=<key>`` keeps the open tile in the address, so Back works. Without files it opens Files instead.
+    """
+    project = project_or_404(session, project_id)
+    if not project.documents:
+        return RedirectResponse(f"/enquiries/{project_id}/files", status_code=303)
+    return render(request, "summary.html", **_summary_context(request, session, project, tile),
                   watermark=breaker_svg("summary-"))
+
+
+@router.get("/enquiries/{project_id}/tiles/{key}", response_class=HTMLResponse)
+def tile_detail(request: Request, project_id: int, key: str, session: SessionDep) -> Response:
+    """One tile opened: the report block (tiles and detail) for HTMX, or the whole Summary without script."""
+    if key not in TILE_KEYS:
+        raise HTTPException(404, "There is no such tile.")
+    project = project_or_404(session, project_id)
+    if not is_htmx(request):
+        return RedirectResponse(f"/enquiries/{project_id}?tile={key}", status_code=303)
+    return render(request, "partials/summary_report.html", **_summary_context(request, session, project, key))
 
 
 # --- rename, archive, delete (each asks first) ---------------------------------------------------------
@@ -453,10 +480,16 @@ def check_page(request: Request, project_id: int, session: SessionDep, open: str
 
 
 def _after_decision(request: Request, session: Session, project_id: int, open_reason: str | None = None,
-                    error: str | None = None, anchor: str | None = None) -> Response:
-    """After a decision on Check: rebuild the quote, then the refreshed Check block (HTMX) or a redirect."""
+                    error: str | None = None, anchor: str | None = None, back: str = "") -> Response:
+    """After a decision on Check: rebuild the quote, then the refreshed Check block (HTMX) or a redirect.
+
+    A decision taken on the Summary (``back="summary"``) returns there with the agreement tile open;
+    an error is still shown on Check, where the whole conflict can be read.
+    """
     if error is None:
         services.refresh_quote(session, project_id, request.app.state.settings)
+        if back == "summary" and not is_htmx(request):
+            return RedirectResponse(f"/enquiries/{project_id}?tile=agree", status_code=303)
     if is_htmx(request):
         session.expire_all()
         project = project_or_404(session, project_id)
@@ -520,7 +553,7 @@ def accept_all(request: Request, project_id: int, session: SessionDep, confirm: 
 
 @router.post("/enquiries/{project_id}/fields/use")
 def use_value(request: Request, project_id: int, session: SessionDep, field: Annotated[str, Form()],
-              value_id: Annotated[int, Form()]) -> Response:
+              value_id: Annotated[int, Form()], back: Annotated[str, Form()] = "") -> Response:
     """ "Use this" on a conflict card: keep this source's value, reject the others."""
     project_or_404(session, project_id)
     error = None
@@ -528,7 +561,7 @@ def use_value(request: Request, project_id: int, session: SessionDep, field: Ann
         services.resolve_field(session, project_id, field, keep_value_id=value_id)
     except services.ReviewError as e:
         error = str(e)
-    return _after_decision(request, session, project_id, error=error)
+    return _after_decision(request, session, project_id, error=error, back=back)
 
 
 @router.post("/enquiries/{project_id}/fields/type")

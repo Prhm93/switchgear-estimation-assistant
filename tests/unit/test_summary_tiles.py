@@ -42,9 +42,14 @@ def test_six_tiles_in_order_with_plain_labels() -> None:
     assert all(t.href for t in out)  # every tile opens the step that shows its detail
 
 
+def value(v, unit=None) -> dict:
+    return {"sides": [[NS(review_status="extracted", value=v, unit=unit)]], "conflict": False}
+
+
 def test_what_is_quoted_parts_and_drawing() -> None:
+    # Changed on purpose (brief, steps 6 and 7): the tile is a line from the values, not the enquiry's name.
     t = tiles()
-    assert t["quoted"].value == "MSB-2 main switchboard" and t["quoted"].note == "2 outgoing ways found"
+    assert t["quoted"].value == "No main ratings found yet" and t["quoted"].note == "2 outgoing ways found"
     assert t["parts"].value == "3"
     assert t["drawing"].value == "Yes: DXF, PDF"
     assert tiles(project=NS(name="X", documents=[doc("specification", "pdf")]))["drawing"].value == "No"
@@ -88,3 +93,17 @@ def test_the_decision_count_leaves_out_the_accept_all_line() -> None:
                   acceptable=[5] * 118, missing=[], not_read=[], busy=False, total=0, approved=0)
     assert d.needs == 2 + 4 and d.disagree == 2
     assert not hasattr(d, "cards")  # the old count that added one for the Accept all line is gone
+
+
+def test_what_is_quoted_is_one_line_from_the_values() -> None:
+    f = found()
+    f.groups.update({"incomer.device": value("acb"), "incomer.rating": value(1250.0, "A"),
+                     "system.voltage": value(400, "V"), "enclosure.form": value("4a"),
+                     "enclosure.ip_rating": value("IP54")})
+    assert tiles(found=f)["quoted"].value == "ACB incomer 1250 A, 400 V, form 4a, IP54"
+    # A field the documents disagree on is left out: the agreement tile names it instead.
+    f.groups["system.voltage"] = {"sides": [[NS(review_status="extracted", value=400, unit="V")],
+                                            [NS(review_status="extracted", value=415, unit="V")]], "conflict": True}
+    assert tiles(found=f)["quoted"].value == "ACB incomer 1250 A, form 4a, IP54"
+    empty = NS(conflicts=[], disagree=0, needs=0, approved=0, missing=[], groups={})
+    assert tiles(found=empty)["quoted"].value == "Nothing read from the files yet"
