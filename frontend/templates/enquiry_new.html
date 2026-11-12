@@ -1,32 +1,45 @@
+{#- The start page (V4): drop the customer's files, type a note, or both. A note alone starts the enquiry
+    too: it is kept, and the enquiry opens on Files asking for the files. The breaker drawing behind is a
+    quiet watermark (aria-hidden, its own id prefix). -#}
 {%- extends "layout_app.html" -%}
 {%- from "macros.html" import icon with context -%}
 
 {%- block title %}New enquiry · {{ app_name }}{% endblock -%}
-{%- block page_class %} page--narrow{% endblock -%}
-
-{%- block heading %}
-<div class="page-head"><h1 class="page-title">New <span class="accent">enquiry</span></h1></div>
-{% endblock -%}
+{%- block page_class %} page--start{% endblock -%}
 
 {%- block content %}
-<form class="form gap-top-lg" method="post" action="/enquiries" enctype="multipart/form-data" data-dropzone>
-  <label class="field">
-    <span class="field__label">Name (optional: taken from the specification if left empty)</span>
-    <input class="input" name="name" value="{{ name }}" maxlength="200" autocomplete="off" placeholder="e.g. MSB-2 main switchboard">
-  </label>
-  <div class="upload-box upload-box--card">
-    <div class="upload-box__inner dropzone__inner">
-      {{ icon("upload", "lg") }}
-      <h2 class="dropzone__title">Drop the customer's files here</h2>
-      <p class="muted">PDF, DXF, DOCX, PNG or JPG, up to {{ max_mb }} MB each; a PDF up to {{ max_pages }} pages.</p>
-      <label class="btn btn--secondary">Choose files<input class="visually-hidden" type="file" name="files" multiple accept=".pdf,.png,.jpg,.jpeg,.dxf,.docx" data-file-input></label>
-      <p class="small muted" data-file-summary aria-live="polite"></p>
-      <p class="small muted">{{ drawing_hint }}</p>
+<div class="watermark" aria-hidden="true">{{ watermark }}</div>
+<div class="start">
+  <div class="label-mono">New enquiry</div>
+  <h1 class="start__title">Drop the customer's files, or <span class="accent">describe it</span></h1>
+
+  <form class="start-form" method="post" action="/enquiries" enctype="multipart/form-data" data-dropzone>
+    <div class="upload-box upload-box--card">
+      <div class="upload-box__inner dropzone__inner">
+        {{ icon("upload", "lg") }}
+        <p class="dropzone__title">Drop the specification, drawing or letter here</p>
+        <label class="btn btn--secondary btn--sm">Choose files<input class="visually-hidden" type="file" name="files" multiple accept=".pdf,.png,.jpg,.jpeg,.dxf,.docx" data-file-input></label>
+        <p class="small muted">PDF, DXF, DOCX, PNG or JPG, up to {{ max_mb }} MB each; a PDF up to {{ max_pages }} pages.</p>
+        <p class="small muted" data-file-summary aria-live="polite"></p>
+        <label class="start-form__note">
+          <span class="visually-hidden">Describe the enquiry</span>
+          <textarea class="input" name="note" rows="2" maxlength="4000" placeholder="Or describe the enquiry in a sentence"></textarea>
+        </label>
+      </div>
     </div>
+    <div class="start-form__foot">
+      <label class="field field--inline start-form__name">
+        <span class="field__label">Name (optional)</span>
+        <input class="input" name="name" value="{{ name }}" maxlength="200" autocomplete="off" placeholder="Taken from the specification if empty">
+      </label>
+      <button class="btn btn--primary" type="submit">Start{{ icon("arrow-right", "sm") }}</button>
+    </div>
+    <p class="small muted">{{ drawing_hint }} Your files stay on this machine.</p>
+  </form>
+
+  <div class="start-chips">
+    <form method="post" action="/enquiries/sample"><button class="chip-link" type="submit">Try the sample enquiry</button></form>
+    <a class="chip-link" href="/enquiries">Recent enquiries</a>
   </div>
-  <div class="row">
-    <button class="btn btn--primary" type="submit">Start</button>
-    <a class="btn btn--ghost" href="/enquiries">Cancel</a>
-  </div>
-</form>
+</div>
 {% endblock -%}

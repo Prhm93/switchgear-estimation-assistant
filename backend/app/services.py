@@ -20,7 +20,7 @@ from backend.app.catalogue import CatalogueItem, load_catalogue
 from backend.app.config import Settings
 from backend.app.estimate import ApprovedValue, Draft, build, load_rules
 from backend.app.llm.quote import QuoteCheckMode
-from backend.app.models import (AuditEvent, CatalogueItemRow, Document, Estimate, EstimateLineRow,
+from backend.app.models import (AuditEvent, CatalogueItemRow, Document, EnquiryNote, Estimate, EstimateLineRow,
                                 ExtractedValueRow, Match, Page, Project, Review, utcnow)
 from backend.app.pipeline import analyse_file
 from backend.app.recordings import RecordingMismatch, find_recording
@@ -83,6 +83,19 @@ def create_project(session: Session, name: str = "", reference: str | None = Non
     audit(session, "create", "project", project.id, project.id, name=project.name, sample=is_sample or None)
     session.commit()
     return project
+
+
+def add_note(session: Session, project: Project, text: str, actor: str = DEFAULT_ACTOR) -> EnquiryNote | None:
+    """Keep text the engineer typed about the enquiry (V4). White space alone is not a note."""
+    text = (text or "").strip()
+    if not text:
+        return None
+    note = EnquiryNote(project_id=project.id, text=text[:4000], actor=actor)
+    session.add(note)
+    session.flush()
+    audit(session, "note", "enquiry_note", note.id, project.id, actor=actor, length=len(note.text))
+    session.commit()
+    return note
 
 
 def rename_project(session: Session, project: Project, name: str, reference: str | None = None) -> Project:

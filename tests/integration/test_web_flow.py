@@ -125,7 +125,7 @@ def showcase_flow(client: TestClient) -> None:
     listing = client.get("/enquiries").text
     assert "Showcase" in listing and "Needs you (" in listing
     check = client.get(f"/enquiries/{pid}/check").text
-    assert count > 0 and re.search(r'>\s*Decisions\s*<span class="view-btn__count mono">\d+</span>', check)
+    assert count > 0 and re.search(r'>\s*To check\s*<span class="view-btn__count mono">\d+</span>', check)  # renamed in V4
     assert "The documents disagree" in check and "was not read" in check
     assert 'id="f-way.Q2.rating"' in check and 'class="link-accept"' in check  # the conflict waits; the rest in one step
 

@@ -41,6 +41,25 @@ class Project(Base):
     values: Mapped[list[ExtractedValueRow]] = relationship(back_populates="project",
                                                            order_by="ExtractedValueRow.id",
                                                            cascade="all, delete-orphan")
+    notes: Mapped[list[EnquiryNote]] = relationship(back_populates="project", order_by="EnquiryNote.id",
+                                                    cascade="all, delete-orphan")
+
+
+class EnquiryNote(Base):
+    """Text the engineer typed about an enquiry (V4): it may start an enquiry before any file arrives.
+
+    A note is the engineer's own words, kept as data. It is never read for values and never priced.
+    """
+
+    __tablename__ = "enquiry_notes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    text: Mapped[str] = mapped_column(Text)
+    actor: Mapped[str] = mapped_column(String(60))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    project: Mapped[Project] = relationship(back_populates="notes")
 
 
 class Document(Base):

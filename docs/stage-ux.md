@@ -345,3 +345,42 @@ but the browser delivers only about 2 frames a second while the hero is on scree
 headline and the "Position indicator" label: 138 px at 1280, 140 px at 1440, 142 px at 1920 (2316 not
 measured: too little free memory). Screenshots (`v3-*`): home dark and light at 1280, 1440 and 1920,
 the hero mid draw-on, story steps 1 to 3 at 1440.
+
+### V4: the start page, the enquiry Summary and plain wording
+
+- Start (`/enquiries/new`): "Drop the customer's files, or describe it". Files, a typed note, or both
+  start an enquiry; the optional name stays. A note alone is kept in the new table `enquiry_notes`
+  (migration 0006, additive only: one table, nothing else changed) with an audit entry, and the enquiry
+  opens on Files: "Add the customer's files to read this enquiry." above the note. A note is the
+  engineer's own words: never read for values and never priced. "Try the sample enquiry" and "Recent
+  enquiries" sit under the form; a small breaker drawing (no labels, aria-hidden, its own id prefix)
+  sits beside the title.
+- Summary (`/enquiries/<id>`, a new first tab before 1 Files): six tiles worked out by
+  `enquiry.summary_tiles`, each opening the step with the detail. What is quoted (name and ways found),
+  Parts found, Drawing attached, Do they agree? ("Not yet: N disagree", or "Yes" and how many decisions
+  wait), Estimated cost ("Waiting for approvals" until something is approved, then the total from
+  approved values only with "Draft, from N of M lines", M counting the lines still blocked), and
+  Required, not found (from the app's list of required fields, not from the specification; TBC values
+  apart as "Marked TBC: N"). An enquiry with no files still opens on Files. The Ask column is a quiet
+  empty state ("Nothing asked yet.") with no input until UX-3.
+- Plain wording: the Check views are "To check" and "Parts list" (the address keys stay
+  `decisions` and `items`, so old links work); one line under them: "A value is one fact read from your
+  files. Approve it and it can be priced."; Quote says "Nothing is approved yet. Go to Check and approve
+  values." while nothing is approved.
+- The count on Check (owner fix): it was conflicts + values to review + 1 when an "Accept all" line was
+  waiting, so the 46th on the sample was the Accept all line (39 read from a drawing picture + 6 medium
+  confidence + 1). The Accept all line is not a decision: the count is now conflicts + values to review
+  (`Decisions.needs`), and the line sits apart at the end of "To check" under "Agreeing values", marked
+  "Not counted as decisions". The Enquiries pill reads "Needs you" without a number when only agreeing
+  values wait.
+- "7 disagree" on Summary against 8 conflicts on Check: different data, not a different rule. The Docker
+  enquiry read its drawing PDF with OCR (drawing reading on) and found one more conflict (`ways.count`);
+  the preview server had drawing reading off. Both screens now use one count, `Decisions.disagree`, and a
+  test checks that Summary shows the number of conflict cards Check shows.
+- Tests changed on purpose: the view names in `test_enquiry_views.py`, `test_web_flow.py` and
+  `test_enquiry_lifecycle.py`. New: `tests/unit/test_summary_tiles.py`,
+  `tests/integration/test_enquiry_summary.py`, and a 0006 test in `test_migrations.py`.
+
+Results (this laptop): database tests 5 passed, the rest 824 passed; the strict v2 numbers reproduce
+(0.778, 0.561, 0.727, 0.497). No V4 screenshots were taken here (headless Edge skipped to save memory;
+the owner takes them).

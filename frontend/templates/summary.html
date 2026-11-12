@@ -1,0 +1,28 @@
+{#- An enquiry's Summary (V4): six tiles worked out from the enquiry, each opening the step that shows
+    more, and the Ask column. Ask is a quiet empty state until it is built (UX-3): nothing here pretends
+    to answer. -#}
+{%- extends "layout_enquiry.html" -%}
+
+{%- block content %}
+<div class="summary">
+  <section class="summary__report" aria-labelledby="report-title">
+    <div class="summary__head"><h2 id="report-title" class="block-title">Report</h2><span class="label-mono">Six checks</span></div>
+    <div class="tiles">
+      {%- for t in tiles %}
+      <a class="tile tile--{{ t.tone }}" href="{{ t.href }}" data-tile="{{ t.key }}">
+        <span class="tile__label">{{ t.label }}</span>
+        <span class="tile__value{% if t.key == 'parts' or (t.key == 'cost' and t.note) %} mono{% endif %}">{{ t.value }}</span>
+        {%- if t.extra %}<span class="tile__extra">{{ t.extra }}</span>{% endif %}
+        {%- if t.note %}<span class="tile__note">{{ t.note }}</span>{% endif %}
+      </a>
+      {%- endfor %}
+    </div>
+    <div class="watermark" aria-hidden="true">{{ watermark }}</div>
+  </section>
+  <aside class="ask" aria-labelledby="ask-title">
+    <div class="summary__head"><h2 id="ask-title" class="block-title">Ask</h2></div>
+    <p class="ask__empty">Nothing asked yet.</p>
+    <p class="small muted">Questions about this enquiry will be answered from its own values, each with its source.</p>
+  </aside>
+</div>
+{% endblock -%}

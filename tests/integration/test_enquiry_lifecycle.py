@@ -166,9 +166,9 @@ def test_check_does_not_render_a_form_per_value(client: TestClient) -> None:
     values = count(client, ExtractedValueRow, project_id=pid)
     assert page.count("<form") < values / 3, (page.count("<form"), values)
     assert "Show all values" in page and "?view=items" in page
-    # One count everywhere: the Decisions button says the number on the Check tab.
+    # One count everywhere: the To check button says the number on the Check tab.
     tab = re.search(r'step__count--needs mono" aria-label="(\d+) waiting', page).group(1)
-    assert re.search(rf'>\s*Decisions\s*<span class="view-btn__count mono">{tab}</span>', page)
+    assert re.search(rf'>\s*To check\s*<span class="view-btn__count mono">{tab}</span>', page)  # renamed in V4
     assert "/check/values" in page  # the full list is loaded only when opened
 
 
@@ -292,4 +292,6 @@ def test_the_enquiries_list_offers_the_sample_when_empty(client: TestClient) -> 
     assert "Try the sample enquiry" in page and 'action="/enquiries/sample"' in page
     pid = new_enquiry(client, [("specification.pdf", SPEC)])
     page = client.get("/enquiries").text
-    assert "Board A" in page and "Needs you (" in page and f"/enquiries/{pid}" in page
+    # V4: agreeing values that "Accept all" can take are no longer counted as decisions, so the pill may
+    # read "Needs you" without a number when only those wait.
+    assert "Board A" in page and re.search(r"Needs you( \(\d+\))?<", page) and f"/enquiries/{pid}" in page

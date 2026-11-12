@@ -203,14 +203,15 @@ class Decisions:
         return sum(len(v) for v in self.reasons.values())
 
     @property
-    def needs(self) -> int:
-        """Decisions waiting: each conflict is one, each value to review is one."""
-        return len(self.conflicts) + self.to_review
+    def disagree(self) -> int:
+        """Fields whose documents give different values: the one count the Summary and Check both show."""
+        return len(self.conflicts)
 
     @property
-    def cards(self) -> int:
-        """The count on the status pill: decisions, plus one when agreeing values wait to be accepted."""
-        return self.needs + (1 if self.acceptable else 0)
+    def needs(self) -> int:
+        """Decisions waiting: each conflict is one, each value to review is one. The agreeing values that
+        "Accept all" would approve are not decisions and are not counted (owner, 12 Nov 2026)."""
+        return self.disagree + self.to_review
 
 
 def decisions(project: Project) -> Decisions:
@@ -378,6 +379,59 @@ def quote_out_of_date(session: Session, project_id: int, estimate: Estimate | No
     return built is None or built < last_input
 
 
+# --- the Summary page: six tiles ------------------------------------------------------------------------
+
+@dataclass
+class Tile:
+    """One tile on an enquiry's Summary page: a plain label, the answer, and the step that shows more."""
+
+    key: str
+    label: str
+    value: str
+    href: str
+    note: str | None = None
+    extra: str | None = None  # a second, separate fact (the missing tile's "Marked TBC")
+    tone: str = "neutral"  # neutral, conflict or review
+
+
+REQUIRED_NOTE = "From the app's list of required fields, not from the specification."
+NOT_FOUND = "Not found in any file read"
+
+
+def summary_tiles(project: Any, found: Any, items: list[Any], estimate: Any, blockers: list[Any]) -> list[Tile]:
+    """The six tiles, from what the enquiry holds now. The cost uses approved values only (owner, 12 Nov
+    2026): "Waiting for approvals" until something is approved, then the draft total and how many of the
+    quote's lines it covers. Missing counts required fields no file gives; TBC values are kept apart."""
+    base = f"/enquiries/{getattr(project, 'id', '')}"
+    ways = sorted({m.group(1) for f in found.groups if (m := WAY_FIELD.match(f))})
+    drawings = [d for d in project.documents if d.kind == "schematic"]
+    kinds = sorted({d.file_type.upper() for d in drawings}, key=lambda k: (k != "DXF", k))
+    conflicts = found.disagree
+    if conflicts:
+        agree = Tile("agree", "Do they agree?", f"Not yet: {conflicts} disagree", f"{base}/check", tone="conflict")
+    else:
+        agree = Tile("agree", "Do they agree?", "Yes", f"{base}/check",
+                     note=f"{found.needs} decisions wait for you" if found.needs else None)
+    if found.approved and estimate is not None and estimate.lines:
+        lines = len(estimate.lines)
+        cost = Tile("cost", "Estimated cost", f"{estimate.currency} {estimate.total:,.2f}", f"{base}/quote",
+                    note=f"Draft, from {lines} of {lines + len(blockers)} lines")
+    else:
+        cost = Tile("cost", "Estimated cost", "Waiting for approvals", f"{base}/quote")
+    required = [m for m in found.missing if m["why"] == NOT_FOUND]
+    tbc = [m for m in found.missing if m["why"] != NOT_FOUND]
+    missing = Tile("missing", "Required, not found", str(len(required)) if required else "None",
+                   f"{base}/check#missing", note=REQUIRED_NOTE,
+                   extra=f"Marked TBC: {len(tbc)}" if tbc else None, tone="review" if required else "neutral")
+    return [
+        Tile("quoted", "What is quoted", project.name, f"{base}/check?view=items",
+             note=f"{len(ways)} outgoing ways found" if ways else None),
+        Tile("parts", "Parts found", str(len(items)), f"{base}/check?view=items"),
+        Tile("drawing", "Drawing attached", f"Yes: {', '.join(kinds)}" if drawings else "No", f"{base}/files"),
+        agree, cost, missing,
+    ]
+
+
 # --- status pill ------------------------------------------------------------------------------------------
 
 @dataclass
@@ -395,8 +449,9 @@ def status(session: Session, project: Project, estimate: Estimate | None, found:
     d = found or decisions(project)
     if d.busy:
         return Status("reading", "Reading", "review")
-    if d.cards or d.missing or not estimate or not estimate.lines or estimate.problems or estimate.pending:
-        waiting = d.cards + len(estimate.pending if estimate else [])
+    if (d.needs or d.acceptable or d.missing or not estimate or not estimate.lines or estimate.problems
+            or estimate.pending):
+        waiting = d.needs + len(estimate.pending if estimate else [])
         return Status("needs", f"Needs you ({waiting})" if waiting else "Needs you", "conflict")
     exported = session.scalar(select(func.max(AuditEvent.id)).where(
         AuditEvent.project_id == project.id, AuditEvent.action == "export",

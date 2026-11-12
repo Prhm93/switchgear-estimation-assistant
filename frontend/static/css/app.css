@@ -957,3 +957,49 @@ a.chip--neutral:hover { background: var(--veil-hover); color: var(--text); }
   .breaker.is-live .current-path { animation: none; }
   .breaker.is-live .current-path { stroke-opacity: 0; }
 }
+
+/* 12. Start page and enquiry Summary (V4). The breaker drawing sits behind as a quiet watermark (no
+   labels, aria-hidden); tiles are open rows separated by hairlines, not boxes; Ask is an empty column
+   until UX-3 builds it. */
+
+.page--start { max-width: 880px; }
+.watermark { pointer-events: none; }
+.page--start > .watermark { position: absolute; z-index: -1; top: 4px; right: 0; width: 300px; opacity: 0.3; }
+.watermark .bk-labels, .watermark .bk-note { display: none; }
+.start { position: relative; padding-top: 48px; }
+.start__title { font-size: var(--fs-title); font-weight: 600; line-height: 1.15; letter-spacing: -0.02em; margin-top: var(--space-4); max-width: 22ch; }
+.start-form { margin-top: var(--space-7); display: grid; gap: var(--space-4); }
+.start-form__note { display: block; width: 100%; max-width: 560px; margin-top: var(--space-3); }
+.start-form__note textarea { width: 100%; resize: vertical; min-height: 56px; border-radius: 16px; }
+.start-form__foot { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-4); }
+.start-form__name { flex: 1 1 280px; max-width: 420px; }
+.start-chips { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-7); }
+.chip-link { display: inline-flex; align-items: center; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--hairline-strong); background: none; color: var(--text-soft); font: 500 var(--fs-md) / 1.3 var(--font-sans); cursor: pointer; transition: var(--transition); }
+.chip-link:hover { color: var(--text); border: 1px solid var(--hairline-strong); background: var(--veil); }
+
+.notes { margin-bottom: var(--space-6); display: grid; gap: var(--space-3); }
+.note { margin: 0; padding: var(--space-3) var(--space-4); box-shadow: inset 2px 0 0 var(--blue-text); color: var(--text-soft); }
+.note p { margin: 0; line-height: 1.6; }
+.value-note { margin: var(--space-2) 0 var(--space-4); }
+
+.summary { position: relative; display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr); gap: var(--space-8); margin-top: var(--space-6); }
+.summary__report { position: relative; }
+.summary__report .watermark { width: min(380px, 70%); margin: var(--space-6) 0 0 auto; opacity: 0.16; }
+.summary__head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-4); }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--space-6); }
+.tile { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-5) var(--space-2); box-shadow: inset 0 1px 0 var(--hairline); color: var(--text); transition: var(--transition); }
+.tile:hover { color: var(--text); background: var(--row-hover); }
+.tile__label { font: 500 var(--fs-xs) / 1.5 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--label-table); }
+.tile__value { font-size: var(--fs-xl); font-weight: 600; line-height: 1.35; }
+.tile--conflict .tile__value { color: var(--red-text); }
+.tile__extra { font-size: var(--fs-md); color: var(--text); }
+.tile__note { font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.5; }
+.ask { padding-left: var(--space-6); box-shadow: inset 1px 0 0 var(--hairline); }
+.ask__empty { margin-top: var(--space-4); font-size: var(--fs-lg); color: var(--text-soft); }
+
+@media (max-width: 900px) {
+  .summary { grid-template-columns: 1fr; }
+  .ask { padding-left: 0; padding-top: var(--space-5); box-shadow: inset 0 1px 0 var(--hairline); }
+  .tiles { grid-template-columns: 1fr; }
+  .watermark { display: none; }
+}

@@ -1,12 +1,5 @@
-{#- Decisions: conflicts side by side, groups of values left for the engineer, what is missing, and a small
-    "Accept all" link for the agreeing values. "Show all values" is collapsed and loaded on demand. -#}
-{%- if found.acceptable %}
-<p id="accept-step" class="accept-line small">
-  <a class="link-accept" href="/enquiries/{{ project.id }}/check/accept-all"
-     hx-get="/enquiries/{{ project.id }}/check/accept-all" hx-target="#accept-step" hx-swap="outerHTML">Accept all {{ found.acceptable | length }} agreeing values</a>
-  <span class="muted">high confidence, no conflict, exact quote, not read from a picture</span>
-</p>
-{%- endif %}
+{#- To check: conflicts side by side, groups of values left for the engineer, what is missing, then the
+    agreeing values apart with their "Accept all" link (not counted as decisions). "Show all values" is collapsed and loaded on demand. -#}
 {%- if found.conflicts or found.reasons or found.missing %}
 <section class="section-block" aria-label="Decisions">
 
@@ -80,6 +73,18 @@
 </section>
 {%- elif not found.acceptable %}
 <p class="lead">Nothing is waiting for you.</p>
+{%- endif %}
+
+{#- The agreeing values are not decisions (owner, 12 Nov 2026): shown apart, after them, and not counted. -#}
+{%- if found.acceptable %}
+<section class="accept-block" aria-labelledby="accept-title">
+  <h3 id="accept-title" class="block-title">Agreeing values</h3>
+  <p id="accept-step" class="accept-line small">
+    <a class="link-accept" href="/enquiries/{{ project.id }}/check/accept-all"
+       hx-get="/enquiries/{{ project.id }}/check/accept-all" hx-target="#accept-step" hx-swap="outerHTML">Accept all {{ found.acceptable | length }} agreeing values</a>
+    <span class="muted">high confidence, no conflict, exact quote, not read from a picture. Not counted as decisions.</span>
+  </p>
+</section>
 {%- endif %}
 
   <details class="section-block all-values" id="all-values">

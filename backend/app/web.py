@@ -145,7 +145,7 @@ def enquiries(request: Request, session: SessionDep, show: str = "open") -> HTML
 def new_enquiry_form(request: Request) -> HTMLResponse:
     settings = request.app.state.settings
     return render(request, "enquiry_new.html", errors=[], name="", max_mb=settings.max_upload_mb,
-                  max_pages=settings.max_pdf_pages, nav="new")
+                  max_pages=settings.max_pdf_pages, nav="new", watermark=breaker_svg("start-"))
 
 
 async def _store_uploads(request: Request, session: Session, background: BackgroundTasks, project: Project,
@@ -169,9 +169,12 @@ async def _store_uploads(request: Request, session: Session, background: Backgro
 @router.post("/enquiries")
 async def create_enquiry(request: Request, session: SessionDep, background: BackgroundTasks,
                          name: Annotated[str, Form()] = "", reference: Annotated[str, Form()] = "",
+                         note: Annotated[str, Form()] = "",
                          files: Annotated[list[UploadFile], File()] = []) -> Response:  # noqa: B006
-    """One step: an optional name and the files. With files it goes on to read them and then to Check."""
+    """One step: an optional name, the files and a typed note, in any mix. With files it goes on to read
+    them and then to Check; a note alone opens Files, which asks for the files (V4)."""
     project = services.create_project(session, name, reference)
+    services.add_note(session, project, note)
     errors = await _store_uploads(request, session, background, project, files)
     session.refresh(project)
     if errors:
@@ -194,11 +197,19 @@ def create_sample(request: Request, session: SessionDep, background: BackgroundT
     return RedirectResponse(f"/enquiries/{project.id}/files?go=1", status_code=303)
 
 
-@router.get("/enquiries/{project_id}")
-def open_enquiry(project_id: int, session: SessionDep) -> Response:
-    """Opening an enquiry goes to the step that needs the engineer: Files while empty, otherwise Check."""
+@router.get("/enquiries/{project_id}", response_class=HTMLResponse)
+def open_enquiry(request: Request, project_id: int, session: SessionDep) -> Response:
+    """The enquiry's Summary: six tiles and the Ask column (V4). Without files it opens Files instead."""
     project = project_or_404(session, project_id)
-    return RedirectResponse(f"/enquiries/{project_id}/{'check' if project.documents else 'files'}", status_code=303)
+    if not project.documents:
+        return RedirectResponse(f"/enquiries/{project_id}/files", status_code=303)
+    found = enquiry.decisions(project)
+    context = enquiry_context(session, project, found)
+    estimate = context["estimate"]
+    tiles = enquiry.summary_tiles(project, found, _items(request, session, project), estimate,
+                                  enquiry.quote_blockers(estimate) if estimate else [])
+    return render(request, "summary.html", **context, tab="summary", tiles=tiles,
+                  watermark=breaker_svg("summary-"))
 
 
 # --- rename, archive, delete (each asks first) ---------------------------------------------------------
@@ -407,8 +418,8 @@ def _items(request: Request, session: Session, project: Project) -> list[enquiry
 # The buttons under the tabs on Check: (key, label, count from the Check context or None).
 # Each view is the template partials/views/<key>.html; adding a view (Stock, Ask) is one line here.
 VIEWS: list[tuple[str, str, Callable[[dict[str, Any]], int | None]]] = [
-    ("decisions", "Decisions", lambda c: c["found"].cards),
-    ("items", "Items", lambda c: len(c["items"])),
+    ("decisions", "To check", lambda c: c["found"].needs),  # plain names (V4): keys stay for old links
+    ("items", "Parts list", lambda c: len(c["items"])),
     ("report", "Report", lambda c: None),
 ]
 DEFAULT_VIEW = VIEWS[0][0]

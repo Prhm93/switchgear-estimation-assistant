@@ -1,4 +1,6 @@
-"""The button bar under the tabs on Check: Decisions, Items and Report, with live counts.
+"""The button bar under the tabs on Check: To check, Parts list and Report, with live counts.
+
+Renamed on purpose in V4 (owner, plain language): "Decisions" is now "To check", "Items" is "Parts list".
 
 Each view is kept in the address (``?view=...``), so Back and links work; HTMX swaps the view in place.
 Export is offered only when something is approved, and refused otherwise.
@@ -44,21 +46,21 @@ def new_enquiry(client: TestClient, files=FILES) -> int:
 def bar(html: str) -> dict[str, str | None]:
     """The buttons of the bar: label -> count shown (None when it has no count)."""
     nav = re.search(r'<nav id="views".*?</nav>', html, re.S).group(0)
-    found = re.findall(r'<a class="view-btn[^"]*"[^>]*>\s*([A-Za-z]+)\s*(?:<span class="view-btn__count[^>]*>(\d+)</span>)?',
+    found = re.findall(r'<a class="view-btn[^"]*"[^>]*>\s*([A-Za-z][A-Za-z ]*[A-Za-z])\s*(?:<span class="view-btn__count[^>]*>(\d+)</span>)?',
                        nav)
     return {label: count or None for label, count in found}
 
 
 def current(html: str) -> str:
     nav = re.search(r'<nav id="views".*?</nav>', html, re.S).group(0)
-    return re.search(r'aria-current="page"[^>]*>\s*([A-Za-z]+)', nav).group(1)
+    return re.search(r'aria-current="page"[^>]*>\s*([A-Za-z][A-Za-z ]*?)\s*(?:<|$)', nav).group(1)
 
 
 def expected_counts(client: TestClient, pid: int) -> tuple[int, int]:
     with client.app.state.sessions() as session:
         project = session.get(Project, pid)
         found = enquiry.decisions(project)
-        return found.cards, len(_items_for(client, session, project))
+        return found.needs, len(_items_for(client, session, project))  # no +1 for Accept all (V4)
 
 
 def _items_for(client: TestClient, session, project):
@@ -75,25 +77,27 @@ def test_decisions_is_the_default_and_the_counts_come_from_the_database(client: 
     pid = new_enquiry(client)
     page = client.get(f"/enquiries/{pid}/check").text
     decisions, items = expected_counts(client, pid)
-    assert bar(page) == {"Decisions": str(decisions), "Items": str(items), "Report": None}
-    assert current(page) == "Decisions"
+    assert bar(page) == {"To check": str(decisions), "Parts list": str(items), "Report": None}
+    assert current(page) == "To check"
     assert "Needs your decision" not in page and 'id="summary"' not in page  # replaced by the bar
-    assert 'class="link-accept"' in page and "Accept all" in page  # a small link inside Decisions
-    # Live: after "Accept all" the count follows the database.
+    assert 'class="link-accept"' in page and "Accept all" in page  # apart, under "Agreeing values"
+    # Changed on purpose in V4: the agreeing values are not decisions, so accepting them leaves the count
+    # as it was; the count still follows the database and the "Agreeing values" block goes away.
     client.post(f"/enquiries/{pid}/check/accept-all", data={"confirm": "yes"})
     after = client.get(f"/enquiries/{pid}/check").text
     decisions_after, _ = expected_counts(client, pid)
-    assert decisions_after < decisions and bar(after)["Decisions"] == str(decisions_after)
+    assert decisions_after == decisions and bar(after)["To check"] == str(decisions_after)
+    assert 'class="accept-block"' not in after
 
 
 def test_each_view_has_its_own_address_and_swaps_in_place(client: TestClient) -> None:
     pid = new_enquiry(client)
     page = client.get(f"/enquiries/{pid}/check?view=items").text
-    assert current(page) == "Items" and 'class="item-list"' in page and "<!DOCTYPE html>" in page
+    assert current(page) == "Parts list" and 'class="item-list"' in page and "<!DOCTYPE html>" in page
     assert re.search(rf'href="/enquiries/{pid}/check\?view=report"[^>]*hx-push-url="true"', page)
     part = client.get(f"/enquiries/{pid}/check?view=report", headers=HX)
     assert part.status_code == 200 and "<!DOCTYPE html>" not in part.text and current(part.text) == "Report"
-    assert current(client.get(f"/enquiries/{pid}/check?view=nonsense").text) == "Decisions"
+    assert current(client.get(f"/enquiries/{pid}/check?view=nonsense").text) == "To check"
 
 
 def test_items_and_report_never_repeat_the_quote(client: TestClient) -> None:

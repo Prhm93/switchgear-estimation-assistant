@@ -9,8 +9,11 @@
 </form>
 {%- endif %}
 
+{%- if not found.approved %}
+<p class="lead">Nothing is approved yet. Go to <a href="/enquiries/{{ project.id }}/check">Check</a> and approve values.</p>
+{%- endif %}
 {%- if not estimate %}
-<p class="lead">No quote yet. It is built from the values you approve on <a href="/enquiries/{{ project.id }}/check">Check</a>.</p>
+{%- if found.approved %}<p class="lead">No quote yet. It is built from the values you approve on <a href="/enquiries/{{ project.id }}/check">Check</a>.</p>{% endif %}
 {%- else %}
 <section class="total" aria-label="Draft total">
   <div>

@@ -2,6 +2,14 @@
 {%- from "macros.html" import icon with context -%}
 
 {%- block step %}
+{%- if project.notes %}
+<section class="notes" aria-label="Your notes">
+  {%- if not project.documents %}<p class="lead">Add the customer's files to read this enquiry.</p>{% endif %}
+  {%- for n in project.notes %}
+  <blockquote class="note"><p>{{ n.text }}</p><footer class="small muted">Your note, {{ short_date(n.created_at) }}</footer></blockquote>
+  {%- endfor %}
+</section>
+{%- endif %}
 <form class="dropzone" method="post" action="/enquiries/{{ project.id }}/documents" enctype="multipart/form-data"
       hx-post="/enquiries/{{ project.id }}/documents" hx-target="#file-lines" hx-swap="outerHTML" hx-encoding="multipart/form-data" data-dropzone>
   <div class="upload-box upload-box--card">
