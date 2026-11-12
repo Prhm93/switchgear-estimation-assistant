@@ -1,0 +1,12 @@
+{#- The buttons under the tabs on Check, one per entry in web.VIEWS. Counts come from the database on every
+    request. The open view is highlighted and kept in the address (?view=...), so Back and links work. -#}
+<nav id="views" class="view-bar" aria-label="Check views">
+  {%- for v in views %}
+  <a class="view-btn{% if v.key == view %} view-btn--active{% endif %}" href="/enquiries/{{ project.id }}/check?view={{ v.key }}"
+     hx-get="/enquiries/{{ project.id }}/check?view={{ v.key }}" hx-target="#check-body" hx-swap="outerHTML" hx-push-url="true"
+     {%- if v.key == view %} aria-current="page"{% endif %}>
+    {{ v.label }}
+    {%- if v.count is not none %}<span class="view-btn__count mono">{{ v.count }}</span>{% endif %}
+  </a>
+  {%- endfor %}
+</nav>

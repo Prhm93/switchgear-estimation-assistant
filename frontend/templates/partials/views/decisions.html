@@ -1,0 +1,95 @@
+{#- To check: conflicts side by side, groups of values left for the engineer, what is missing, then the
+    agreeing values apart with their "Accept all" link (not counted as decisions). "Show all values" is collapsed and loaded on demand. -#}
+{%- if found.conflicts or found.reasons or found.missing %}
+<section class="section-block" aria-label="Decisions">
+
+    {%- for g in found.conflicts %}
+    <article class="decision decision--conflict" id="f-{{ g.field }}">
+      <div class="decision__head">
+        <h3 class="decision__title">{{ g.label }}</h3>
+        <span class="chip chip--conflict">The documents disagree</span>
+      </div>
+      <div class="pair">
+        {%- for side in g.sides %}
+        {%- set first = side[0] %}
+        {%- set value, unit = shown(first) %}
+        <div class="pair__side">
+          <div class="pair__value mono">{{ display(value, unit) }}</div>
+          {%- if side | selectattr("quote_match", "equalto", "words_on_page") | list %}<span class="small muted">Quote pieced together</span>{% endif %}
+          {%- for v in distinct_sources(side) %}
+          <a class="pair__src" href="/values/{{ v.id }}/panel" hx-get="/values/{{ v.id }}/panel" hx-target="#panel">{{ value_source(v) }}</a>
+          {%- endfor %}
+          <form method="post" action="/enquiries/{{ project.id }}/fields/use" hx-post="/enquiries/{{ project.id }}/fields/use" hx-target="#check-body" hx-swap="outerHTML">
+            <input type="hidden" name="field" value="{{ g.field }}"><input type="hidden" name="value_id" value="{{ first.id }}">
+            <button class="btn btn--tonal btn--sm" type="submit" aria-label="Use {{ display(value, unit) }} for {{ g.label }}">Use this</button>
+          </form>
+        </div>
+        {%- endfor %}
+      </div>
+      <details class="action-form">
+        <summary class="btn btn--ghost btn--sm">Type another value</summary>
+        <form method="post" action="/enquiries/{{ project.id }}/fields/type" hx-post="/enquiries/{{ project.id }}/fields/type" hx-target="#check-body" hx-swap="outerHTML" class="inline-form">
+          <input type="hidden" name="field" value="{{ g.field }}">
+          <label class="field field--inline"><span class="field__label">Value</span><input class="input mono" name="value" required></label>
+          <label class="field field--inline field--unit"><span class="field__label">Unit</span><input class="input mono" name="unit" value="{{ shown(g.sides[0][0])[1] or '' }}"></label>
+          <label class="field field--inline"><span class="field__label">Why</span><input class="input" name="reason"></label>
+          <button class="btn btn--tonal btn--sm" type="submit">Use the typed value</button>
+        </form>
+      </details>
+    </article>
+    {%- endfor %}
+
+    {%- for key, rows in found.reasons.items() %}
+    <article class="decision" id="g-{{ key }}">
+      <div class="decision__head">
+        <h3 class="decision__title">{{ reasons[key][0] }}</h3>
+        <span class="chip chip--review">{{ rows | length }} value{{ "s" if rows | length != 1 }}</span>
+      </div>
+      <p class="small muted">{{ reasons[key][1] }}</p>
+      {%- if open_reason == key %}
+      {%- set actions = true %}{% include "partials/value_rows.html" %}
+      {%- else %}
+      <div id="rows-{{ key }}">
+        <a class="btn btn--secondary btn--sm" href="/enquiries/{{ project.id }}/check?open={{ key }}#g-{{ key }}"
+           hx-get="/enquiries/{{ project.id }}/check/group/{{ key }}" hx-target="#rows-{{ key }}" hx-swap="outerHTML">Review</a>
+      </div>
+      {%- endif %}
+    </article>
+    {%- endfor %}
+
+
+    {%- if found.missing %}
+    <article class="decision" id="missing">
+      <div class="decision__head">
+        <h3 class="decision__title">Missing from the files</h3>
+        <span class="chip chip--missing">{{ found.missing | length }}</span>
+      </div>
+      <p class="small muted">Ask the customer, then add the file or type the value on the item that needs it.</p>
+      <ul class="plain-list">
+        {%- for m in found.missing %}<li>{{ m.label }} <span class="small muted">{{ m.why }}</span></li>{% endfor %}
+      </ul>
+    </article>
+    {%- endif %}
+</section>
+{%- elif not found.acceptable %}
+<p class="lead">Nothing is waiting for you.</p>
+{%- endif %}
+
+{#- The agreeing values are not decisions (owner, 12 Nov 2026): shown apart, after them, and not counted. -#}
+{%- if found.acceptable %}
+<section class="accept-block" aria-labelledby="accept-title">
+  <h3 id="accept-title" class="block-title">Agreeing values</h3>
+  <p id="accept-step" class="accept-line small">
+    <a class="link-accept" href="/enquiries/{{ project.id }}/check/accept-all"
+       hx-get="/enquiries/{{ project.id }}/check/accept-all" hx-target="#accept-step" hx-swap="outerHTML">Accept all {{ found.acceptable | length }} agreeing values</a>
+    <span class="muted">high confidence, no conflict, exact quote, not read from a picture. Not counted as decisions.</span>
+  </p>
+</section>
+{%- endif %}
+
+  <details class="section-block all-values" id="all-values">
+    <summary class="block-title block-title--toggle">Show all values</summary>
+    <div hx-get="/enquiries/{{ project.id }}/check/values" hx-trigger="toggle from:#all-values once" hx-swap="outerHTML">
+      <a href="/enquiries/{{ project.id }}/check/values">Open the list of values</a>
+    </div>
+  </details>

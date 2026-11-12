@@ -1,0 +1,30 @@
+{%- from "macros.html" import icon, value_status with context -%}
+{#- What one item rests on: every value it needs, each opening its own proof. -#}
+<div class="panel__body" data-panel>
+  <div class="panel__head">
+    <h2 class="panel__title">{{ item.description }}</h2>
+    <a class="icon-btn" href="/enquiries/{{ project.id }}/check" data-panel-close aria-label="Close the proof panel">{{ icon("close", "sm") }}</a>
+  </div>
+  <div class="row"><span class="chip chip--{{ {'approved': 'approved', 'unapproved': 'neutral', 'waiting': 'conflict', 'substitute': 'review', 'unmatched': 'missing'}[item.state] }}">{{ item.state_words }}</span></div>
+  {%- if item.code %}<p class="small"><span class="mono">{{ item.code }}</span> {{ item.part }}{% if item.quantity is not none %} · quantity <span class="mono">{{ "%g" | format(item.quantity) }}</span>{% endif %}</p>{% endif %}
+  {%- if item.note %}<p class="small muted">{{ item.note }}</p>{% endif %}
+  {%- if item.state == "unapproved" %}<p class="small muted">Shown from values you have not approved yet. It reaches the quote once they are approved.</p>{% endif %}
+  {%- if item.state == "substitute" %}<p class="small muted">Approve or reject the substitute part on the <a href="/enquiries/{{ project.id }}/quote">Quote</a> step.</p>{% endif %}
+
+  <h3 class="panel__label">Based on</h3>
+  {%- for b in basis %}
+  <div class="basis">
+    <div class="basis__label">{{ b.label }}{% if b.conflict %} <span class="chip chip--conflict">The documents disagree</span>{% endif %}</div>
+    {%- for v in b["values"] %}
+    {%- set value, unit = shown(v) %}
+    <a class="value-line__main" href="/values/{{ v.id }}/panel" hx-get="/values/{{ v.id }}/panel" hx-target="#panel">
+      <span class="value-line__value mono">{{ display(value, unit) }}</span>
+      <span class="value-line__src">{{ value_source(v) }}</span>
+      {{ value_status(v) }}
+    </a>
+    {%- else %}
+    <p class="small muted">Not found in any file read.</p>
+    {%- endfor %}
+  </div>
+  {%- endfor %}
+</div>

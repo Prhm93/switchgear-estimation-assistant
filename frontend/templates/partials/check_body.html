@@ -1,0 +1,28 @@
+{%- from "macros.html" import icon with context -%}
+{#- The Check step: alerts, the view bar, and the open view (partials/views/<view>.html). Decisions post
+    with HTMX and this block replaces itself (the tabs follow out of band); a bar button swaps it too and
+    keeps the view in the address. Without script every link and form still works. Edit forms are never
+    rendered here: a value's form is loaded into the proof panel when the engineer clicks the value. -#}
+{%- if oob is defined and oob %}{% include "partials/steps.html" %}<aside id="panel" class="panel" aria-label="Proof" aria-live="polite" hx-swap-oob="true"></aside>{% endif %}
+<div id="check-body">
+  {%- if error %}<p class="alert alert--error" role="alert">{{ error }}</p>{% endif %}
+
+  {%- if not project.documents %}
+  <p class="lead">No files yet. <a href="/enquiries/{{ project.id }}/files">Add the customer's files</a> to start.</p>
+  {%- else %}
+
+  {%- for d in found.not_read %}
+  <p class="alert alert--warn">{{ d.original_name }} was not read. {{ d.note or "" }} <a href="/enquiries/{{ project.id }}/files">Open Files</a> to read it again.</p>
+  {%- endfor %}
+  {%- if flags %}
+  <p class="alert alert--error">Instruction-like text was found in {{ flags | map(attribute="document") | unique | join(", ") }}. It was not followed and no value comes from it.
+    <a href="/enquiries/{{ project.id }}/proof?doc={{ flags[0].doc_id }}&page={{ flags[0].page }}">Show it</a></p>
+  {%- endif %}
+
+  {% include "partials/view_bar.html" %}
+  <p class="value-note small muted">A value is one fact read from your files. Approve it and it can be priced.</p>
+  <div id="view" class="view">
+    {%- include "partials/views/" ~ view ~ ".html" %}
+  </div>
+  {%- endif %}
+</div>

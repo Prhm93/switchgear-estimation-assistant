@@ -1,0 +1,21 @@
+{%- from "macros.html" import icon, value_checks with context -%}
+{#- The values of one "needs your decision" group: plain rows. Clicking a row opens its proof and its form. -#}
+<div id="rows-{{ open_reason }}" class="value-rows">
+  {%- for v in rows %}
+  {%- set value, unit = shown(v) %}
+  <div class="value-line" id="v-{{ v.id }}">
+    <a class="value-line__main" href="/values/{{ v.id }}/panel?open={{ open_reason }}" hx-get="/values/{{ v.id }}/panel?open={{ open_reason }}" hx-target="#panel">
+      <span class="value-line__label">{{ field_label(v.field) }}</span>
+      <span class="value-line__value mono">{{ display(value, unit) }}</span>
+      <span class="value-line__src">{{ value_source(v) }}</span>
+    </a>
+    {{ value_checks(v) }}
+    {%- if actions and v.value is not none %}
+    <form method="post" action="/values/{{ v.id }}/approve" hx-post="/values/{{ v.id }}/approve" hx-target="#check-body" hx-swap="outerHTML">
+      <input type="hidden" name="open" value="{{ open_reason }}">
+      <button class="icon-btn icon-btn--approve" type="submit" aria-label="Approve {{ field_label(v.field) }} {{ display(value, unit) }}" title="Approve">{{ icon("check", "sm") }}</button>
+    </form>
+    {%- endif %}
+  </div>
+  {%- endfor %}
+</div>

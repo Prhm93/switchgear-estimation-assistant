@@ -1,0 +1,85 @@
+{%- from "macros.html" import icon, value_status, value_checks with context -%}
+{#- The proof of one value and its decision form. Loaded into the side panel when the value is clicked,
+    so the page never holds the forms of every value. Machine names (field, rule, file hash) are shown
+    only here, under "Technical details". -#}
+{%- set value, unit = shown(v) %}
+<div class="panel__body" data-panel>
+  <div class="panel__head">
+    <h2 class="panel__title">{{ field_label(v.field) }}</h2>
+    <a class="icon-btn" href="/enquiries/{{ v.project_id }}/check" data-panel-close aria-label="Close the proof panel">{{ icon("close", "sm") }}</a>
+  </div>
+  {%- if error %}<p class="alert alert--error" role="alert">{{ error }}</p>{% endif %}
+
+  <div class="panel__value mono">{{ display(value, unit) }}</div>
+  <div class="row">{{ value_status(v) }}{{ value_checks(v) }}</div>
+  {%- if v.review_status == "edited" %}<p class="small muted">Read as {{ display(v.value, v.unit) }}.</p>{% endif %}
+
+  <h3 class="panel__label">Where it was read</h3>
+  <p class="small">{{ value_source(v) }} · {{ v.document.original_name }}</p>
+  {%- if proof.image %}
+  <a href="{{ proof.image }}?full=1" target="_blank" rel="noopener"><img class="proof-image" src="{{ proof.image }}" alt="The part of the drawing this value was read from, outlined in red" loading="lazy"></a>
+  {%- endif %}
+  {%- if proof.mark %}
+  <pre class="proof-text">{{ proof.before }}<mark>{{ proof.mark }}</mark>{{ proof.after }}</pre>
+  {%- elif v.source_text %}
+  <pre class="proof-text"><mark>{{ v.source_text }}</mark></pre>
+  {%- endif %}
+  {%- if v.derivation %}<p class="small muted">{{ v.derivation }}</p>{% endif %}
+
+  <h3 class="panel__label">How it was read</h3>
+  <p class="small">{{ method_words(v.method, v.agreement, v.quote_match) }}.</p>
+  <p class="small muted">{{ confidence_words.get(v.confidence, v.confidence) }}</p>
+
+  {%- if others %}
+  <h3 class="panel__label">Other sources for this</h3>
+  <ul class="plain-list plain-list--tight">
+    {%- for o in others %}
+    {%- set ov, ou = shown(o) %}
+    <li><a href="/values/{{ o.id }}/panel" hx-get="/values/{{ o.id }}/panel" hx-target="#panel"><span class="mono">{{ display(ov, ou) }}</span> · {{ value_source(o) }}</a>
+      {%- if o.review_status == "rejected" %} <span class="small muted">rejected</span>{% elif o.review_status in ("approved", "edited") %} <span class="small muted">approved</span>{% endif %}</li>
+    {%- endfor %}
+  </ul>
+  {%- endif %}
+
+  <h3 class="panel__label">Your decision</h3>
+  <div class="panel__actions">
+    {%- if v.review_status == "extracted" and v.value is not none %}
+    <form method="post" action="/values/{{ v.id }}/approve" hx-post="/values/{{ v.id }}/approve" hx-target="#check-body" hx-swap="outerHTML">
+      <input type="hidden" name="open" value="{{ open_reason or '' }}">
+      <button class="btn btn--primary btn--sm" type="submit">{{ icon("check", "sm") }}Approve</button>
+    </form>
+    {%- endif %}
+    <details class="action-form"{% if v.value is none and v.review_status == "extracted" %} open{% endif %}>
+      <summary class="btn btn--secondary btn--sm">Type another value</summary>
+      <form method="post" action="/values/{{ v.id }}/edit" hx-post="/values/{{ v.id }}/edit" hx-target="#check-body" hx-swap="outerHTML" class="stack-form">
+        <input type="hidden" name="open" value="{{ open_reason or '' }}">
+        <label class="field"><span class="field__label">Value</span><input class="input mono" name="value" value="{{ value if value is not none else '' }}" required></label>
+        <label class="field"><span class="field__label">Unit</span><input class="input mono" name="unit" value="{{ unit or '' }}"></label>
+        <label class="field"><span class="field__label">Why (optional)</span><input class="input" name="reason"></label>
+        <button class="btn btn--tonal btn--sm" type="submit">Save and approve</button>
+      </form>
+    </details>
+    {%- if v.review_status != "rejected" %}
+    <details class="action-form">
+      <summary class="btn btn--ghost btn--sm">Reject</summary>
+      <form method="post" action="/values/{{ v.id }}/reject" hx-post="/values/{{ v.id }}/reject" hx-target="#check-body" hx-swap="outerHTML" class="stack-form">
+        <input type="hidden" name="open" value="{{ open_reason or '' }}">
+        <label class="field"><span class="field__label">Why</span><input class="input" name="reason" required></label>
+        <button class="btn btn--secondary btn--sm" type="submit">Reject this value</button>
+      </form>
+    </details>
+    {%- endif %}
+  </div>
+
+  <details class="tech">
+    <summary class="small muted">Technical details</summary>
+    <dl class="tech__list small">
+      <div><dt>Field</dt><dd class="mono">{{ v.field }}</dd></div>
+      <div><dt>Method</dt><dd class="mono">{{ v.method }}{% if v.rule %} ({{ v.rule }}){% endif %}</dd></div>
+      {%- if v.agreement %}<div><dt>Rules and model</dt><dd class="mono">{{ v.agreement }}</dd></div>{% endif %}
+      {%- if v.quote_match %}<div><dt>Quote check</dt><dd class="mono">{{ v.quote_match }}</dd></div>{% endif %}
+      {%- if v.document.model_run %}<div><dt>Model run</dt><dd class="mono">{{ v.document.model_run }}</dd></div>{% endif %}
+      <div><dt>File SHA-256</dt><dd class="mono">{{ v.document.sha256 }}</dd></div>
+    </dl>
+  </details>
+</div>

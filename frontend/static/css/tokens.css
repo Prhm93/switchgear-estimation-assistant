@@ -1,0 +1,328 @@
+/*
+ * Switchgear Estimation Assistant - tokens: fonts, the dark and light colour themes, type, spacing,
+ * shape and motion. app.css uses these tokens only.
+ *
+ * The theme is the data-theme attribute on <html> ("dark" by default). A small script in base.html
+ * applies the stored choice before the page paints, and static/js/theme.js switches it.
+ * Every colour pair in both themes is checked against WCAG 2.2 AA by backend/app/design/contrast.py
+ * (tests/unit/test_contrast.py). A semi-transparent colour has a solid twin per theme.
+ */
+
+/* 1. Fonts: self-hosted IBM Plex Sans and IBM Plex Mono, SIL Open Font License 1.1 (fonts/OFL.txt).
+   No serif since Stage UX-V. */
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("../fonts/IBMPlexSans-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("../fonts/IBMPlexSans-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("../fonts/IBMPlexSans-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("../fonts/IBMPlexMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("../fonts/IBMPlexMono-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 2. Colour: the dark theme (the default). */
+
+:root,
+:root[data-theme="dark"] {
+  /* Palette (unchanged from version 1). */
+  --bg: #0A1630;
+  --surface: #10224A;
+  --surface-2: #16305F;
+  --text: #F4F7FB;
+  --text-muted: #A9B8D3;
+  --text-soft: #C9D6EC;       /* body copy on glass, from the mockups */
+  --text-nav: #D3DDEE;        /* site navigation links */
+  --label: #8597B8;           /* small upper-case labels in the sidebar */
+  --label-table: #8FA2C4;     /* table headings */
+  --word-dim: #7D8FB2;        /* statement words before the scroll reaches them: dimmer, still AA */
+  /* Hero background lines (hero-lines.js): faint strokes only, never text. */
+  --hero-grid: rgba(79, 134, 247, 0.082);
+  --hero-line: rgba(79, 134, 247, 0.105);
+  --hero-line-strong: rgba(79, 134, 247, 0.19);
+
+  --red: #E31E24;
+  --red-hover: #C8161C;
+  --on-red: #FFFFFF;          /* off-white on red is only 4.37:1 */
+  --red-text: #FF8A8E;
+  --blue: #1C5FD1;
+  --blue-text: #9CC0FF;       /* links, focus, light blue */
+  --success: #2EA06E;
+  --success-text: #7EE2B4;
+  --warning: #E0A93B;
+  --warning-text: #F2C66D;
+  --focus: #9CC0FF;
+
+  /* Glass and tints: rgba values from the mockups. */
+  --glass: rgba(16, 34, 74, 0.78);          /* cards in the app */
+  --deep: rgba(10, 22, 48, 0.55);           /* rows and insets inside a card */
+  --sidebar: rgba(8, 18, 40, 0.88);
+  --header: rgba(10, 22, 48, 0.72);
+  --veil: rgba(156, 192, 255, 0.08);         /* glass buttons, chips, switcher */
+  --veil-hover: rgba(156, 192, 255, 0.16);
+  --tonal: rgba(28, 95, 209, 0.30);          /* tonal blue button */
+  --tonal-hover: rgba(28, 95, 209, 0.42);
+  --nav-active: rgba(28, 95, 209, 0.24);
+  --row-hover: rgba(28, 95, 209, 0.14);
+  --tint-success: rgba(46, 160, 110, 0.18);
+  --tint-conflict: rgba(227, 30, 36, 0.18);
+  --tint-missing: rgba(224, 169, 59, 0.18);
+  --tint-review: rgba(28, 95, 209, 0.24);
+  --tint-neutral: rgba(156, 192, 255, 0.10);
+  --tint-track: rgba(156, 192, 255, 0.14);   /* ring and bar tracks */
+
+  /* Hairline edges: the only borders allowed. */
+  --hairline: rgba(156, 192, 255, 0.10);
+  --hairline-strong: rgba(156, 192, 255, 0.18);
+
+  /* More tints, named so that their contrast can be checked. */
+  --tint-approve: rgba(46, 160, 110, 0.16);  /* approve icon button */
+  --tint-reject: rgba(227, 30, 36, 0.14);    /* reject icon button */
+  --tint-neutral-hover: rgba(156, 192, 255, 0.18);
+  --tint-approve-hover: rgba(46, 160, 110, 0.28);
+  --tint-reject-hover: rgba(227, 30, 36, 0.26);
+  --tint-count: rgba(227, 30, 36, 0.22);     /* review count in the sidebar */
+  --count-text: #FF9CA0;
+  --mode-bg: rgba(156, 192, 255, 0.06);      /* reading-mode panel */
+  --active: rgba(28, 95, 209, 0.28);         /* selected filter, chip or segment */
+  --field: rgba(16, 34, 74, 0.6);            /* text inputs */
+  --inset: rgba(10, 22, 48, 0.6);            /* the two sides of a conflict */
+  --upload-inner: #0D1C3D;                   /* inside the upload box */
+
+  /* Solid twins: each semi-transparent colour over the surface it sits on,
+     rounded per channel. backend/app/design/contrast.py checks text on these,
+     and tests/unit/test_contrast.py recomputes every twin from its rgba value. */
+  --glass-solid: #0F1F44;           /* --glass over --bg */
+  --deep-solid: #0C1A39;            /* --deep over --glass-solid */
+  --sidebar-solid: #081229;         /* --sidebar over --bg */
+  --veil-solid: #1A2C53;            /* --veil over --glass-solid */
+  --veil-hover-solid: #263962;      /* --veil-hover over --glass-solid */
+  --tonal-solid: #13326E;           /* --tonal over --glass-solid */
+  --tonal-hover-solid: #143A7F;     /* --tonal-hover over --glass-solid */
+  --nav-active-solid: #0D2451;      /* --nav-active over --sidebar-solid */
+  --active-solid: #13316B;          /* --active over --glass-solid */
+  --row-hover-solid: #112858;       /* --row-hover over --glass-solid */
+  --success-chip: #15364C;          /* --tint-success over --glass-solid */
+  --conflict-chip: #351F3E;         /* --tint-conflict over --glass-solid */
+  --missing-chip: #353842;          /* --tint-missing over --glass-solid */
+  --review-chip: #122E66;           /* --tint-review over --glass-solid */
+  --neutral-chip: #1D2F57;          /* --tint-neutral over --glass-solid */
+  --neutral-hover-solid: #26385D;    /* --tint-neutral-hover over --deep-solid */
+  --approve-hover-solid: #164048;    /* --tint-approve-hover over --deep-solid */
+  --reject-hover-solid: #441B34;     /* --tint-reject-hover over --deep-solid */
+  --approve-solid: #112F41;         /* --tint-approve over --deep-solid */
+  --reject-solid: #2A1B36;          /* --tint-reject over --deep-solid */
+  --count-solid: #381528;           /* --tint-count over --sidebar-solid */
+  --mode-solid: #111C36;            /* --mode-bg over --sidebar-solid */
+  --field-solid: #102148;           /* --field over --glass-solid */
+  --inset-solid: #0C1A38;           /* --inset over --glass-solid */
+  --header-solid: #0A1630;          /* --header over --bg */
+  /* Twins for the app screens, where rows, chips and tabs sit on the page itself. */
+  --veil-page-solid: #162441;       /* --veil over --bg */
+  --veil-hover-page-solid: #213151; /* --veil-hover over --bg */
+  --tonal-page-solid: #0F2C60;      /* --tonal over --bg */
+  --active-page-solid: #0F2A5D;     /* --active over --bg */
+  --count-page-solid: #3A182D;      /* --tint-count over --bg */
+  --field-page-solid: #0E1D40;      /* --field over --bg */
+  --count-veil-solid: #43233B;      /* --tint-count over --veil-page-solid */
+  --count-active-solid: #3E2750;    /* --tint-count over --active-page-solid */
+
+  /* Small marks that are not text (segment bar, legend). */
+  --seg-missing: rgba(156, 192, 255, 0.25);
+  --legend-missing: rgba(156, 192, 255, 0.45);
+  /* The faint 56px background grid, an SVG tile (never a gradient). */
+  --grid-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cpath d='M0 .5H56M.5 0V56' fill='none' stroke='%239CC0FF' stroke-opacity='.05'/%3E%3C/svg%3E");
+
+  /* Depth. */
+  --shadow-card: 0 20px 50px rgba(0, 0, 0, 0.28);
+  --highlight: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --shadow-red: 0 8px 24px rgba(227, 30, 36, 0.28);
+  color-scheme: dark;
+}
+
+/* The light theme. */
+
+:root[data-theme="light"] {
+  /* Palette: the same navy, red and blue on near-white paper. */
+  --bg: #F4F6FB;
+  --surface: #FFFFFF;
+  --surface-2: #E9EEF8;
+  --text: #0A1630;
+  --text-muted: #4E5F80;
+  --text-soft: #2C3F63;
+  --text-nav: #22355A;
+  --label: #55668A;
+  --label-table: #4F6185;
+  --word-dim: #5D6E8F;
+  --hero-grid: rgba(37, 88, 170, 0.092);
+  --hero-line: rgba(54, 96, 176, 0.095);
+  --hero-line-strong: rgba(54, 96, 176, 0.18);
+  --red: #E31E24;
+  --red-hover: #C8161C;
+  --on-red: #FFFFFF;
+  --red-text: #B3141A;
+  --blue: #1C5FD1;
+  --blue-text: #1A4FB5;
+  --success: #1E8A5A;
+  --success-text: #0F6B42;
+  --warning: #B7791F;
+  --warning-text: #855508;
+  --focus: #1C5FD1;
+  --count-text: #9E1117;
+  --upload-inner: #FFFFFF;
+
+  /* Glass, tints and hairlines (navy-tinted on paper). */
+  --glass: rgba(255, 255, 255, 0.86);
+  --deep: rgba(10, 22, 48, 0.035);
+  --sidebar: rgba(244, 246, 251, 0.92);
+  --header: rgba(244, 246, 251, 0.88);
+  --veil: rgba(10, 22, 48, 0.05);
+  --veil-hover: rgba(10, 22, 48, 0.09);
+  --tonal: rgba(28, 95, 209, 0.14);
+  --tonal-hover: rgba(28, 95, 209, 0.22);
+  --nav-active: rgba(28, 95, 209, 0.12);
+  --row-hover: rgba(28, 95, 209, 0.07);
+  --tint-success: rgba(46, 160, 110, 0.14);
+  --tint-conflict: rgba(227, 30, 36, 0.1);
+  --tint-missing: rgba(224, 169, 59, 0.16);
+  --tint-review: rgba(28, 95, 209, 0.12);
+  --tint-neutral: rgba(10, 22, 48, 0.05);
+  --tint-track: rgba(10, 22, 48, 0.1);
+  --hairline: rgba(27, 69, 140, 0.14);
+  --hairline-strong: rgba(27, 69, 140, 0.22);
+  --tint-approve: rgba(46, 160, 110, 0.14);
+  --tint-reject: rgba(227, 30, 36, 0.1);
+  --tint-neutral-hover: rgba(10, 22, 48, 0.09);
+  --tint-approve-hover: rgba(46, 160, 110, 0.24);
+  --tint-reject-hover: rgba(227, 30, 36, 0.18);
+  --tint-count: rgba(227, 30, 36, 0.12);
+  --mode-bg: rgba(10, 22, 48, 0.04);
+  --active: rgba(28, 95, 209, 0.16);
+  --field: rgba(255, 255, 255, 0.9);
+  --inset: rgba(10, 22, 48, 0.04);
+  --seg-missing: rgba(10, 22, 48, 0.18);
+  --legend-missing: rgba(10, 22, 48, 0.35);
+
+  /* Solid twins, recomputed for the light theme (same meaning as in the dark theme). */
+  --glass-solid: #FDFEFE;
+  --deep-solid: #F4F6F7;
+  --sidebar-solid: #F4F6FB;
+  --veil-solid: #F1F2F4;
+  --veil-hover-solid: #E7E9EB;
+  --tonal-solid: #DDE8F8;
+  --tonal-hover-solid: #CCDBF4;
+  --nav-active-solid: #DAE4F6;
+  --active-solid: #D9E5F7;
+  --row-hover-solid: #EDF3FB;
+  --success-chip: #E0F1EA;
+  --conflict-chip: #FAE8E8;
+  --missing-chip: #F8F0DF;
+  --review-chip: #E2EBF9;
+  --neutral-chip: #F1F2F4;
+  --neutral-hover-solid: #DFE2E5;
+  --approve-solid: #D8EAE4;
+  --approve-hover-solid: #C4E1D6;
+  --reject-solid: #F2E0E2;
+  --reject-hover-solid: #F1CFD1;
+  --count-solid: #F2DCE1;
+  --mode-solid: #EBEDF3;
+  --field-solid: #FFFFFF;
+  --inset-solid: #F3F5F6;
+  --header-solid: #F4F6FB;
+  --veil-page-solid: #E8EBF1;
+  --veil-hover-page-solid: #DFE2E9;
+  --tonal-page-solid: #D6E1F5;
+  --active-page-solid: #D1DEF4;
+  --count-page-solid: #F2DCE1;
+  --field-page-solid: #FEFEFF;
+  --count-veil-solid: #E7D2D8;
+  --count-active-solid: #D3C7DB;
+
+  --grid-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cpath d='M0 .5H56M.5 0V56' fill='none' stroke='%231B458C' stroke-opacity='.07'/%3E%3C/svg%3E");
+
+  /* Depth: softer on paper. */
+  --shadow-card: 0 12px 32px rgba(22, 43, 87, 0.08);
+  --highlight: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --shadow-red: 0 8px 20px rgba(227, 30, 36, 0.20);
+  color-scheme: light;
+}
+
+/* Type, spacing, shape and motion: the same in both themes. */
+
+:root {
+  /* Type. */
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --fs-2xs: 11px;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-base: 15px;
+  --fs-lg: 17px;
+  --fs-xl: 19px;
+  --fs-title: 30px;     /* page titles in the app (sans) */
+  --fs-section: 52px;   /* section headings on the home page */
+  --fs-hero: 72px;
+  --lh-body: 1.6;
+
+  /* Spacing. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 18px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+
+  /* Shape and depth. */
+  --radius-xs: 10px;
+  --radius-sm: 12px;
+  --radius-md: 14px;
+  --radius-tile: 18px;
+  --radius-card: 20px;
+  --radius-panel: 24px;
+  --radius-pill: 999px;
+
+  /* Motion: 150 ms, none for reduced-motion users. */
+  --dur: 150ms;
+  --ease: ease;
+  --transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+
+  --row-bg: var(--glass);            /* rows on the page; cards and the panel set it to --deep */
+  --nav-h: 72px;              /* height of the sticky home page header; home.js measures it */
+  --site-max: 1280px;
+  --page-max: 1180px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur: 0ms; }
+  .spinner::after { animation: none; }
+}

@@ -1,0 +1,17 @@
+{#- The confirmation step of "Accept all": the count first, then one yes. -#}
+<div id="accept-step" class="confirm-step">
+  {%- set n = found.acceptable | length %}
+  {%- if n %}
+  <p><strong>Approve {{ n }} value{{ "s" if n != 1 }}?</strong> Each is logged with your name.
+    Conflicts, values read from a picture and pieced-together quotes are not included{% if found.needs %}: {{ found.needs }} stay{{ "s" if found.needs == 1 }} for you{% endif %}.</p>
+  <div class="row">
+    <form method="post" action="/enquiries/{{ project.id }}/check/accept-all" hx-post="/enquiries/{{ project.id }}/check/accept-all" hx-target="#check-body" hx-swap="outerHTML">
+      <input type="hidden" name="confirm" value="yes">
+      <button class="btn btn--primary btn--sm" type="submit">Yes, approve {{ n }}</button>
+    </form>
+    <a class="btn btn--ghost btn--sm" href="/enquiries/{{ project.id }}/check">Cancel</a>
+  </div>
+  {%- else %}
+  <p class="muted">Nothing to accept: every remaining value needs its own decision.</p>
+  {%- endif %}
+</div>

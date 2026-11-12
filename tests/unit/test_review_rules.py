@@ -1,10 +1,11 @@
-"""Rules of the review screen that decide what "approve all agreed values" may approve."""
+"""Rules of the Check page that decide what "Accept all" may approve."""
 
 from __future__ import annotations
 
 from types import SimpleNamespace
 
-from backend.app.web import audit_detail, field_label, open_in_a_document, partial_ways
+from backend.app.enquiry import open_in_a_document, partial_ways
+from backend.app.labels import activity_text, field_label
 
 
 def row(field: str, document: str, status: str = "extracted", value=1) -> SimpleNamespace:
@@ -35,8 +36,8 @@ def test_only_one_document_with_ways_means_nothing_to_compare() -> None:
 
 
 def test_field_labels() -> None:
-    assert field_label("way.Q12.breaking_capacity") == "Way Q12 · breaking capacity"
-    assert field_label("system.fault_level") == "system · fault level"
+    assert field_label("way.Q12.breaking_capacity") == "Way Q12 breaking capacity"
+    assert field_label("system.fault_level") == "Fault level"
 
 
 def test_a_field_one_document_leaves_open_is_not_approved_in_bulk() -> None:
@@ -47,8 +48,7 @@ def test_a_field_one_document_leaves_open_is_not_approved_in_bulk() -> None:
                                    row("way.Q3.rating", "schematic")])
 
 
-def test_audit_details_read_as_plain_words() -> None:
+def test_activity_reads_as_plain_words() -> None:
     detail = {"field": "way.Q2.rating", "old": {"value": 200, "unit": "A", "status": "extracted"},
               "new": {"value": None, "unit": None, "status": "rejected"}, "reason": "superseded", "actor": None}
-    assert audit_detail(detail) == [("change", "200 A, extracted → rejected"),
-                                    ("field", "way.Q2.rating"), ("reason", "superseded")]
+    assert activity_text("reject", detail) == "Rejected Way Q2 rating 200 A: superseded"

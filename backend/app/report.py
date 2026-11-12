@@ -47,7 +47,7 @@ def source_words(v: ExtractedValueRow) -> str:
 
 
 def estimate_docx(project: Project, estimate: Estimate, values: dict[int, ExtractedValueRow],
-                  generated_at: datetime) -> bytes:
+                  generated_at: datetime, reading_line: str = "Read with rules") -> bytes:
     d = docx.Document()
     d.styles["Normal"].font.size = Pt(10)
     d.core_properties.title = f"Draft estimate {project.reference or project.name}"
@@ -58,7 +58,7 @@ def estimate_docx(project: Project, estimate: Estimate, values: dict[int, Extrac
     if project.reference:
         d.add_paragraph(f"Reference: {project.reference}")
     d.add_paragraph(f"Estimate {estimate.id}, built {estimate.created_at:%Y-%m-%d %H:%M} UTC; "
-                    f"report generated {generated_at:%Y-%m-%d %H:%M} UTC. Mode: rules.")
+                    f"report generated {generated_at:%Y-%m-%d %H:%M} UTC. {reading_line}.")
     d.add_paragraph("Built from engineer-approved values only. Every price comes from the parts catalogue; "
                     "items with no safe catalogue match are listed as unmatched and are not priced. "
                     "Synthetic demonstration data.")

@@ -32,11 +32,11 @@
 <span class="conf conf--{{ level }}">Confidence: {{ level | capitalize }}</span>
 {%- endmacro %}
 
-{#- What the engineer should check about a model value (Stage 3c): a quote stitched from words on the
+{#- What the engineer should check about a value: a quote pieced together from words on the
     page, and poles that only a cable core count supports. Nothing is shown for other values. -#}
 {% macro value_checks(v) -%}
-{%- if v.quote_match == "words_on_page" %}<span class="chip chip--review" title="Every word of the quote is on the page, but not as one continuous span">{{ icon("warning") }}Quote pieces on page, needs review</span>{% endif %}
-{%- if v.flags and "poles_from_cable_cores" in v.flags %}<span class="chip chip--review" title="The number of poles matches only a cable core count such as 4C">{{ icon("warning") }}Poles taken from cable cores, check</span>{% endif %}
+{%- if v.quote_match == "words_on_page" %}<span class="chip chip--review" title="Every word of the quote is on the page, but not as one continuous sentence">{{ icon("warning") }}Quote pieced together</span>{% endif %}
+{%- if v.flags and "poles_from_cable_cores" in v.flags %}<span class="chip chip--review" title="The number of poles matches only a cable core count such as 4C">{{ icon("warning") }}Poles taken from cable cores</span>{% endif %}
 {%- endmacro %}
 
 {#- Confidence as a filled chip, as in the dashboard table. -#}
@@ -48,74 +48,41 @@
 {%- else %}<span class="chip chip--review">Low</span>{% endif -%}
 {%- endmacro %}
 
-{#- Review status of an extracted value, in the plain labels of the design. -#}
+{#- Review status of a value, in plain labels. -#}
 {% macro value_status(v) -%}
 {%- if v.review_status in ("approved", "edited") -%}
-<span class="chip chip--approved">{{ icon("check") }}{{ "Approved" if v.review_status == "approved" else "Edited" }}</span>
+<span class="chip chip--approved">{{ icon("check") }}{{ "Approved" if v.review_status == "approved" else "Approved, edited" }}</span>
 {%- elif v.review_status == "rejected" -%}
 <span class="chip chip--neutral">Rejected</span>
 {%- else -%}
-<span class="chip chip--review">{{ icon("warning") }}Needs review</span>
+<span class="chip chip--review">Not decided</span>
 {%- endif -%}
 {%- endmacro %}
 
-{#- How a value was found: method, rule and source. Every value shows this. -#}
-{% macro provenance(v) -%}
-<span class="value-row__source">
-  {{ v.source_file }}, {{ "sheet" if v.source_document == "schematic" else "page" }} <span class="mono">{{ v.page }}</span>
-  · method <span class="mono">{{ v.method }}</span>{% if v.rule %} (<span class="mono">{{ v.rule }}</span>){% endif %}
+{#- The enquiry's status pill: Needs you (N), Ready to quote, Quoted, Reading, No files yet, Archived. -#}
+{% macro status_pill(status) -%}
+<span class="chip chip--{{ status.tone }}">{{ status.label }}</span>
+{%- endmacro %}
+
+{#- Small marks: one filled dot per document that states the item. -#}
+{% macro agree_marks(sources) -%}
+<span class="marks" title="Stated in: {{ sources | join(', ') or 'no file' }}" aria-label="Stated in {{ sources | length }} document{{ 's' if sources | length != 1 }}">
+  {%- for s in sources %}<span class="marks__dot"></span>{% endfor -%}
+  {%- for _ in range(3 - (sources | length)) %}<span class="marks__dot marks__dot--off"></span>{% endfor -%}
 </span>
-{%- if v.agreement %} {{ agreement_chip(v.agreement) }}{% endif %}
 {%- endmacro %}
 
-{#- Combined mode: how the rules and the LLM compare for this value. -#}
-{% macro agreement_chip(state) -%}
-{%- set words = {"agree": ("chip--high", "Rules and LLM agree"), "disagree": ("chip--conflict", "Rules and LLM differ"),
-                 "rules_only": ("chip--neutral", "Rules only"), "llm_only": ("chip--neutral", "LLM only")} -%}
-{%- set c = words.get(state, ("chip--neutral", state)) -%}
-<span class="chip {{ c[0] }}">{{ c[1] }}</span>
-{%- endmacro %}
-
-{#- Instruction-like text found in the documents: shown, never followed. Every text is autoescaped. -#}
-{% macro instruction_flags(flags, project_id) -%}
-<section class="glass flag-card gap-top" aria-labelledby="flags-title">
-  <div class="card-head">
-    <h2 id="flags-title" class="card-title">Instruction-like text</h2>
-    <span class="chip chip--conflict">{{ flags | length }} flagged</span>
-  </div>
-  <p class="small muted">Documents are data. This text reads like an instruction to an automated reader. It was not followed, and no value is taken from it.</p>
-  <ul class="flag-list">
-    {%- for f in flags %}
-    <li class="alert alert--error">
-      <a class="flag-list__where" href="/projects/{{ project_id }}/analysis?doc={{ f.doc_id }}&page={{ f.page }}">{{ f.document }}, page <span class="mono">{{ f.page }}</span></a>
-      <q class="flag-list__text">{{ f.text }}</q>
-      <span class="small">{{ f.reasons | join(", ") }}</span>
-    </li>
-    {%- endfor %}
-  </ul>
-</section>
-{%- endmacro %}
-
-{#- Breadcrumb for a project screen. -#}
-{% macro project_crumbs(project, here=None) -%}
-<a href="/projects">Projects</a> <span aria-hidden="true">/</span>
-{%- if here %} <a href="/projects/{{ project.id }}">{{ project.name }}</a> <span aria-hidden="true">/</span> <span aria-current="page">{{ here }}</span>
-{%- else %} <span aria-current="page">{{ project.name }}</span>{% endif -%}
-{%- endmacro %}
-
-{#- Serif page title with the project's reference and document count. -#}
-{% macro project_heading(project, title=None) -%}
-<div class="page-head">
-  <div>
-    <h1 class="page-title">{{ title or project.name }}</h1>
-    <div class="page-meta">
-      {%- if title %}<span>{{ project.name }}</span>{% endif %}
-      <span class="mono">{{ project.reference or "No reference" }}</span>
-      <span>{{ project.documents | length }} document{{ "s" if project.documents | length != 1 }}</span>
-    </div>
-  </div>
-  <span class="chip chip--neutral">Synthetic data</span>
-</div>
+{#- A numbered pager of links. `base` already holds the other query parameters and ends in "page=". -#}
+{% macro pager(page, pages, base, hx_target=None) -%}
+{%- if pages > 1 %}
+<nav class="pager" aria-label="Pages">
+  {%- for n in range(1, pages + 1) %}
+  <a class="pager__item{% if n == page %} pager__item--active{% endif %}" href="{{ base }}{{ n }}"
+     {%- if hx_target %} hx-get="{{ base }}{{ n }}" hx-target="{{ hx_target }}" hx-swap="outerHTML"{% endif %}
+     {%- if n == page %} aria-current="page"{% endif %} aria-label="Page {{ n }}">{{ n }}</a>
+  {%- endfor %}
+</nav>
+{%- endif %}
 {%- endmacro %}
 
 {#- Ring gauge: part of whole as a green arc (r = 34, so the circumference is 213.63). -#}
@@ -144,4 +111,23 @@
 {#- Size in plain units. -#}
 {% macro filesize(n) -%}
 {%- if n >= 1000000 %}{{ "%.1f"|format(n / 1000000) }} MB{% else %}{{ (n / 1000)|round(0)|int }} kB{% endif -%}
+{%- endmacro %}
+
+{#- Export of the Word report: a link when something is approved, otherwise a disabled button that says why. -#}
+{% macro export_button(project, can_export) -%}
+{%- if can_export %}
+<a class="btn btn--primary" href="/enquiries/{{ project.id }}/quote/report.docx">{{ icon("download", "sm") }}Export Word report</a>
+{%- else %}
+<span class="export-off">
+  <button class="btn btn--primary" type="button" disabled aria-describedby="export-why-{{ project.id }}">{{ icon("download", "sm") }}Export Word report</button>
+  <span id="export-why-{{ project.id }}" class="small muted">Approve at least one value to export.</span>
+</span>
+{%- endif %}
+{%- endmacro %}
+
+{#- The theme switch for the top bar (dark and light). Hidden until static/js/theme.js shows it. -#}
+{%- macro theme_button() -%}
+<button class="theme-btn" type="button" data-theme-toggle hidden aria-label="Switch to light theme">
+  <span class="theme-btn__sun">{{ icon("sun") }}</span><span class="theme-btn__moon">{{ icon("moon") }}</span>
+</button>
 {%- endmacro %}

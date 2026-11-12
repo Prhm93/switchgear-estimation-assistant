@@ -103,11 +103,11 @@ def client(tmp_path: Path) -> Iterator[TestClient]:
 
 
 def _upload(client: TestClient) -> int:
-    response = client.post("/projects", data={"name": "OCR", "reference": "ENQ-4A"}, follow_redirects=False)
+    response = client.post("/enquiries", data={"name": "OCR"}, follow_redirects=False)
     pid = int(response.headers["location"].split("/")[2])
     files = [("files", ("specification.pdf", (SHOWCASE / "specification.pdf").read_bytes())),
              ("files", ("schematic_sheet1_scanned.png", SCAN))]
-    client.post(f"/projects/{pid}/documents", files=files, follow_redirects=False)
+    client.post(f"/enquiries/{pid}/documents", files=files, follow_redirects=False)
     return pid
 
 
@@ -137,9 +137,9 @@ def test_approve_all_leaves_ocr_values_and_they_never_reach_the_estimate_unappro
         for r in rows:
             session.get(ExtractedValueRow, r.id).confidence = "high"
         session.commit()
-    client.post(f"/projects/{pid}/review/approve-agreed")
+    client.post(f"/enquiries/{pid}/check/accept-all", data={"confirm": "yes"})
     assert all(r.review_status == "extracted" for r in _ocr_rows(client, pid))
-    client.post(f"/projects/{pid}/estimate")
+    client.post(f"/enquiries/{pid}/quote")
     with client.app.state.sessions() as session:
         est = services.latest_estimate(session, pid)
         used = {i for ln in est.lines for i in ln.value_ids}

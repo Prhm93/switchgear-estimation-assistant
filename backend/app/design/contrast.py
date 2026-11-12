@@ -1,8 +1,10 @@
-"""WCAG 2.2 contrast checks for the colour tokens in app.css.
+"""WCAG 2.2 contrast checks for the colour tokens in tokens.css, in both themes.
 
-The stylesheet is the single source of truth for colours. This module reads
-the colour tokens from its ``:root`` block and checks every foreground and
-background pair the UI actually uses against the AA thresholds:
+tokens.css is the single source of truth for colours. It has two theme blocks,
+``:root[data-theme="dark"]`` (also plain ``:root``, the default) and
+``:root[data-theme="light"]``, with the same token names. This module reads the
+colour tokens of a theme and checks every foreground and background pair the UI
+actually uses, in each theme, against the AA thresholds:
 
 * 4.5:1 for normal text (WCAG 1.4.3),
 * 3:1 for UI components, focus rings and large text (WCAG 1.4.11).
@@ -24,12 +26,14 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from ..paths import STYLESHEET
+from ..paths import TOKENS
 
 TEXT_AA = 4.5
 NON_TEXT_AA = 3.0
+LARGE_TEXT_AA = 3.0  # WCAG 1.4.3: text of 24 px, or 18.7 px bold, and larger
 
-_ROOT_BLOCK = re.compile(r":root\s*\{(?P<body>.*?)\}", re.DOTALL)
+THEMES: tuple[str, ...] = ("dark", "light")
+_BLOCK = re.compile(r"(?P<selector>[^{}]+)\{(?P<body>[^{}]*)\}")
 _HEX_TOKEN = re.compile(r"--(?P<name>[a-z0-9-]+)\s*:\s*(?P<value>#[0-9a-fA-F]{6})\s*;")
 _RGBA_TOKEN = re.compile(
     r"--(?P<name>[a-z0-9-]+)\s*:\s*rgba\(\s*(?P<r>\d+)\s*,\s*(?P<g>\d+)\s*,\s*(?P<b>\d+)\s*,\s*(?P<a>[0-9.]+)\s*\)\s*;"
@@ -47,7 +51,7 @@ class ContrastPair(BaseModel):
     usage: str
 
 
-# Every colour pairing used by the components. Keep in step with app.css.
+# Every colour pairing used by the components, checked in both themes. Keep in step with app.css.
 REQUIRED_PAIRS: tuple[ContrastPair, ...] = tuple(
     ContrastPair(foreground=fg, background=bg, minimum=minimum, usage=usage)
     for fg, bg, minimum, usage in (
@@ -56,13 +60,11 @@ REQUIRED_PAIRS: tuple[ContrastPair, ...] = tuple(
         ("text-muted", "bg", TEXT_AA, "secondary text, footer"),
         ("text-soft", "bg", TEXT_AA, "hero lede"),
         ("text-nav", "header-solid", TEXT_AA, "site navigation"),
-        ("text-nav", "header-glow-solid", TEXT_AA, "site navigation where the glow is brightest"),
-        ("text", "header-glow-solid", TEXT_AA, "product name in the header over the glow"),
-        ("text", "sidebar-solid", TEXT_AA, "sidebar brand and project name"),
-        ("text-soft", "sidebar-solid", TEXT_AA, "sidebar navigation"),
+        ("text", "sidebar-solid", TEXT_AA, "product name in the top bar"),
+        ("text-soft", "sidebar-solid", TEXT_AA, "top bar link"),
         ("text-muted", "sidebar-solid", TEXT_AA, "sidebar environment line"),
         ("label", "sidebar-solid", TEXT_AA, "sidebar section labels"),
-        ("text", "nav-active-solid", TEXT_AA, "selected sidebar item"),
+        ("text", "nav-active-solid", TEXT_AA, "selected top bar link, menu entry hover"),
         ("text", "veil-solid", TEXT_AA, "project switcher, glass button"),
         ("text-soft", "veil-solid", TEXT_AA, "hero pill"),
         ("count-text", "count-solid", TEXT_AA, "review count in the sidebar"),
@@ -75,9 +77,6 @@ REQUIRED_PAIRS: tuple[ContrastPair, ...] = tuple(
         ("label-table", "glass-solid", TEXT_AA, "table headings"),
         ("blue-text", "glass-solid", TEXT_AA, "links in cards"),
         ("warning-text", "glass-solid", TEXT_AA, "[PLACEHOLDER] marks"),
-        ("text", "glass-soft-solid", TEXT_AA, "home page tiles"),
-        ("text-soft", "glass-soft-solid", TEXT_AA, "home page tile text"),
-        ("red-text", "glass-soft-solid", TEXT_AA, "step numbers on the home page"),
         ("text", "deep-solid", TEXT_AA, "table rows and value rows"),
         ("text-muted", "deep-solid", TEXT_AA, "sources in rows"),
         ("blue-text", "deep-solid", TEXT_AA, "links in rows"),
@@ -91,15 +90,6 @@ REQUIRED_PAIRS: tuple[ContrastPair, ...] = tuple(
         ("text-muted", "field-solid", TEXT_AA, "input placeholder"),
         ("text", "upload-inner", TEXT_AA, "upload box input"),
         ("text-muted", "upload-inner", TEXT_AA, "upload box placeholder"),
-        ("text-muted", "sheen-solid", TEXT_AA, "labels at the light corner of a hero card"),
-        ("text-soft", "cta-solid", TEXT_AA, "call-to-action panel text"),
-        ("text", "frame", TEXT_AA, "app preview on the home page"),
-        ("text-muted", "frame", TEXT_AA, "app preview navigation"),
-        ("text", "preview-row-solid", TEXT_AA, "values in the app preview"),
-        ("text-muted", "preview-row-solid", TEXT_AA, "sources in the app preview"),
-        ("ink", "paper", TEXT_AA, "document text in the preview"),
-        ("ink-muted", "paper", TEXT_AA, "document page label in the preview"),
-        ("ink-mark", "paper-mark", TEXT_AA, "highlighted source in the preview"),
         # Buttons.
         ("on-red", "red", TEXT_AA, "primary button label"),
         ("on-red", "red-hover", TEXT_AA, "primary button label, hover"),
@@ -130,14 +120,41 @@ REQUIRED_PAIRS: tuple[ContrastPair, ...] = tuple(
         ("focus", "bg", NON_TEXT_AA, "keyboard focus ring"),
         ("focus", "glass-solid", NON_TEXT_AA, "keyboard focus ring in cards"),
         ("focus", "deep-solid", NON_TEXT_AA, "keyboard focus ring in rows"),
-        ("focus", "sidebar-solid", NON_TEXT_AA, "keyboard focus ring in the sidebar"),
+        ("focus", "sidebar-solid", NON_TEXT_AA, "keyboard focus ring in the top bar"),
+        # The app screens (Stage UX): rows, chips and tabs directly on the page.
+        # Rows on the page take the glass tone (text, chips and marks on glass-solid are checked above).
+        ("text", "veil-page-solid", TEXT_AA, "glass button and step number on the page"),
+        ("text-soft", "veil-page-solid", TEXT_AA, "file count on the Files tab"),
+        ("text", "veil-hover-page-solid", TEXT_AA, "glass button on the page, hover"),
+        ("text", "tonal-page-solid", TEXT_AA, "tonal button on the page"),
+        ("text", "active-page-solid", TEXT_AA, "selected filter on the page"),
+        ("count-text", "count-page-solid", TEXT_AA, "count on the Check tab"),
+        # Stage UX-V: the technical-drawing style.
+        ("red", "bg", LARGE_TEXT_AA, "the red accent word in a headline (headlines only, 24 px and larger)"),
+        ("label-table", "bg", TEXT_AA, "uppercase mono labels and block titles on the page"),
+        ("blue-text", "bg", TEXT_AA, "the Show all values toggle"),
+        ("word-dim", "bg", TEXT_AA, "statement words on the home page before the scroll brightens them"),
+        ("red-text", "bg", TEXT_AA, "step numbers on the home page"),
+        ("text-muted", "veil-page-solid", TEXT_AA, "view button on Check"),
+        ("text", "veil-hover-page-solid", TEXT_AA, "view button on Check, hover"),
+        ("count-text", "count-veil-solid", TEXT_AA, "count on a view button"),
+        ("count-text", "count-active-solid", TEXT_AA, "count on the open view button"),
+        ("label-table", "bg", TEXT_AA, "table headings and panel labels on the page"),
+        ("text-soft", "bg", TEXT_AA, "summary sentence on Check"),
+        ("blue-text", "bg", TEXT_AA, "links on the page"),
+        ("red-text", "bg", TEXT_AA, "error state of a file on the page"),
+        ("warning-text", "bg", TEXT_AA, "not-read state of a file on the page"),
+        ("text", "field-page-solid", TEXT_AA, "text typed in an input on the page"),
+        ("text-muted", "field-page-solid", TEXT_AA, "input placeholder on the page"),
+        ("text-soft", "surface", TEXT_AA, "menu entries"),
+        ("red-text", "surface", TEXT_AA, "Delete in a menu"),
+        ("red", "glass-solid", NON_TEXT_AA, "red edge of a conflict card"),
     )
 )
 
 # Solid twin -> (semi-transparent token, the token it sits on).
 COMPOSITES: dict[str, tuple[str, str]] = {
     "glass-solid": ("glass", "bg"),
-    "glass-soft-solid": ("glass-soft", "bg"),
     "deep-solid": ("deep", "glass-solid"),
     "sidebar-solid": ("sidebar", "bg"),
     "veil-solid": ("veil", "glass-solid"),
@@ -161,17 +178,19 @@ COMPOSITES: dict[str, tuple[str, str]] = {
     "mode-solid": ("mode-bg", "sidebar-solid"),
     "field-solid": ("field", "glass-solid"),
     "inset-solid": ("inset", "glass-solid"),
-    "preview-row-solid": ("preview-row", "frame"),
     "header-solid": ("header", "bg"),
-    "glow-solid": ("glow-core", "bg"),
-    "header-glow-solid": ("header", "glow-solid"),
+    "veil-page-solid": ("veil", "bg"),
+    "veil-hover-page-solid": ("veil-hover", "bg"),
+    "tonal-page-solid": ("tonal", "bg"),
+    "active-page-solid": ("active", "bg"),
+    "count-page-solid": ("tint-count", "bg"),
+    "field-page-solid": ("field", "bg"),
+    "count-veil-solid": ("tint-count", "veil-page-solid"),
+    "count-active-solid": ("tint-count", "active-page-solid"),
 }
 
 # Twins of gradient stops and other colours that are not tokens: (r, g, b, alpha) over a token.
 GRADIENT_STOPS: dict[str, tuple[Rgba, str]] = {
-    "sheen-solid": ((156, 192, 255, 0.14), "bg"),  # .sheen, the light corner
-    "cta-solid": ((28, 95, 209, 0.22), "bg"),  # .cta-panel, the light end
-    "paper-mark": ((28, 95, 209, 0.18), "paper"),  # highlighted source on the light page
 }
 
 
@@ -196,22 +215,25 @@ def contrast_ratio(first: str, second: str) -> float:
     return (lighter + 0.05) / (darker + 0.05)
 
 
-def _root(stylesheet: Path) -> str:
-    match = _ROOT_BLOCK.search(stylesheet.read_text(encoding="utf-8"))
-    if not match:
-        raise ValueError(f"no :root block in {stylesheet}")
-    return match["body"]
+def _theme_block(theme: str, stylesheet: Path) -> str:
+    """The body of the rule whose selector list names ``:root[data-theme="<theme>"]``."""
+    css = re.sub(r"/\*.*?\*/", "", stylesheet.read_text(encoding="utf-8"), flags=re.S)
+    wanted = f':root[data-theme="{theme}"]'
+    for m in _BLOCK.finditer(css):
+        if wanted in [part.strip() for part in m["selector"].split(",")]:
+            return m["body"]
+    raise ValueError(f"no {wanted} block in {stylesheet}")
 
 
-def load_tokens(stylesheet: Path = STYLESHEET) -> dict[str, str]:
-    """Return the hex colour tokens from the first ``:root`` block, without ``--``."""
-    return {m["name"]: m["value"] for m in _HEX_TOKEN.finditer(_root(stylesheet))}
+def load_tokens(theme: str = "dark", stylesheet: Path = TOKENS) -> dict[str, str]:
+    """Return the hex colour tokens of one theme, without ``--``."""
+    return {m["name"]: m["value"] for m in _HEX_TOKEN.finditer(_theme_block(theme, stylesheet))}
 
 
-def load_rgba_tokens(stylesheet: Path = STYLESHEET) -> dict[str, Rgba]:
-    """Return the rgba() colour tokens from the first ``:root`` block, without ``--``."""
+def load_rgba_tokens(theme: str = "dark", stylesheet: Path = TOKENS) -> dict[str, Rgba]:
+    """Return the rgba() colour tokens of one theme, without ``--``."""
     return {m["name"]: (int(m["r"]), int(m["g"]), int(m["b"]), float(m["a"]))
-            for m in _RGBA_TOKEN.finditer(_root(stylesheet))}
+            for m in _RGBA_TOKEN.finditer(_theme_block(theme, stylesheet))}
 
 
 def composite(rgba: Rgba, base: str) -> str:
@@ -222,18 +244,19 @@ def composite(rgba: Rgba, base: str) -> str:
 
 
 def main() -> None:
-    """Print the ratio of every required pair as a Markdown table."""
-    tokens = load_tokens()
-    print("| Foreground | Background | Ratio | Minimum | Result | Used for |")
-    print("|---|---|---|---|---|---|")
-    for pair in REQUIRED_PAIRS:
-        ratio = contrast_ratio(tokens[pair.foreground], tokens[pair.background])
-        result = "pass" if ratio >= pair.minimum else "FAIL"
-        print(
-            f"| `--{pair.foreground}` {tokens[pair.foreground]} "
-            f"| `--{pair.background}` {tokens[pair.background]} "
-            f"| {ratio:.2f} | {pair.minimum} | {result} | {pair.usage} |"
-        )
+    """Print the ratio of every required pair in each theme as a Markdown table."""
+    print("| Theme | Foreground | Background | Ratio | Minimum | Result | Used for |")
+    print("|---|---|---|---|---|---|---|")
+    for theme in THEMES:
+        tokens = load_tokens(theme)
+        for pair in REQUIRED_PAIRS:
+            ratio = contrast_ratio(tokens[pair.foreground], tokens[pair.background])
+            result = "pass" if ratio >= pair.minimum else "FAIL"
+            print(
+                f"| {theme} | `--{pair.foreground}` {tokens[pair.foreground]} "
+                f"| `--{pair.background}` {tokens[pair.background]} "
+                f"| {ratio:.2f} | {pair.minimum} | {result} | {pair.usage} |"
+            )
 
 
 if __name__ == "__main__":

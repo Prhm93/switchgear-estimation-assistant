@@ -1,0 +1,39 @@
+{%- from "macros.html" import icon with context -%}
+{#- One plain line per file. While any file is being read this block asks for itself again every second;
+    with `go` it moves on to Check as soon as the reading is finished. -#}
+<section id="file-lines" class="file-lines gap-top" aria-label="Files" aria-live="polite"
+  {%- if busy %} hx-get="/enquiries/{{ project.id }}/documents{{ '?go=1' if go }}" hx-trigger="every 1s" hx-swap="outerHTML"{% endif %}>
+  {%- for e in errors %}
+  <p class="alert alert--error" role="alert"><strong>{{ e.name }}</strong> was not accepted: {{ e.reason }}</p>
+  {%- endfor %}
+  {%- for line in lines %}
+  {%- set d = line.doc %}
+  <article class="file-line" id="doc-{{ d.id }}">
+    <span class="file-line__icon">{{ icon("drawing" if d.kind == "schematic" or d.file_type in ("png", "jpg", "dxf") else "document") }}</span>
+    <div class="file-line__text">
+      <div class="file-line__name">{{ d.original_name }}</div>
+      <div class="file-line__state state--{{ line.tone }}">
+        {{- line.what }}{% if line.size %} · {{ line.size }}{% endif %} · {{ line.state }}
+        {%- if line.tone == "busy" %}<span class="spinner" aria-hidden="true"></span>
+        {%- elif line.tone == "ok" %}{{ icon("check", "sm", "read") }}{% endif -%}
+      </div>
+      {%- if line.note %}<div class="small muted">{{ line.note }}</div>{% endif %}
+    </div>
+    {%- if line.tone != "busy" %}
+    <details class="menu menu--right">
+      <summary class="icon-btn" aria-label="Actions for {{ d.original_name }}">{{ icon("more", "sm") }}</summary>
+      <div class="menu__list">
+        {%- if d.pages %}<a href="/enquiries/{{ project.id }}/proof?doc={{ d.id }}">Open in the proof viewer</a>{% endif %}
+        <a href="/documents/{{ d.id }}/read-again">Read again</a>
+        <a class="menu__danger" href="/documents/{{ d.id }}/delete">Delete</a>
+      </div>
+    </details>
+    {%- endif %}
+  </article>
+  {%- else %}
+  <p class="muted">No files yet.</p>
+  {%- endfor %}
+  {%- if lines and not busy %}
+  <div class="row gap-top"><a class="btn btn--primary" href="/enquiries/{{ project.id }}/check">Go to Check{{ icon("arrow-right", "sm") }}</a></div>
+  {%- endif %}
+</section>

@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, false
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -30,12 +30,36 @@ class Project(Base):
     name: Mapped[str] = mapped_column(String(200))
     reference: Mapped[str | None] = mapped_column(String(100))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # Stage UX. ``updated_at`` moves with every upload, reading, review and quote; an archived enquiry is
+    # hidden from the list but keeps all its data; the sample enquiry may use recorded model runs.
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=utcnow)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    is_sample: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
     documents: Mapped[list[Document]] = relationship(back_populates="project", order_by="Document.id",
                                                      cascade="all, delete-orphan")
     values: Mapped[list[ExtractedValueRow]] = relationship(back_populates="project",
                                                            order_by="ExtractedValueRow.id",
                                                            cascade="all, delete-orphan")
+    notes: Mapped[list[EnquiryNote]] = relationship(back_populates="project", order_by="EnquiryNote.id",
+                                                    cascade="all, delete-orphan")
+
+
+class EnquiryNote(Base):
+    """Text the engineer typed about an enquiry (V4): it may start an enquiry before any file arrives.
+
+    A note is the engineer's own words, kept as data. It is never read for values and never priced.
+    """
+
+    __tablename__ = "enquiry_notes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    text: Mapped[str] = mapped_column(Text)
+    actor: Mapped[str] = mapped_column(String(60))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    project: Mapped[Project] = relationship(back_populates="notes")
 
 
 class Document(Base):
@@ -53,6 +77,8 @@ class Document(Base):
     note: Mapped[str | None] = mapped_column(Text)
     page_count: Mapped[int | None] = mapped_column(Integer)
     model_run: Mapped[str | None] = mapped_column(String(200))  # e.g. "gemma4:e2b, 2026-11-07"; None in rules mode
+    # How the file was actually read: "rules", "ocr" or "rules+model"; None while unread (Stage UX).
+    read_method: Mapped[str | None] = mapped_column(String(40))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     project: Mapped[Project] = relationship(back_populates="documents")

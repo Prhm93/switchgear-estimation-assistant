@@ -1,7 +1,7 @@
 /*
  * Drag and drop for the upload form. Without this script the form still works:
- * choose files, then press Upload. With it, files dropped on the card are put
- * into the file input and uploaded at once (through HTMX when it is loaded).
+ * choose files, then press the button. With it, files dropped on the card are
+ * put into the file input and sent at once (through HTMX when the form uses it).
  */
 (function () {
   "use strict";
@@ -14,8 +14,10 @@
   }
 
   function submit(form) {
-    if (window.htmx) {
+    if (window.htmx && form.hasAttribute("hx-post")) {
       window.htmx.trigger(form, "submit");
+    } else if (form.requestSubmit) {
+      form.requestSubmit();
     } else {
       form.submit();
     }
@@ -42,7 +44,8 @@
       if (!event.dataTransfer || !event.dataTransfer.files.length) return;
       input.files = event.dataTransfer.files;
       summary(form, input.files);
-      submit(form);
+      /* A form with other fields to fill (the new-enquiry name) waits for its Start button. */
+      if (!form.querySelector('input[type="text"], input:not([type])[name="name"]')) submit(form);
     });
     form.addEventListener("htmx:afterRequest", function () {
       form.reset();

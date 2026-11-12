@@ -4,9 +4,16 @@ A web application that helps an engineer turn a customer enquiry for low-voltage
 
 > **Disclaimer:** this is an independent personal project. It uses synthetic data only: every document, drawing, part code and price is invented. It is not affiliated with or endorsed by any company.
 
-The product is being built in stages. Stage 0 set up the structure, the Docker stack and the design system. Stage 1 added the synthetic data: an invented parts catalogue and a generator of customer enquiries with exact answer keys. Stage 2 (this version) is the first working slice, in rules mode with no model: upload, reading, rule-based extraction, review, catalogue matching, a draft estimate from approved values only, a DOCX report and an audit log. See [Status](#status).
+The product is built in stages. Built so far:
+- Synthetic data: an invented parts catalogue and an enquiry generator with exact answer keys (Stage 1).
+- A working path from upload to Word report, with an audit log (Stage 2).
+- Model extraction with a quote check, replayed from recorded runs on the laptop (Stage 3).
+- OCR of drawing PDFs and images (Stage 4, Part A).
+- A redesign of every screen around one plain path, Files, Check, Quote (Stage UX).
 
-![Review screen with a conflict shown side by side](docs/images/stage-2-review.png)
+See [Status](#status).
+
+![Review screen with a conflict shown side by side (Stage 2 design)](docs/images/stage-2-review.png)
 
 ## Quick start (Docker)
 
@@ -16,7 +23,36 @@ Needs Docker Desktop. On an 8 GB laptop, cap the Docker memory first ([steps](do
 docker compose up --build
 ```
 
-Then open <http://127.0.0.1:8000/> for the home page, <http://127.0.0.1:8000/projects> for the projects (a walk-through of the showcase is in [docs/stage-2.md](docs/stage-2.md#how-to-run-it)), <http://127.0.0.1:8000/health> for the design system and health-check page, or <http://127.0.0.1:8000/healthz> for the JSON status. Stop with `Ctrl+C`, or `docker compose down` (add `-v` to delete the database volume).
+Then open these addresses:
+- <http://127.0.0.1:8000/>: the home page.
+- <http://127.0.0.1:8000/enquiries>: the enquiries. Old `/projects` addresses redirect here.
+- <http://127.0.0.1:8000/health>: system status. It is also the "System status" link in the footer.
+- <http://127.0.0.1:8000/healthz>: the same status as JSON.
+
+A walk-through of the screens is in [Using the app](#using-the-app). Stop the app with `Ctrl+C` or `docker compose down`.
+
+> **Warning:** never add `-v` to `docker compose down`. It deletes the database volume, and with it every enquiry.
+
+## Using the app
+
+1. **+ New enquiry.** Drop the customer's files (specification PDF, drawing as DXF, PDF or image, letter as DOCX), type a sentence about the enquiry, or both. A typed note alone starts the enquiry, and it opens on Files asking for the files. **Try the sample enquiry** loads the showcase files instead.
+2. **Summary.** Six checks, each from the enquiry's own values:
+   - what is quoted;
+   - the parts found;
+   - whether a drawing is attached;
+   - whether the documents agree;
+   - the estimated cost;
+   - the required fields not found.
+   Each check opens its detail below. The cost reads "Waiting for approvals" until a value is approved.
+3. **1 Files.** Each file with its reading state, which updates as it is read. "Read again" and delete both ask first.
+4. **2 Check.**
+   - **To check** holds the conflicts side by side, then the values left for the engineer. "Accept all" approves only high-confidence, exact-quote, agreeing values that were not read from a picture; it shows the count first and asks once.
+   - **Parts list** holds the items the customer wants.
+   - A value is one fact read from the files. Approve it and it can be priced.
+5. **3 Quote.** Lines built from approved values only, rebuilt after every decision, and the Word report.
+6. **Details (⋯).** The proof viewer (each file's text with every value's source highlighted) and Activity (the audit log).
+
+Values are read by rules, and drawing PDFs and images also by OCR. The sample enquiry also replays the recorded model runs whose input hash matches. Every value shows how it was read and its confidence. The theme switch (dark or light) is in the top bar.
 
 ## Local development
 
@@ -48,6 +84,10 @@ python -m pytest
 Remove-Item Env:DATABASE_URL
 ```
 
+The tests never write to the app's database: they use their own `<name>_test` database on the same server and empty it after each test.
+
+Two settings change how values are read: `MODEL_MODE` (`rules`, the default, `recorded`, `ollama` or `ollama-local`) and `QUOTE_CHECK` (`relaxed`, the default, or `strict`, the Stage 3 baseline).
+
 ## Project structure
 
 | Path | What it is |
@@ -56,7 +96,8 @@ Remove-Item Env:DATABASE_URL
 | `backend/migrations/` | Alembic migrations (`backend/alembic.ini`) |
 | `ai_engine/estimation_assistant/` | The AI engine: tools, safe tool runner, agent loop, retrieval, number check |
 | `frontend/templates/` | Jinja2 templates |
-| `frontend/static/` | The one stylesheet (`css/app.css`), self-hosted fonts, line icons, small scripts |
+| `frontend/static/` | Design tokens and both themes (`css/tokens.css`), the stylesheet (`css/app.css`), self-hosted fonts, line icons, the breaker drawing (`img/breaker.svg`), small scripts |
+| `tools/` | `make_breaker_svg.py`, which writes the illustrative breaker drawing from a fixed seed (`--check` says whether the file is up to date) |
 | `tests/unit/`, `tests/integration/`, `tests/accuracy/` | pytest suites; CI runs a two-project accuracy subset |
 | `deployment/` | Dockerfile and docker compose file (the root `compose.yaml` includes it) |
 | `data_generator/` | Synthetic enquiry generator: catalogue, specification PDF, DXF schematic, scanned and photo versions, letter, answer keys |
@@ -72,7 +113,8 @@ Remove-Item Env:DATABASE_URL
 | 0 Setup | Repo structure, Docker stack (Postgres + pgvector, app), design system health-check page, CI | Done: [report](docs/stage-0.md) |
 | 1 Synthetic data | Enquiry generator, showcase project, 20 test projects, 300 training drawings, parts catalogue, real-drawing format | Done: [report](docs/stage-1.md) |
 | 2 Thin slice (rules mode) | Upload to DOCX report with audit log | Done: [report](docs/stage-2.md) |
-| Design v2 | Home page, sidebar app layout, project dashboard, glass design system (look only) | Done: [report](docs/design-v2.md) |
+| Design v2 | Home page, sidebar app layout, project dashboard, glass design system (look only) | Done, then replaced by Stage UX: [report](docs/design-v2.md) |
+| UX Redesign | "Enquiry" everywhere, top bar, steps Files, Check and Quote, Summary with six checks, start page with notes, dark and light themes, home page with the breaker drawing, test isolation, delete, archive and rename | Done: [report](docs/stage-ux.md) |
 | 3 LLM extraction | Ollama and recorded modes, quote check, rules vs LLM scores | Done: Part A, 3b (cut-off fix, v2 Colab run and LLM scores) and 3c (relaxed quote check, the app default; strict v2 check kept as the baseline): [report](docs/stage-3.md) |
 | 4 Drawing understanding | OCR, vision reading, symbol detector | In progress: Part A (Tesseract OCR of drawing PDFs and images, 300 dpi default; values marked for review) built and measured per clean, scanned and photo version. Parts B (vision model), C (symbol detector) and D (boxes in the UI) not started: [report](docs/stage-4.md) |
 | 5 Cross-document checks | Conflicts and missing information | Not started |
@@ -80,6 +122,19 @@ Remove-Item Env:DATABASE_URL
 | 7 Evaluation | One-command evaluation of all test projects | Not started (CI already runs the tests) |
 | 8 Hardening | Login, roles, upload checks, logging | Not started |
 | 9 Assistant | Questions about a project, with sources | Not started |
+
+Stage 9 (the question box) is listed after Stage 8. It is built before it, so that Stage 8's attack tests can run through the question box.
+
+### Strict baseline scores
+
+Strict quote check, fixed baseline. Not held out. Fair scores come from a fresh set in Stage 7.
+
+| Set | With the DXF | Without the DXF |
+|---|---|---|
+| Test (20 enquiries) | 0.778 | 0.561 |
+| Reworded (20 enquiries) | 0.727 | 0.497 |
+
+Each score is the F1 over every value, model reading replayed from recordings. Details are in [docs/stage-3.md](docs/stage-3.md).
 
 ### AI engine (carried over)
 
@@ -177,7 +232,6 @@ Only permissive licences are used. AGPL libraries (for example PyMuPDF and Ultra
 | PostgreSQL | 16 | PostgreSQL Licence | Database (Docker image) |
 | pgvector | 0.8.7 | PostgreSQL Licence | Vector search extension |
 | IBM Plex Sans, IBM Plex Mono | 1.1.0 | SIL OFL 1.1 | Fonts, self-hosted (`frontend/static/fonts/OFL.txt`) |
-| Instrument Serif (regular, italic) | woff2 from @fontsource/instrument-serif 5.3.0, Latin subset | SIL OFL 1.1 | Page titles and big headings, self-hosted (`frontend/static/fonts/OFL-InstrumentSerif.txt`) |
 | IBM Plex Sans Condensed, IBM Plex Serif, IBM Plex Mono (TTF) | from the Google Fonts repository | SIL OFL 1.1 | Drawing and specification text in generated documents (`data_generator/fonts/OFL-IBMPlex.txt`) |
 | Caveat | variable font, Google Fonts repository | SIL OFL 1.1 | Handwritten-style note on scanned and photo drawings (`data_generator/fonts/OFL-Caveat.txt`) |
 | Icons | n/a | This repo | Drawn for this project |
@@ -188,7 +242,9 @@ Transitive dependencies (for example AnyIO, Click, MarkupSafe, Mako, scramp, typ
 
 ## Limits
 
-- **Rules mode only.** Extraction uses rules written for the generator's wording, so the baseline (F1 1.000 with the DXF) measures template coverage, not generalisation. Drawing PDFs and images are read by OCR since Stage 4 Part A; OCR values are medium confidence at most and always need the engineer's review, and reworded rating styles are not read yet. See [docs/stage-2.md](docs/stage-2.md#known-limits) and [docs/stage-4.md](docs/stage-4.md#6-known-limits).
+- **Rules written for the generator.** The rules were written after reading the generator's templates, so their score on the generator's own wording measures template coverage, not how well they read new wording. The reworded set tests that.
+- **Model runs are recorded.** A recorded model mode replays saved model outputs on the laptop; live model calls run on Colab only. The relaxed quote check is the app default; the strict check is kept as the fixed baseline above.
+- **Not built yet.** The Ask column on the Summary is an empty placeholder, there is no stock list and no PDF report (Word only), and there is no login. Drawing PDFs and images are read by OCR since Stage 4 Part A; OCR values are medium confidence at most and always need the engineer's review, and reworded rating styles are not read yet. See [docs/stage-2.md](docs/stage-2.md#known-limits) and [docs/stage-4.md](docs/stage-4.md#6-known-limits).
 - **Synthetic data is cleaner than real data.** See [docs/stage-1.md](docs/stage-1.md#limits) for how it differs.
 - **Engine, small tests.** Real-model results come from a few questions on four notes. They show the parts work, not how often.
 - **Engine, refusal gap.** The search always returns the nearest note, even when no note fits.

@@ -10,7 +10,7 @@ leaves is labelled fake. These tests check that:
 - the app in recorded mode uses only a recording whose SHA-256 matches,
   shows the run label in the sidebar, marks rules/LLM agreement, and audits
   the rejected values;
-- the planted instruction line is flagged on the analysis and review screens.
+- the planted instruction line is flagged on the Check page and in the proof viewer.
 """
 
 from __future__ import annotations
@@ -115,9 +115,9 @@ def client(tmp_path: Path, recorded_dir: Path) -> Iterator[TestClient]:
 
 
 def new_project(client: TestClient, files: list[tuple[str, bytes]]) -> int:
-    response = client.post("/projects", data={"name": "Recorded", "reference": "ENQ-REC"}, follow_redirects=False)
+    response = client.post("/enquiries", data={"name": "Recorded"}, follow_redirects=False)
     project_id = int(response.headers["location"].split("/")[2])
-    client.post(f"/projects/{project_id}/documents", files=[("files", f) for f in files], follow_redirects=False)
+    client.post(f"/enquiries/{project_id}/documents", files=[("files", f) for f in files], follow_redirects=False)
     return project_id
 
 
@@ -136,9 +136,9 @@ def test_app_uses_the_matching_recording_and_shows_its_label(client: TestClient)
         spec_id, agreed_page = agreed.document_id, agreed.page
         actions = [e.action for e in session.scalars(select(AuditEvent))]
         assert "llm_values_rejected" in actions
-    page = client.get(f"/projects/{project_id}/analysis?doc={spec_id}&page={agreed_page}").text
-    assert f"{FAKE_MODEL}, " in page and "(fake test recording)" in page  # the sidebar run label
-    assert "Rules and LLM agree" in page
+    page = client.get(f"/enquiries/{project_id}/proof?doc={spec_id}&page={agreed_page}").text
+    assert f"Read with rules + {FAKE_MODEL} (recorded " in page and "(fake test recording)" in page  # header line
+    assert "Read by the rules; the model read the same" in page
 
 
 def test_rules_mode_shows_no_model_run(tmp_path: Path) -> None:
@@ -146,9 +146,9 @@ def test_rules_mode_shows_no_model_run(tmp_path: Path) -> None:
                         storage_dir=tmp_path / "s", environment="test")
     with TestClient(create_app(settings)) as c:
         project_id = new_project(c, [("specification.pdf", SPEC)])
-        page = c.get(f"/projects/{project_id}/analysis").text
-        assert '<span>Model run</span><span>none</span>' in page
-        assert "Stage 3" not in page
+        page = c.get(f"/enquiries/{project_id}/check").text
+        assert "<span>Read with rules</span>" in page
+        assert "recorded" not in page and "Stage 3" not in page
 
 
 @pytest.fixture(scope="module")
@@ -159,18 +159,18 @@ def injected_spec(tmp_path_factory) -> bytes:
     return (job.out / "specification.pdf").read_bytes()
 
 
-def test_planted_instruction_is_flagged_on_analysis_and_review(client: TestClient, injected_spec: bytes) -> None:
+def test_planted_instruction_is_flagged_on_check_and_proof(client: TestClient, injected_spec: bytes) -> None:
     project_id = new_project(client, [("specification.pdf", injected_spec)])
     with client.app.state.sessions() as session:
         doc = session.scalars(select(Document)).one()
         flagged = next(e for e in session.scalars(select(AuditEvent)) if e.action == "instruction_text_flagged")
         page_no = flagged.detail["flags"][0]["page"]
         assert doc.status == "done"
-    analysis = client.get(f"/projects/{project_id}/analysis?doc={doc.id}&page={page_no}").text
-    assert "Instruction-like text" in analysis and 'class="mark--flag"' in analysis
-    assert "ignore all previous instructions" in analysis
-    review = client.get(f"/projects/{project_id}/review").text
-    assert "Instruction-like text" in review and "It was not followed" in review
+    proof = client.get(f"/enquiries/{project_id}/proof?doc={doc.id}&page={page_no}").text
+    assert "Instruction-like text" in proof and 'class="mark--flag"' in proof
+    assert "ignore all previous instructions" in proof
+    check = client.get(f"/enquiries/{project_id}/check").text
+    assert "Instruction-like text was found" in check and "It was not followed" in check
     # Not obeyed: nothing was approved and no value came from the instruction line.
     with client.app.state.sessions() as session:
         rows = list(session.scalars(select(ExtractedValueRow)))

@@ -4,10 +4,14 @@ These keep the look consistent as the stylesheet grows:
 
 * glass cards with hairline edges only: every border is 0, none or a 1px
   hairline in rgba(156,192,255, 0.10 to 0.18); no solid opaque borders;
-* gradients only in the four allowed rules: .upload-box (red-to-blue border),
-  .glow (top radial glow), .sheen (card sheen) and .cta-panel (call to action);
-* 3D tilt only in the home page hero, and only at 1100px and wider;
+* one gradient only: the red-to-blue border of .upload-box (Stage UX-V removed the
+  glow, the sheen and the call-to-action panel);
+* no 3D transforms anywhere (Stage UX-V removed the tilted hero cards);
 * card radii of 18 and 20px, pill buttons, a red primary button with a shadow;
+* IBM Plex Sans everywhere and no serif (Stage UX-V); Plex Mono for numbers, codes,
+  document text and small uppercase labels only;
+* two colour themes in tokens.css (Stage UX visual pass): dark, the default, and light, with a
+  switch in every top bar that remembers the choice; headings set tight (-0.02em, the hero -0.03em);
 * 150 ms transitions, none for reduced-motion users, and a visible focus ring;
 * no emoji or "magic" wording in the templates.
 """
@@ -17,10 +21,13 @@ import re
 import pytest
 
 from backend.app.design.contrast import load_rgba_tokens, load_tokens
-from backend.app.paths import STYLESHEET, TEMPLATES_DIR
+from backend.app.paths import STATIC_DIR, STYLESHEET, TEMPLATES_DIR, TOKENS
 
-CSS = STYLESHEET.read_text(encoding="utf-8")
-ALLOWED_GRADIENTS = {".upload-box", ".glow", ".sheen", ".cta-panel"}
+# tokens.css (fonts, the two themes, type and motion) and app.css (everything else), read as one sheet.
+CSS = TOKENS.read_text(encoding="utf-8") + "\n" + STYLESHEET.read_text(encoding="utf-8")
+# Stage UX-V: the hero glow, the card sheen and the call-to-action panel are gone (the shader and
+# hairline sections replace them); the red-to-blue upload border is the one gradient left.
+ALLOWED_GRADIENTS = {".upload-box"}
 
 
 def _without_comments(css: str) -> str:
@@ -44,7 +51,7 @@ def _rule(selector: str) -> str:
     for sel, body in _rules():
         if sel == selector:
             return body
-    raise AssertionError(f"rule {selector!r} not found in app.css")
+    raise AssertionError(f"rule {selector!r} not found in tokens.css or app.css")
 
 
 def _media_blocks(query: str) -> list[str]:
@@ -72,12 +79,14 @@ def test_brand_palette_tokens_are_unchanged() -> None:
     assert tokens["on-red"] == "#FFFFFF"
 
 
-def test_hairline_tokens_are_faint_light_blue() -> None:
-    rgba = load_rgba_tokens()
-    for name in ("hairline", "hairline-strong"):
-        r, g, b, a = rgba[name]
-        assert (r, g, b) == (156, 192, 255), name
-        assert 0.10 <= a <= 0.18, name
+def test_hairline_tokens_are_faint() -> None:
+    """Dark theme: faint light blue. Light theme (changed on purpose): faint navy-blue on paper."""
+    for theme, colour, (low, high) in (("dark", (156, 192, 255), (0.10, 0.18)), ("light", (27, 69, 140), (0.10, 0.22))):
+        rgba = load_rgba_tokens(theme)
+        for name in ("hairline", "hairline-strong"):
+            r, g, b, a = rgba[name]
+            assert (r, g, b) == colour, (theme, name)
+            assert low <= a <= high, (theme, name)
 
 
 def test_every_border_is_none_or_a_hairline() -> None:
@@ -91,16 +100,17 @@ def test_every_border_is_none_or_a_hairline() -> None:
             assert ok, f"{selector}: {prop}: {value}"
 
 
-def test_gradients_only_in_the_four_allowed_rules() -> None:
+def test_gradients_only_in_the_allowed_rule() -> None:
     found = set()
     for selector, body in _rules():
         if "gradient(" in body:
             assert selector in ALLOWED_GRADIENTS, f"gradient in {selector!r}"
             found.add(selector)
     assert found == ALLOWED_GRADIENTS
-    # The 56px background grid is an SVG tile, not a gradient.
-    assert "background-size: 56px 56px" in _rule("body")
+    # The 56px background grid is an SVG tile (one per theme), not a gradient.
+    assert "background-size: 56px 56px" in _rule("body") and "var(--grid-tile)" in _rule("body")
     assert "gradient(" not in _rule("body") and "gradient(" not in _rule("body.page--home")
+    assert TOKENS.read_text(encoding="utf-8").count("--grid-tile: url(\"data:image/svg+xml") == 2  # dark, light
 
 
 def test_the_upload_box_border_runs_red_to_blue() -> None:
@@ -108,14 +118,10 @@ def test_the_upload_box_border_runs_red_to_blue() -> None:
     assert re.search(r"linear-gradient\(90deg,\s*var\(--red\),\s*var\(--blue\)", body)
 
 
-def test_tilt_only_in_the_home_hero_and_only_on_wide_screens() -> None:
-    wide = "".join(_media_blocks("(min-width: 1100px)"))
-    outside = RULES_CSS
-    for block in _media_blocks("(min-width: 1100px)"):
-        outside = outside.replace(block, "")
-    assert "perspective(" not in outside and "rotateY(" not in outside
-    tilted = [sel for sel, body in _rules(wide) if "perspective(" in body or "rotateY(" in body]
-    assert tilted and all(sel.startswith(".hero") for sel in tilted), tilted
+def test_no_3d_transforms() -> None:
+    """Stage UX-V: the tilted hero cards are gone; nothing is drawn in 3D."""
+    for word in ("perspective", "rotateY(", "rotateX(", "rotate3d(", "translateZ(", "preserve-3d"):
+        assert word not in RULES_CSS, word
 
 
 def test_glass_cards_have_hairline_shadow_and_highlight() -> None:
@@ -143,14 +149,59 @@ def test_buttons_are_pills_and_primary_is_red_with_a_soft_red_shadow() -> None:
     assert "var(--tint-reject)" in _rule(".icon-btn--reject")
 
 
-def test_page_titles_use_the_serif() -> None:
-    for selector in (".page-title", ".hero__title", ".section-title"):
-        assert any("var(--font-serif)" in body for sel, body in _rules() if sel == selector), selector
-    assert '"Instrument Serif"' in CSS
-    assert "InstrumentSerif-Regular.woff2" in CSS and "InstrumentSerif-Italic.woff2" in CSS
+def test_there_is_no_serif() -> None:
+    """Stage UX-V reverses the UX-1 decision: IBM Plex Sans and Plex Mono only, no serif font anywhere."""
+    assert "--font-serif" not in CSS and "Instrument Serif" not in CSS and "InstrumentSerif" not in CSS
+    fonts = STYLESHEET.parent.parent / "fonts"
+    assert not list(fonts.glob("InstrumentSerif*")) and not (fonts / "OFL-InstrumentSerif.txt").exists()
+    for path in TEMPLATES_DIR.rglob("*.html"):
+        assert "InstrumentSerif" not in path.read_text(encoding="utf-8"), path.name
+
+
+def test_mono_is_only_for_numbers_codes_and_document_text() -> None:
+    """Plex Mono marks numbers, part codes, document text and small uppercase labels; never headings."""
+    for selector in (".page-title", ".decision__title", ".panel__title", ".step", ".lead", ".btn"):
+        assert "var(--font-mono)" not in _rule(selector), selector
+    for selector in (".label-mono", ".block-title"):  # the technical-drawing labels
+        body = _rule(selector)
+        assert "var(--font-mono)" in body and "text-transform: uppercase" in body and "var(--fs-xs)" in body
+
+
+def test_the_ux_v_crosshair_marks_and_corner_drawing_are_gone() -> None:
+    """Changed on purpose: the visual pass replaces the "+" marks and the corner single-line drawing
+    (a faint breaker drawing takes their place on the Start and Enquiry pages)."""
+    assert ".xmarks" not in RULES_CSS and "--xmark" not in RULES_CSS and ".corner-drawing" not in RULES_CSS
+    for path in TEMPLATES_DIR.rglob("*.html"):
+        text = path.read_text(encoding="utf-8")
+        assert "xmarks" not in text and "corner_drawing" not in text, path.name
+
+
+def test_headings_are_set_tight_in_em() -> None:
+    """-0.02em for headings, -0.03em for the hero headline, so the spacing scales with the size."""
+    assert "letter-spacing: -0.02em" in _rule("h1, h2, h3")
+    for selector in (".page-title", ".section-title"):
+        assert "letter-spacing: -0.02em" in _rule(selector), selector
+    assert "letter-spacing: -0.03em" in _rule(".hero__title")
+
+
+def test_both_themes_and_a_switch_in_every_top_bar() -> None:
+    assert _rule(':root[data-theme="light"]') and "color-scheme: light" in _rule(':root[data-theme="light"]')
+    base = (TEMPLATES_DIR / "base.html").read_text(encoding="utf-8")
+    assert '<html lang="en-GB" data-theme="dark">' in base  # dark without script or storage
+    head = base.split("</head>")[0]
+    assert head.index("css/tokens.css") < head.index("css/app.css")
+    # The stored choice is applied before paint, and storage errors are caught.
+    assert re.search(r'<script>try \{ if \(localStorage\.getItem\("sea-theme"\)', head)
+    assert "catch (e)" in head
+    for layout in ("layout_app.html", "home.html"):
+        assert "{{ theme_button() }}" in (TEMPLATES_DIR / layout).read_text(encoding="utf-8"), layout
+    js = (STATIC_DIR / "js" / "theme.js").read_text(encoding="utf-8")
+    assert js.count("try {") >= 1 and "localStorage.setItem" in js and "catch (e)" in js
+    assert "localStorage" not in js.split("try {")[0]  # no storage call outside a try block
 
 
 def test_transitions_are_150ms_and_off_for_reduced_motion() -> None:
+    """The motion tokens live in tokens.css; reduced motion sets them to zero."""
     assert re.search(r"--dur\s*:\s*150ms", CSS)
     reduced = "".join(_media_blocks("(prefers-reduced-motion: reduce)"))
     assert re.search(r"--dur\s*:\s*0ms", reduced)
@@ -177,3 +228,38 @@ def test_templates_have_no_emoji_or_magic_wording(path) -> None:
     assert not EMOJI.search(text), path.name
     for word in ("magic", "sparkle", "ai-powered", "powered by ai"):
         assert word not in text.lower(), (path.name, word)
+
+
+# Red on navy (3.8:1) and red on paper (4.3:1) pass AA for large text only (24 px and up, WCAG 1.4.3).
+LARGE_TEXT_PX = 24
+RED_MARKERS = {".legend .l-conflict::before"}  # a dot glyph in a legend: a mark, not words
+
+
+def _font_size_px(selector: str) -> float:
+    """The font size a rule sets, resolved through the --fs-* tokens."""
+    body = _rule(selector)
+    size = re.search(r"font-size:\s*([^;]+);", body).group(1).strip()
+    if m := re.fullmatch(r"var\((--[a-z0-9-]+)\)", size):
+        size = re.search(re.escape(m.group(1)) + r"\s*:\s*([^;]+);", CSS).group(1).strip()
+    return float(re.fullmatch(r"([\d.]+)px", size).group(1))
+
+
+def test_red_text_is_only_the_large_accent_word() -> None:
+    """The red that passes for large text only never colours small text: no rule sets red as a text
+    colour except .accent (and one legend dot), and every accent word sits in a heading of 24 px or more."""
+    for selector, body in _rules():
+        if re.search(r"(?<![a-z-])color:\s*var\(--red\)", body):
+            assert selector in {".accent"} | RED_MARKERS, selector
+        if re.search(r"fill:\s*var\(--red\)", body):
+            assert "text" not in selector, selector  # red fills are marks (the trip flash), never words
+    for path in TEMPLATES_DIR.rglob("*.html"):
+        for m in re.finditer(r'class="accent"', path.read_text(encoding="utf-8")):
+            text = path.read_text(encoding="utf-8")[: m.start()]
+            opener = list(re.finditer(r"<(h1|h2|p)\b([^>]*)>", text))[-1]
+            attrs = opener.group(2)
+            if (inline := re.search(r"font-size:\s*([\d.]+)px", attrs)):
+                size = float(inline.group(1))  # the design samples page sets its size inline
+            else:
+                cls = re.search(r'class="([^"]+)"', attrs).group(1).split()[0]
+                size = _font_size_px(f".{cls}")
+            assert size >= LARGE_TEXT_PX, (path.name, opener.group(0), size)

@@ -2,7 +2,7 @@
 
 - PDF: pdfplumber, page by page (text lines and tables). A PDF without a text
   layer, such as a CAD export that draws its labels as outlines, is marked
-  "not read yet": it needs OCR, which arrives in Stage 4.
+  "not read": it needs OCR (drawing reading, see :mod:`backend.app.drawing`).
 - DOCX: python-docx paragraphs and table cells, in document order. A DOCX has
   no fixed pagination, so everything is page 1.
 - DXF: ezdxf text entities (TEXT and MTEXT) with their positions. A sheet is a
@@ -22,8 +22,8 @@ from pydantic import BaseModel, Field
 from backend.app.schemas import DocumentKind, DocumentStatus
 from backend.app.storage import FileType
 
-NO_TEXT_LAYER = "No text layer: this drawing is not read yet. OCR arrives in Stage 4."
-IMAGE_NOT_READ = "Scanned or photographed drawing: not read yet. OCR arrives in Stage 4."
+NO_TEXT_LAYER = "Not read: this drawing PDF has no text layer and drawing reading was off when it was read."
+IMAGE_NOT_READ = "Not read: this is a picture of a drawing and drawing reading was off when it was read."
 
 
 class DxfText(BaseModel):

@@ -1,0 +1,13 @@
+{%- from "macros.html" import icon with context -%}
+{#- The Summary, then the three steps of an enquiry as tabs. Sent again (out of band) after each decision so the count stays right. -#}
+<nav id="steps" class="steps" aria-label="Steps"{% if oob is defined and oob %} hx-swap-oob="true"{% endif %}>
+  <a class="step" href="/enquiries/{{ project.id }}"{% if tab is defined and tab == "summary" %} aria-current="page"{% endif %}>Summary</a>
+  {%- for key, number, label in [("files", 1, "Files"), ("check", 2, "Check"), ("quote", 3, "Quote")] %}
+  <a class="step" href="/enquiries/{{ project.id }}/{{ key }}"{% if tab is defined and tab == key %} aria-current="page"{% endif %}>
+    <span class="step__no mono">{{ number }}</span>{{ label }}
+    {%- if key == "files" %}<span class="step__count mono">{{ project.documents | length }}</span>
+    {%- elif key == "check" and found.needs %}<span class="step__count step__count--needs mono" aria-label="{{ found.needs }} waiting for you">{{ found.needs }}</span>
+    {%- endif %}
+  </a>
+  {%- endfor %}
+</nav>

@@ -1,0 +1,6 @@
+{%- extends "layout_enquiry.html" -%}
+{#- One value on its own screen: the proof panel for browsers without script. -#}
+
+{%- block step %}
+<section class="panel panel--inline">{% include "partials/value_panel.html" %}</section>
+{% endblock -%}

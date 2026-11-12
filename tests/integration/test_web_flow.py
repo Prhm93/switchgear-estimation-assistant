@@ -3,14 +3,14 @@
 Each test gets its own SQLite file database (migrated by the app on start-up,
 as in Docker) and its own storage folder. Uploads run their background
 processing inside the request, as FastAPI's TestClient does, so statuses are
-final when the upload call returns.
+final when the upload call returns. The PostgreSQL variant runs on the tests'
+own database (the ``pg_url`` fixture), never on the app's.
 """
 
 from __future__ import annotations
 
 import hashlib
 import io
-import os
 import re
 from collections.abc import Iterator
 from pathlib import Path
@@ -22,9 +22,8 @@ from sqlalchemy import select
 
 from backend.app import services
 from backend.app.config import Settings
-from backend.app.db import check_database
 from backend.app.main import create_app
-from backend.app.models import AuditEvent, Document, ExtractedValueRow, Match
+from backend.app.models import AuditEvent, Document, ExtractedValueRow, Match, Project
 from backend.app.storage import KEY_PATTERN
 from data_generator.project import load_answers
 from data_generator.sets import DATA
@@ -50,15 +49,20 @@ def sessions(client: TestClient):
 
 
 def new_project(client: TestClient, name: str = "Showcase") -> int:
-    response = client.post("/projects", data={"name": name, "reference": "ENQ-TEST"}, follow_redirects=False)
+    response = client.post("/enquiries", data={"name": name, "reference": "ENQ-TEST"}, follow_redirects=False)
     assert response.status_code == 303
-    return int(re.match(r"^/projects/(\d+)/upload$", response.headers["location"]).group(1))
+    return int(re.match(r"^/enquiries/(\d+)/files$", response.headers["location"]).group(1))
 
 
 def upload(client: TestClient, project_id: int, files: list[tuple[str, bytes]], htmx: bool = False):
     headers = {"HX-Request": "true"} if htmx else {}
-    return client.post(f"/projects/{project_id}/documents", headers=headers, follow_redirects=False,
+    return client.post(f"/enquiries/{project_id}/documents", headers=headers, follow_redirects=False,
                        files=[("files", (name, data)) for name, data in files])
+
+
+def accept_all(client: TestClient, project_id: int):
+    """ "Accept all" with its confirmation: approves the agreeing high-confidence values, then rebuilds the quote."""
+    return client.post(f"/enquiries/{project_id}/check/accept-all", data={"confirm": "yes"}, follow_redirects=False)
 
 
 def upload_showcase(client: TestClient, project_id: int) -> None:
@@ -90,12 +94,9 @@ def test_showcase_upload_to_docx(client: TestClient) -> None:
 
 
 @pytest.mark.database
-def test_showcase_upload_to_docx_on_postgres(tmp_path: Path) -> None:
-    """The same flow on PostgreSQL (Docker locally, the pgvector service in CI)."""
-    url = os.environ.get("DATABASE_URL")
-    if not url or check_database(url).state != "ok":
-        pytest.skip("DATABASE_URL not set or database not reachable")
-    settings = Settings(database_url=url, storage_dir=tmp_path / "storage", environment="test",
+def test_showcase_upload_to_docx_on_postgres(tmp_path: Path, pg_url: str) -> None:
+    """The same flow on PostgreSQL (Docker locally, the pgvector service in CI), in the tests' own database."""
+    settings = Settings(database_url=pg_url, storage_dir=tmp_path / "storage", environment="test",
                         drawing_reading="off")
     with TestClient(create_app(settings)) as pg_client:
         showcase_flow(pg_client)
@@ -117,39 +118,38 @@ def showcase_flow(client: TestClient) -> None:
     # The hash is of the bytes exactly as uploaded.
     assert docs["specification.pdf"].sha256 == hashlib.sha256((SHOWCASE / "specification.pdf").read_bytes()).hexdigest()
 
-    for screen in ("upload", "analysis", "review", "estimate", "audit"):
-        assert client.get(f"/projects/{pid}/{screen}", headers=HTML).status_code == 200
+    for screen in ("files", "proof", "check", "quote", "activity"):
+        assert client.get(f"/enquiries/{pid}/{screen}", headers=HTML).status_code == 200
     with sessions(client)() as session:
         count = len(session.scalars(select(ExtractedValueRow).where(ExtractedValueRow.project_id == pid)).all())
-    dashboard = client.get("/projects").text
-    assert f"0 / {count}" in dashboard and "built-in method" not in dashboard
-    review = client.get(f"/projects/{pid}/review").text
-    assert "Conflict" in review and "No text layer" in review
-    assert review.index('id="f-way.Q2.rating"') < review.index('id="f-system.voltage"')  # conflicts come first
+    listing = client.get("/enquiries").text
+    assert "Showcase" in listing and "Needs you (" in listing
+    check = client.get(f"/enquiries/{pid}/check").text
+    assert count > 0 and re.search(r'>\s*To check\s*<span class="view-btn__count mono">\d+</span>', check)  # renamed in V4
+    assert "The documents disagree" in check and "was not read" in check
+    assert 'id="f-way.Q2.rating"' in check and 'class="link-accept"' in check  # the conflict waits; the rest in one step
 
     # Approve everything that agrees; the planted Q2 conflict (250 A spec, 200 A drawing) stays open.
-    client.post(f"/projects/{pid}/review/approve-agreed")
+    assert accept_all(client, pid).status_code == 303
     q2 = {v.source_document: v for v in values(client, pid, field="way.Q2.rating")}
     assert {d: v.review_status for d, v in q2.items()} == {"specification": "extracted", "schematic": "extracted"}
 
-    client.post(f"/projects/{pid}/estimate")
-    est, lines = latest(client, pid)
+    est, lines = latest(client, pid)  # rebuilt by the accept step itself
     assert [p["field"] for p in est.problems] == ["way.Q2.rating"]  # the conflict blocks its line only
     assert len(lines) == len(KEY.estimate) - 1
 
     # Resolve it as an engineer would: reject the drawing value with a reason, approve the specification.
     client.post(f"/values/{q2['schematic'].id}/reject", data={"reason": "drawing superseded by spec rev B"})
     client.post(f"/values/{q2['specification'].id}/approve")
-    client.post(f"/projects/{pid}/estimate")
-    est, lines = latest(client, pid)
+    est, lines = latest(client, pid)  # rebuilt after each decision
     assert not est.problems and not est.unmatched and not est.pending
     assert sorted((ln.code, float(ln.quantity)) for ln in lines) == sorted((e.code, e.quantity) for e in KEY.estimate)
     assert all(ln.value_ids for ln in lines)  # every line links to the approved values it came from
 
-    page = client.get(f"/projects/{pid}/estimate").text
-    assert services.money(est.total) in page
+    page = client.get(f"/enquiries/{pid}/quote").text
+    assert services.money(est.total) in page and "out of date" not in page
 
-    response = client.get(f"/projects/{pid}/estimates/{est.id}/report.docx")
+    response = client.get(f"/enquiries/{pid}/estimates/{est.id}/report.docx")
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("application/vnd.openxmlformats")
     report = docx.Document(io.BytesIO(response.content))
@@ -165,15 +165,15 @@ def showcase_flow(client: TestClient) -> None:
     for action in ("upload", "extract", "approve", "approve_agreed", "reject", "estimate", "export"):
         assert action in actions, f"no {action} event in the audit log"
     assert actions.count("upload") == len(SHOWCASE_FILES)
-    audit_page = client.get(f"/projects/{pid}/audit").text
-    assert "export" in audit_page and "drawing superseded by spec rev B" in audit_page
+    activity = client.get(f"/enquiries/{pid}/activity").text
+    assert "Exported the report (DOCX)" in activity and "drawing superseded by spec rev B" in activity
+    assert "Needs you (" in client.get("/enquiries").text  # the letter's medium-confidence values still wait
 
 
 def test_nothing_approved_means_an_empty_estimate(client: TestClient) -> None:
     pid = new_project(client)
     upload_showcase(client, pid)
-    client.post(f"/projects/{pid}/estimate")
-    est, lines = latest(client, pid)
+    est, lines = latest(client, pid)  # built when the files were read
     assert lines == [] and est.total == 0
     kinds = {p["field"]: p["kind"] for p in est.problems}
     assert kinds.pop("way.Q2.rating") == "conflict"  # the documents disagree; reported as such even unreviewed
@@ -183,10 +183,10 @@ def test_nothing_approved_means_an_empty_estimate(client: TestClient) -> None:
 def test_an_unapproved_value_cannot_reach_the_estimate(client: TestClient) -> None:
     pid = new_project(client)
     upload_showcase(client, pid)
-    client.post(f"/projects/{pid}/review/approve-agreed")
+    accept_all(client, pid)
     for v in values(client, pid, field="incomer.rating"):  # un-approve the incomer by rejecting it everywhere
         client.post(f"/values/{v.id}/reject", data={"reason": "test"})
-    client.post(f"/projects/{pid}/estimate")
+    client.post(f"/enquiries/{pid}/quote")
     est, lines = latest(client, pid)
     assert all("incomer.rating" not in ln.basis for ln in lines)
     assert "incomer.rating" in {p["field"] for p in est.problems}
@@ -197,7 +197,7 @@ def test_an_unapproved_value_cannot_reach_the_estimate(client: TestClient) -> No
 def test_a_substitute_is_priced_only_after_approval(client: TestClient) -> None:
     pid = new_project(client)
     upload_showcase(client, pid)
-    client.post(f"/projects/{pid}/review/approve-agreed")
+    accept_all(client, pid)
     q2 = {v.source_document: v for v in values(client, pid, field="way.Q2.rating")}
     client.post(f"/values/{q2['schematic'].id}/reject", data={"reason": "superseded"})
     client.post(f"/values/{q2['specification'].id}/approve")
@@ -207,14 +207,14 @@ def test_a_substitute_is_priced_only_after_approval(client: TestClient) -> None:
         client.post(f"/values/{drawn.id}/reject", data={"reason": "customer change"})
     asked = int(q1.value) - 5
     client.post(f"/values/{q1.id}/edit", data={"value": str(asked), "unit": "A", "reason": "customer change"})
-    client.post(f"/projects/{pid}/estimate")
+    client.post(f"/enquiries/{pid}/quote")
     est, lines = latest(client, pid)
     assert [p["key"] for p in est.pending] == ["way.Q1"]
     reason = est.pending[0]["reason"]
     chosen = re.match(rf"^(\d+) A chosen, {asked} A requested: ", reason)
     assert chosen and asked < int(chosen.group(1)) <= int(q1.value)  # the next stocked size up
     assert all("way.Q1.rating" not in ln.basis for ln in lines)  # not priced yet
-    page = client.get(f"/projects/{pid}/estimate").text
+    page = client.get(f"/enquiries/{pid}/quote").text
     assert "Substitute, needs review" in page and reason in page
 
     response = client.post(f"/matches/{est.pending[0]['match_id']}/approve", follow_redirects=False)
@@ -229,16 +229,16 @@ def test_a_substitute_is_priced_only_after_approval(client: TestClient) -> None:
 def test_a_changed_requirement_needs_its_substitute_approved_again(client: TestClient) -> None:
     pid = new_project(client)
     upload_showcase(client, pid)
-    client.post(f"/projects/{pid}/review/approve-agreed")
+    accept_all(client, pid)
     q1 = values(client, pid, field="way.Q1.rating", source_document="specification")[0]
     for drawn in values(client, pid, field="way.Q1.rating", source_document="schematic"):
         client.post(f"/values/{drawn.id}/reject", data={"reason": "customer change"})
     client.post(f"/values/{q1.id}/edit", data={"value": str(int(q1.value) - 5), "unit": "A"})
-    client.post(f"/projects/{pid}/estimate")
+    client.post(f"/enquiries/{pid}/quote")
     est, _ = latest(client, pid)
     client.post(f"/matches/{est.pending[0]['match_id']}/approve")
     client.post(f"/values/{q1.id}/edit", data={"value": str(int(q1.value) - 10), "unit": "A"})
-    client.post(f"/projects/{pid}/estimate")
+    client.post(f"/enquiries/{pid}/quote")
     est, _ = latest(client, pid)
     assert [p["key"] for p in est.pending] == ["way.Q1"]
     with sessions(client)() as session:
@@ -247,17 +247,19 @@ def test_a_changed_requirement_needs_its_substitute_approved_again(client: TestC
 
 # --- review actions -----------------------------------------------------------------------------------
 
-def test_review_actions_through_htmx_return_the_review_block(client: TestClient) -> None:
+def test_review_actions_through_htmx_return_the_check_block(client: TestClient) -> None:
     pid = new_project(client)
     upload_showcase(client, pid)
     v = values(client, pid, field="system.voltage", source_document="specification")[0]
     response = client.post(f"/values/{v.id}/approve", headers={"HX-Request": "true"})
     assert response.status_code == 200
-    assert response.text.lstrip().startswith('<div id="review-body"') and "<html" not in response.text
+    assert '<div id="check-body"' in response.text and "<html" not in response.text
+    assert 'id="steps"' in response.text and 'hx-swap-oob="true"' in response.text  # the tab count follows
     assert values(client, pid, id=v.id)[0].review_status == "approved"
 
+    # A refused decision comes back in the proof panel with the reason, and nothing changes.
     response = client.post(f"/values/{v.id}/reject", headers={"HX-Request": "true"}, data={"reason": ""})
-    assert "Give a reason for rejecting." in response.text
+    assert "Give a reason for rejecting." in response.text and response.headers["HX-Retarget"] == "#panel"
     assert values(client, pid, id=v.id)[0].review_status == "approved"
 
 
@@ -271,12 +273,38 @@ def test_an_edit_keeps_the_extracted_value_and_its_source(client: TestClient) ->
     assert row.source_text == v.source_text and row.page == v.page
 
 
-def test_new_project_form_and_its_validation(client: TestClient) -> None:
-    form = client.get("/projects/new")
-    assert form.status_code == 200 and 'name="name"' in form.text
-    response = client.post("/projects", data={"name": "  ", "reference": "<b>R</b>"}, follow_redirects=False)
-    assert response.status_code == 422 and "alert--error" in response.text
-    assert "&lt;b&gt;R&lt;/b&gt;" in response.text  # the typed reference comes back, escaped
+def test_new_enquiry_is_one_screen_and_the_name_is_optional(client: TestClient) -> None:
+    form = client.get("/enquiries/new")
+    assert form.status_code == 200 and 'name="name"' in form.text and 'name="files"' in form.text
+    assert "stored but not read: drawing reading is off" in form.text  # said before the upload (here OCR is off)
+    # No name, files in the same step: it is named from the specification's title and goes on to Check.
+    spec = (SHOWCASE / "specification.pdf").read_bytes()
+    response = client.post("/enquiries", data={"name": "  "}, files=[("files", ("specification.pdf", spec))],
+                           follow_redirects=False)
+    assert response.status_code == 303
+    pid = int(re.match(r"^/enquiries/(\d+)/files\?go=1$", response.headers["location"]).group(1))
+    forward = client.get(response.headers["location"], follow_redirects=False)
+    assert forward.status_code == 303 and forward.headers["location"] == f"/enquiries/{pid}/check"
+    with sessions(client)() as session:
+        project = session.get(Project, pid)
+        assert (project.name, project.reference) == ("Low-voltage main switchboard MSB-2", "ENQ-3192")
+    # A typed name is kept, and markup in it is shown escaped.
+    response = client.post("/enquiries", data={"name": "<b>Board</b>"}, follow_redirects=True)
+    assert "&lt;b&gt;Board&lt;/b&gt;" in response.text and "<b>Board</b>" not in response.text
+
+
+def test_the_file_lines_poll_while_reading_and_then_move_on_to_check(client: TestClient) -> None:
+    pid = new_project(client)
+    spec = (SHOWCASE / "specification.pdf").read_bytes()
+    # Through HTMX the upload answers with the file lines: still queued, asking for themselves again.
+    response = upload(client, pid, [("specification.pdf", spec)], htmx=True)
+    assert response.status_code == 200 and f'hx-get="/enquiries/{pid}/documents?go=1"' in response.text
+    assert "waiting to be read" in response.text
+    # Reading has finished by now: the next poll sends the browser on to Check.
+    poll = client.get(f"/enquiries/{pid}/documents?go=1", headers={"HX-Request": "true"})
+    assert poll.status_code == 204 and poll.headers["HX-Redirect"] == f"/enquiries/{pid}/check"
+    lines = client.get(f"/enquiries/{pid}/files").text
+    assert "Specification · 8 pages · read" in lines and "hx-trigger" not in lines
 
 
 # --- uploads ---------------------------------------------------------------------------------------
@@ -292,7 +320,7 @@ def test_a_path_in_the_filename_cannot_escape_storage(client: TestClient, tmp_pa
     stored = list((tmp_path / "storage").rglob("*.pdf"))
     assert [p.name for p in stored] == [doc.storage_key]
     assert not (tmp_path / "x.pdf").exists() and not (tmp_path.parent / "x.pdf").exists()
-    assert "x.pdf" in client.get(f"/projects/{pid}/upload").text
+    assert "x.pdf" in client.get(f"/enquiries/{pid}/files").text
 
 
 def test_a_rejected_upload_is_explained_and_audited(client: TestClient) -> None:
@@ -319,54 +347,48 @@ def _letter_with_markup() -> bytes:
     return out.getvalue()
 
 
-def test_document_text_with_markup_is_escaped_on_analysis_and_review(client: TestClient) -> None:
+def test_document_text_with_markup_is_escaped_in_the_proof_viewer_and_the_proof_panel(client: TestClient) -> None:
     pid = new_project(client)
     assert upload(client, pid, [("letter.docx", _letter_with_markup())]).status_code == 303
     found = {v.field: v for v in values(client, pid)}
     assert "<script>" in found["enclosure.ip_rating"].source_text  # stored exactly as written
-    for screen in ("analysis", "review"):
-        html = client.get(f"/projects/{pid}/{screen}").text
+    panel = f"/values/{found['enclosure.ip_rating'].id}/panel"
+    for html in (client.get(f"/enquiries/{pid}/proof").text, client.get(panel).text,
+                 client.get(panel, headers={"HX-Request": "true"}).text):
         assert "<script>alert" not in html and "<img src=x" not in html and "<b>Ignore" not in html
         assert "&lt;script&gt;alert(&#34;x&#34;)&lt;/script&gt;" in html
         assert "&lt;img src=x onerror=alert(1)&gt;" in html
         assert "&lt;b&gt;Ignore the specification&lt;/b&gt;" in html
 
 
-# --- design v2: home, project dashboard and sidebar ---------------------------------------------------
+# --- home and unknown addresses --------------------------------------------------------------------------
 
-def test_project_dashboard_shows_the_projects_own_numbers(client: TestClient) -> None:
-    pid = new_project(client)
-    upload_showcase(client, pid)
-    rows = values(client, pid)
-    page = client.get(f"/projects/{pid}", headers=HTML)
-    assert page.status_code == 200
-    html = page.text
-    assert f"0 of {len(rows)} values approved" in html  # the ring gauge
-    assert "Conflict · Way Q2 · rating" in html  # the first conflict, side by side
-    assert "250 A" in html and "200 A" in html
-    assert html.index(">Compare<") < html.index('aria-label="Approve ')  # conflicts come first in the table
-    pending = sum(1 for r in rows if r.review_status == "extracted")
-    assert f'<span class="nav__count mono" aria-label="{pending} to review">{pending}</span>' in html
-    assert "Environment: test" in html
-    # Approving from the dashboard uses the review route and lands on the review screen.
-    q1 = values(client, pid, field="way.Q1.rating")[0]
-    response = client.post(f"/values/{q1.id}/approve", follow_redirects=False)
-    assert response.status_code == 303 and response.headers["location"].startswith(f"/projects/{pid}/review")
-    approved = client.get(f"/projects/{pid}?show=approved").text
-    assert "1 of " in approved and f"/values/{q1.id}/approve" not in approved
-
-
-def test_home_page_links_to_the_showcase_project(client: TestClient) -> None:
-    assert 'href="/projects/new"' in client.get("/").text  # no showcase project yet
-    pid = new_project(client, "Showcase MSB-2")
-    upload_showcase(client, pid)
+def test_home_page_starts_an_enquiry_and_offers_the_sample(client: TestClient) -> None:
     html = client.get("/").text
-    assert f'href="/projects/{pid}"' in html and "Open the showcase project" in html
-    assert "Live counts appear" not in html  # the hero card now counts the real values
+    # UX-V: one button to the New enquiry page instead of a form on the home page.
+    assert 'href="/enquiries/new"' in html and 'action="/enquiries/sample"' in html
+    assert "Try the sample enquiry" in html
+    # The typed name is used: the New enquiry form creates the enquiry and opens its Files step.
+    response = client.post("/enquiries", data={"name": "MSB-2 main switchboard"}, follow_redirects=True)
+    assert response.status_code == 200 and "MSB-2 main switchboard" in response.text
+    assert "Drop the customer" in response.text
 
 
-def test_unknown_project_dashboard_is_404(client: TestClient) -> None:
-    assert client.get("/projects/999", headers=HTML).status_code == 404
+def test_unknown_enquiry_is_404(client: TestClient) -> None:
+    assert client.get("/enquiries/999/check", headers=HTML).status_code == 404
+    assert client.get("/enquiries/999", headers=HTML).status_code == 404
+
+
+def test_old_project_addresses_redirect_to_enquiries(client: TestClient) -> None:
+    pid = new_project(client)
+    for old, new in (("/projects", "/enquiries"), (f"/projects/{pid}", f"/enquiries/{pid}"),
+                     (f"/projects/{pid}/review", f"/enquiries/{pid}/check"),
+                     (f"/projects/{pid}/upload", f"/enquiries/{pid}/files"),
+                     (f"/projects/{pid}/analysis?doc=3", f"/enquiries/{pid}/proof?doc=3"),
+                     (f"/projects/{pid}/estimate", f"/enquiries/{pid}/quote"),
+                     (f"/projects/{pid}/audit", f"/enquiries/{pid}/activity")):
+        response = client.get(old, follow_redirects=False)
+        assert response.status_code == 308 and response.headers["location"] == new, old
 
 
 # --- without a database --------------------------------------------------------------------------------
@@ -374,8 +396,8 @@ def test_unknown_project_dashboard_is_404(client: TestClient) -> None:
 def test_screens_explain_a_missing_database(tmp_path: Path) -> None:
     settings = Settings(database_url=None, storage_dir=tmp_path / "storage", environment="test")
     with TestClient(create_app(settings)) as c:
-        page = c.get("/projects", headers=HTML)
-        assert page.status_code == 503 and "DATABASE_URL" in page.text and "System check" in page.text
-        assert c.get("/projects").json() == {"detail": "The database is not configured (DATABASE_URL)."}
+        page = c.get("/enquiries", headers=HTML)
+        assert page.status_code == 503 and "DATABASE_URL" in page.text and "System status" in page.text
+        assert c.get("/enquiries").json() == {"detail": "The database is not configured (DATABASE_URL)."}
         assert c.get("/health").status_code == 200
         assert c.get("/").status_code == 200  # the home page needs no database

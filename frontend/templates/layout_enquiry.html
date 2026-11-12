@@ -1,0 +1,39 @@
+{#- One enquiry: its name, status and how it was read, the three steps as tabs, and the Details menu.
+    Child templates set `tab` (files, check, quote or details) through the route and fill `step`. -#}
+{%- extends "layout_app.html" -%}
+{%- from "macros.html" import icon, status_pill with context -%}
+
+{%- block title %}{{ project.name }} · {{ app_name }}{% endblock -%}
+
+{%- block heading %}
+<div class="enquiry-head">
+  <div class="enquiry-head__text">
+    <a class="back" href="/enquiries">Enquiries</a>
+    <h1 class="page-title">{{ project.name }}</h1>
+    <div class="page-meta">
+      {%- if project.reference %}<span class="mono">{{ project.reference }}</span>{% endif %}
+      {{ status_pill(status) }}
+      <span>{{ reading_line }}</span>
+    </div>
+  </div>
+  <details class="menu">
+    <summary class="btn btn--secondary btn--sm" aria-label="Details">{{ icon("more", "sm") }}Details</summary>
+    <div class="menu__list">
+      <a href="/enquiries/{{ project.id }}/proof">Proof viewer</a>
+      <a href="/enquiries/{{ project.id }}/activity">Activity</a>
+      <a href="/enquiries/{{ project.id }}/rename">Rename</a>
+      <a href="/enquiries/{{ project.id }}/archive">Archive</a>
+      <a class="menu__danger" href="/enquiries/{{ project.id }}/delete">Delete</a>
+    </div>
+  </details>
+</div>
+{% include "partials/steps.html" %}
+{% endblock -%}
+
+{%- block content %}
+<div class="workspace">
+  <div class="workspace__main">{% block step %}{% endblock %}</div>
+  {#- The proof panel: filled on demand when a value or an item is clicked. -#}
+  <aside id="panel" class="panel" aria-label="Proof" aria-live="polite"></aside>
+</div>
+{% endblock -%}

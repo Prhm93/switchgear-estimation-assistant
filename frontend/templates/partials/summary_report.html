@@ -1,0 +1,125 @@
+{#- The Summary's report block: six tiles, the open tile's detail below them, and the buttons. A tile is a
+    link (?tile=<key>, so Back works); with script it swaps only this block. Every row comes from the
+    enquiry's own values; the cost uses approved values only. -#}
+{%- from "macros.html" import icon with context -%}
+{%- set base = "/enquiries/" ~ project.id -%}
+<section id="summary-report" class="summary__report" aria-labelledby="report-title">
+  <div class="summary__head"><h2 id="report-title" class="block-title">Report</h2><span class="label-mono">Six checks</span></div>
+  <div class="tiles">
+    {%- for t in tiles %}
+    <a class="tile tile--{{ t.tone }}" href="{{ base }}?tile={{ t.key }}" hx-get="{{ base }}/tiles/{{ t.key }}" hx-target="#summary-report" hx-swap="outerHTML" hx-push-url="{{ base }}?tile={{ t.key }}"{% if t.key == open_tile %} aria-current="true"{% endif %} data-tile="{{ t.key }}">
+      <span class="tile__label">{{ t.label }}</span>
+      <span class="tile__value{% if t.key == 'parts' or (t.key == 'cost' and t.note) %} mono{% endif %}">{{ t.value }}</span>
+      {%- if t.extra %}<span class="tile__extra">{{ t.extra }}</span>{% endif %}
+      {%- if t.note %}<span class="tile__note">{{ t.note }}</span>{% endif %}
+    </a>
+    {%- endfor %}
+  </div>
+
+  {%- set open = tiles | selectattr("key", "equalto", open_tile) | first %}
+  <section id="tile-detail" class="tile-detail" data-open="{{ open_tile }}" aria-labelledby="detail-title">
+    <h3 id="detail-title" class="block-title">{{ open.label }}</h3>
+
+    {%- if open_tile == "quoted" %}
+    <dl class="detail-list">
+      {%- for m in main_values %}
+      <div class="detail-list__row detail-list__row--{{ m.state }}"><dt>{{ m.label }}</dt><dd{% if m.state not in ("missing", "conflict") %} class="mono"{% endif %}>{{ m.value }}</dd></div>
+      {%- endfor %}
+    </dl>
+    <p class="small"><a href="{{ open.href }}">Open the parts list</a></p>
+
+    {%- elif open_tile == "parts" %}
+    {%- if items %}
+    <ul class="detail-rows">
+      {%- for i in items %}
+      <li><span>{{ i.description }}</span><span class="mono">{{ display(i.quantity, i.unit) if i.quantity is not none else "" }}</span><span class="small muted">{{ i.state_words }}</span></li>
+      {%- endfor %}
+    </ul>
+    {%- else %}
+    <p class="muted">No parts found yet.</p>
+    {%- endif %}
+    <p class="small"><a href="{{ base }}/check?view=items">Open the parts list</a></p>
+
+    {%- elif open_tile == "drawing" %}
+    {%- if drawings %}
+    <ul class="detail-rows">
+      {%- for d in drawings %}
+      <li><span>{{ source_words("schematic", None, d.file_type) }}</span><span class="small">{{ d.original_name }}</span>
+        {%- if d.pages %}<a class="small" href="{{ base }}/proof?doc={{ d.id }}">View</a>{% else %}<span class="small muted">Not read</span>{% endif %}</li>
+      {%- endfor %}
+    </ul>
+    {%- else %}
+    <p class="muted">No drawing attached. <a href="{{ base }}/files">Add one on Files</a>.</p>
+    {%- endif %}
+
+    {%- elif open_tile == "agree" %}
+    {%- if found.conflicts %}
+    <p class="small muted">Pick the value to keep; the others are rejected. To type another value, open Check.</p>
+    {%- for g in found.conflicts %}
+    <div class="detail-conflict">
+      <div class="detail-conflict__head"><span>{{ g.label }}</span><a class="small" href="{{ base }}/check#f-{{ g.field }}">Open in Check</a></div>
+      <div class="detail-conflict__sides">
+        {%- for side in g.sides %}
+        {%- set first = side[0] %}{%- set value, unit = shown(first) %}
+        <form method="post" action="{{ base }}/fields/use">
+          <input type="hidden" name="field" value="{{ g.field }}"><input type="hidden" name="value_id" value="{{ first.id }}"><input type="hidden" name="back" value="summary">
+          <span class="mono">{{ display(value, unit) }}</span>
+          <span class="small muted">{% for v in distinct_sources(side) %}{{ value_source(v) }}{% if not loop.last %}; {% endif %}{% endfor %}</span>
+          <button class="btn btn--tonal btn--sm" type="submit" aria-label="Use {{ display(value, unit) }} for {{ g.label }}">Use this</button>
+        </form>
+        {%- endfor %}
+      </div>
+    </div>
+    {%- endfor %}
+    {%- else %}
+    <p>The files agree.</p>
+    {%- endif %}
+    {%- if found.needs - found.disagree %}
+    <p class="small"><a href="{{ base }}/check">{{ found.needs - found.disagree }} more value{{ "s" if found.needs - found.disagree != 1 }} wait for you on Check</a></p>
+    {%- endif %}
+
+    {%- elif open_tile == "cost" %}
+    {%- if found.approved and estimate and estimate.lines %}
+    <p>Draft total <span class="mono">{{ estimate.currency }} {{ "{:,.2f}".format(estimate.total) }}</span>, from approved values only.</p>
+    {%- if blockers %}
+    <p class="small muted">Not priced yet:</p>
+    <ul class="detail-rows">
+      {%- for b in blockers %}<li><span>{{ b.line }}</span><span class="small muted">waits for {{ b.waits | map(attribute="label") | unique | join(", ") }}</span></li>{% endfor %}
+    </ul>
+    {%- endif %}
+    <p class="small"><a href="{{ base }}/quote">Open the quote</a></p>
+    {%- else %}
+    <p>Waiting for approvals. Nothing is priced until you approve values on <a href="{{ base }}/check">Check</a>.</p>
+    {%- endif %}
+
+    {%- elif open_tile == "missing" %}
+    {%- set required = found.missing | selectattr("why", "equalto", "Not found in any file read") | list %}
+    {%- set tbc = found.missing | selectattr("why", "ne", "Not found in any file read") | list %}
+    {%- if required %}
+    <ul class="detail-rows">{% for m in required %}<li><span>{{ m.label }}</span><span class="small muted">{{ m.why }}</span></li>{% endfor %}</ul>
+    {%- else %}
+    <p>Every required field was found.</p>
+    {%- endif %}
+    {%- if tbc %}
+    <p class="small muted">Marked TBC:</p>
+    <ul class="detail-rows">{% for m in tbc %}<li><span>{{ m.label }}</span><span class="small muted">{{ m.why }}</span></li>{% endfor %}</ul>
+    {%- endif %}
+    <p class="small muted">{{ open.note }}</p>
+    {%- endif %}
+  </section>
+
+  <nav class="summary__actions" aria-label="Enquiry actions">
+    {%- if found.approved %}
+    <a class="btn btn--primary btn--sm" href="{{ base }}/quote/report.docx">{{ icon("download", "sm") }}Report</a>
+    {%- else %}
+    <button class="btn btn--primary btn--sm" type="button" disabled aria-describedby="report-why">{{ icon("download", "sm") }}Report</button>
+    {%- endif %}
+    {%- if proof_drawing %}
+    <a class="btn btn--secondary btn--sm" href="{{ base }}/proof?doc={{ proof_drawing.id }}">View drawing</a>
+    {%- else %}
+    <button class="btn btn--secondary btn--sm" type="button" disabled>View drawing</button>
+    {%- endif %}
+    <a class="btn btn--ghost btn--sm" href="{{ base }}/check">View all values</a>
+    {%- if not found.approved %}<span id="report-why" class="small muted">Approve at least one value to get the report.</span>{% endif %}
+  </nav>
+</section>

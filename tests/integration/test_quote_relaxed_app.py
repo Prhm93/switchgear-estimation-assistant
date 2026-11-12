@@ -65,9 +65,9 @@ def _client(tmp_path: Path, recorded: Path, **extra) -> TestClient:
 
 
 def _upload(client: TestClient) -> int:
-    response = client.post("/projects", data={"name": "Relaxed", "reference": "ENQ-3C"}, follow_redirects=False)
+    response = client.post("/enquiries", data={"name": "Relaxed"}, follow_redirects=False)
     pid = int(response.headers["location"].split("/")[2])
-    client.post(f"/projects/{pid}/documents", files=[("files", ("specification.pdf", SPEC))], follow_redirects=False)
+    client.post(f"/enquiries/{pid}/documents", files=[("files", ("specification.pdf", SPEC))], follow_redirects=False)
     return pid
 
 
@@ -91,8 +91,10 @@ def test_relaxed_is_the_default_and_the_rescued_value_is_stored_and_marked(clien
     assert len(rows) == 1
     row = rows[0]
     assert row.quote_match == "words_on_page" and row.confidence == "medium" and row.review_status == "extracted"
-    page = client.get(f"/projects/{pid}/review").text
-    assert "Quote pieces on page, needs review" in page
+    page = client.get(f"/enquiries/{pid}/check").text
+    assert item["value"].upper() in page  # under "Needs your decision" (here a conflict with the rules value)
+    assert "Quote pieced together" in page
+    assert "Quote pieced together" in client.get(f"/values/{row.id}/panel").text
 
 
 def test_approve_all_never_approves_a_rescued_value(client: TestClient, planted) -> None:
@@ -102,7 +104,7 @@ def test_approve_all_never_approves_a_rescued_value(client: TestClient, planted)
     with client.app.state.sessions() as session:  # even at high confidence it must be left for the engineer
         session.get(ExtractedValueRow, row.id).confidence = "high"
         session.commit()
-    client.post(f"/projects/{pid}/review/approve-agreed")
+    client.post(f"/enquiries/{pid}/check/accept-all", data={"confirm": "yes"})
     with client.app.state.sessions() as session:
         assert session.get(ExtractedValueRow, row.id).review_status == "extracted"
         approved = session.scalars(select(ExtractedValueRow).where(ExtractedValueRow.project_id == pid,
@@ -113,8 +115,8 @@ def test_approve_all_never_approves_a_rescued_value(client: TestClient, planted)
 def test_an_unapproved_rescued_value_cannot_reach_the_estimate(client: TestClient, planted) -> None:
     _, item = planted
     pid = _upload(client)
-    client.post(f"/projects/{pid}/review/approve-agreed")
-    client.post(f"/projects/{pid}/estimate")
+    client.post(f"/enquiries/{pid}/check/accept-all", data={"confirm": "yes"})
+    client.post(f"/enquiries/{pid}/quote")
     with client.app.state.sessions() as session:
         est = services.latest_estimate(session, pid)
         used = {i for ln in est.lines for i in ln.value_ids}

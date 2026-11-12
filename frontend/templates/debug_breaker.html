@@ -1,0 +1,31 @@
+{#- Developer page (DEBUG_PAGES only): the breaker drawing on its own, to judge the look.
+    ?anchors=1 shows the anchor point of each part's leader line. The slider moves the explode. -#}
+{%- extends "layout_app.html" -%}
+
+{%- block title %}Breaker drawing · {{ app_name }}{% endblock -%}
+{%- block head %}
+  <script src="{{ url_for('static', path='js/breaker.js') }}" defer></script>
+{%- endblock -%}
+
+{%- block heading %}
+<div class="page-head">
+  <h1 class="page-title">Breaker <span class="accent">drawing</span></h1>
+  <p class="lead">Developer page. Illustrative, not to scale: an invented breaker, drawn by tools/make_breaker_svg.py.</p>
+</div>
+{%- endblock -%}
+
+{%- block content %}
+<form class="debug-controls" method="get">
+  <label class="debug-controls__item">Explode
+    <input type="range" min="0" max="1" step="0.01" value="0" data-breaker-explode>
+  </label>
+  <label class="debug-controls__item">
+    <input type="checkbox" name="anchors" value="1"{% if anchors %} checked{% endif %} onchange="this.form.submit()"> Anchor points
+  </label>
+  <label class="debug-controls__item"><input type="checkbox" data-breaker-live> Current path</label>
+  <button class="btn btn--secondary btn--sm" type="button" data-breaker-trip>Trip flash</button>
+</form>
+<div class="breaker-frame{% if anchors %} show-anchors{% endif %}" data-breaker>
+  {{ breaker }}
+</div>
+{%- endblock %}
