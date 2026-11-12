@@ -11,6 +11,7 @@
   {#- Marks that script runs, so the reveal styles apply only then; home.js removes it for reduced motion. -#}
   <script>document.documentElement.classList.add("js");</script>
   <script src="{{ url_for('static', path='js/home.js') }}" defer></script>
+  <script src="{{ url_for('static', path='js/hero-shader.js') }}" defer></script>
 {%- endblock -%}
 
 {%- block body %}
