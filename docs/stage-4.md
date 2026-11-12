@@ -358,8 +358,10 @@ positives are close to the missed ACBs, which suggests ACBs are taken as MCCBs; 
 and nothing was changed after seeing these numbers (no tuning on test sets).
 
 **Limits.** ACB is the weak class; a trained detector (torchvision, BSD-3-Clause, from scratch) through the same
-interface is the next step. About 11 s per clean or scanned sheet on the laptop. Memory in the 384 MB app
-container: NOT RUN YET (measured at the Docker rebuild at the end of the run).
+interface is the next step. About 11 s per clean or scanned sheet on the laptop. In the 384 MB app container (after
+the rebuild at the end of the run), one upload of the showcase scanned drawing with OCR and the detector peaked at
+161 MiB (81 MiB idle; `docker stats` once a second): the detector found 9 symbols and added no device, because OCR
+had read every way's device. So the detector stays on by default.
 
 ## 10. Part D: boxes on the drawing in the proof viewer
 
