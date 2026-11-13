@@ -24,7 +24,7 @@ from data_generator.schemas import AnswerKey, DocumentKind, DrawingVersionKind, 
 
 DATA = REPO_ROOT / "data"
 TRAINING_ROOT = DATA / "training"
-EVALUATION_SETS = {"test": "test", "reworded": "test", "showcase": "showcase"}  # set name -> answer-key purpose
+EVALUATION_SETS = {"test": "test", "reworded": "test", "fresh": "test", "showcase": "showcase"}  # set name -> answer-key purpose
 
 
 class DataMixError(ValueError):

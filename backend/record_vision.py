@@ -78,7 +78,7 @@ def record(samples: list[DrawingSample], client: VisionClient, out: Path, set_na
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m backend.record_vision", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--set", dest="set_name", choices=["test", "reworded", "showcase"], default="test")
+    parser.add_argument("--set", dest="set_name", choices=["test", "reworded", "fresh", "showcase"], default="test")
     parser.add_argument("--version", choices=["clean", "scanned", "photo"], default="scanned")
     parser.add_argument("--count", type=int, default=None, help="first N projects only")
     parser.add_argument("--out", type=Path, default=OUT)

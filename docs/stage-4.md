@@ -384,3 +384,46 @@ No screenshots were taken in this run (owner's rule for the unattended run).
   Stage 5 draft (not part of this branch's commits); it is fixed on the Stage 5 branch.
 - Strict v2 numbers (`python -m backend.evaluate --set test|reworded --mode llm`, drawing reading off) reproduce
   exactly: 0.778 and 0.561 on the test set (with and without the DXF), 0.727 and 0.497 on the reworded set.
+
+## 12. ACB and MCCB confusion, box by box (Stage 6 Step 0, 13 Nov 2026)
+
+Section 9 suspected that the template detector takes ACBs for MCCBs. This checks it box by box with
+`python -m backend.drawings symbol-confusion --set <set> --version <v>`: each breaker answer box is matched to the
+best-scoring prediction of **any** class with IoU at least 0.5 (`boxes.confusion`), so the table shows which class
+each answer box was given. For answer boxes that no prediction reaches at IoU 0.5, it also shows the class of a
+prediction whose centre lies inside the box. Training rows use the last 20 training projects (TR0281 to TR0300),
+which neither the templates (first 80) nor the threshold (first 10) used. **Nothing was changed or tuned** after
+this check; it is a diagnosis only.
+
+What each ACB answer box was given (20 ACBs per row, one per project):
+
+| Set | Version | ACB found as ACB | as MCCB (IoU at least 0.5) | MCCB inside the ACB box (IoU below 0.5) | nothing |
+|---|---|---|---|---|---|
+| training (held out) | clean | 3 | 12 | 5 (mean IoU 0.48) | 0 |
+| training (held out) | scanned | 3 | 9 | 8 (0.43) | 0 |
+| training (held out) | photo | 9 | 2 | 9 (0.44) | 0 |
+| test | clean | 0 | 16 | 4 (0.49) | 0 |
+| test | scanned | 1 | 14 | 5 (0.48) | 0 |
+| test | photo | 3 | 6 | 11 (0.44) | 0 |
+| reworded | clean | 0 | 12 | 8 (0.48) | 0 |
+| reworded | scanned | 0 | 10 | 10 (0.46) | 0 |
+| reworded | photo | 2 | 7 | 11 (0.44) | 0 |
+
+**Finding: confirmed.** On the test set every ACB that is not found as an ACB is found as an MCCB: either an MCCB
+box that overlaps it well, or a smaller MCCB box inside it. The MCCB boxes inside ACBs are exactly the MCCB false
+positives on "nothing there" in every row (for example 4, 5 and 11 on the test set), so the MCCB false positives
+of section 9 are the missed ACBs. The same holds on the reworded set and on the held-out training drawings. MCCB
+and switch-disconnector answer boxes are never given another breaker class. One second confusion shows on the
+reworded drawings only: MCBs given the MCCB class (6 of 13 on clean, 1 of 13 scanned, 3 of 13 photo; none on the
+test set); the MCB is also the MCCB symbol plus a small box, so it is the same cause. This explains reworded clean
+MCB recall 0.462 in section 9.
+
+**Why.** The generator draws an ACB as the MCCB symbol (the same blade and cross, `data_generator/symbols.py`)
+between two pairs of draw-out chevrons. The MCCB template therefore matches the inner part of every ACB, often
+better than the ACB template matches the whole symbol, and the cross-class non-maximum suppression keeps the best
+score, so the MCCB wins. The ACB template is also the weakest: there is one ACB (the incomer) per drawing, so it
+is averaged from fewer crops, and the training drawings draw symbols at about 0.6 times the test size.
+
+**What would fix it (not done, to avoid tuning on these sets):** a check for the chevrons above and below an
+MCCB match (an MCCB inside chevrons is an ACB), or a trained detector (torchvision, from scratch) that learns the
+difference. The fresh Stage 7 set gives the fair number for any such change.

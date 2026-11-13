@@ -11,7 +11,7 @@
     <a class="small" href="/enquiries/{{ project.id }}">All details of this enquiry</a>
     <p class="small muted">Draft quote, built only from the values you approved and the catalogue prices.</p>
   </div>
-  {% include "partials/ask_soon.html" %}
+  <a class="btn btn--secondary btn--sm" href="/enquiries/{{ project.id }}#ask">Ask</a>
 </div>
 {% endblock -%}
 

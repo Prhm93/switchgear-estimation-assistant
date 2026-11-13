@@ -1,0 +1,34 @@
+{#- The question box (Stage 9): one input, and each answer with the passage it comes from. Answers are found in this
+    enquiry's own files (backend/app/ask.py); with no evidence the box says so instead of guessing. -#}
+<aside class="ask" id="ask" aria-labelledby="ask-title">
+  <div class="summary__head"><h2 id="ask-title" class="block-title">Ask</h2></div>
+  <form class="ask__form" method="post" action="/enquiries/{{ project.id }}/ask"
+        hx-post="/enquiries/{{ project.id }}/ask" hx-target="#ask" hx-swap="outerHTML">
+    <label class="small muted" for="ask-question">A question about this enquiry's files</label>
+    <div class="ask__row">
+      <input id="ask-question" class="input" name="question" type="text" maxlength="500" required
+             autocomplete="off" placeholder="What IP rating is asked for?">
+      <button class="btn btn--secondary btn--sm" type="submit">Ask</button>
+    </div>
+  </form>
+  {%- if asked %}
+  <ol class="ask__list" aria-live="polite">
+    {%- for q in asked %}
+    <li class="ask__item">
+      <p class="ask__q">{{ q.question }}</p>
+      <p class="ask__a{% if q.refused %} muted{% endif %}">{{ q.answer }}</p>
+      {%- if q.sources %}
+      {%- set s = q.sources[0] %}
+      <figure class="ask__source">
+        <figcaption class="small muted">Source: {{ s.document }}, page {{ s.page }}</figcaption>
+        <blockquote class="mono small">{{ s.text }}</blockquote>
+      </figure>
+      {%- endif %}
+    </li>
+    {%- endfor %}
+  </ol>
+  {%- else %}
+  <p class="ask__empty">Nothing asked yet.</p>
+  <p class="small muted">Answers come only from this enquiry's files, each with its file and page.</p>
+  {%- endif %}
+</aside>

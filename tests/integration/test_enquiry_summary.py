@@ -133,7 +133,8 @@ def test_the_summary_has_six_tiles_and_a_quiet_ask_column(client: TestClient) ->
     assert "From the app&#39;s list of required fields, not from the specification." in html
     ask = re.search(r'<aside class="ask".*?</aside>', html, re.S).group(0)
     assert "Nothing asked yet." in ask
-    assert "<textarea" not in ask and "<input" not in ask and "<button" not in ask  # nothing pretends to work
+    # Changed on purpose (Stage 9): the quiet column became the question box: one input, one button.
+    assert len(re.findall(r"<input", ask)) == 1 and len(re.findall(r"<button", ask)) == 1
 
 
 def test_the_steps_start_with_the_summary(client: TestClient) -> None:

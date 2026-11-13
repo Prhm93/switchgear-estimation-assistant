@@ -1,4 +1,6 @@
-"""Review groups for values read from a picture: one card per file and page, every value ticked by default.
+"""Review groups for values read from a picture: one card per file and page; a person ticks each value.
+
+Stage 6: values read from a picture or by a model start unticked (never pre-ticked, never accepted in bulk).
 
 OCR is replaced by Part D's stand-in (three values on sheet 1 of the scanned showcase drawing: a rating and a
 device with boxes, a voltage without), so this runs without Tesseract. "Approve N ticked" approves exactly the
@@ -51,7 +53,7 @@ def events(client: TestClient, pid: int, action: str) -> list[int]:
             AuditEvent.project_id == pid, AuditEvent.action == action)))
 
 
-def test_picture_values_of_one_sheet_are_one_card_all_ticked_with_their_boxes(client: TestClient) -> None:
+def test_picture_values_of_one_sheet_are_one_card_unticked_with_their_boxes(client: TestClient) -> None:
     pid = add(client, SCAN)
     html = client.get(f"/enquiries/{pid}/review").text
     assert progress(html) == (0, 1)
@@ -60,10 +62,11 @@ def test_picture_values_of_one_sheet_are_one_card_all_ticked_with_their_boxes(cl
     boxes = re.findall(r'<input type="checkbox" name="value_id" value="(\d+)"([^>]*)>', card)
     by_field = rows(client, pid)
     assert sorted(int(i) for i, _ in boxes) == sorted(v.id for v in by_field.values())
-    assert all(" checked" in attrs for _, attrs in boxes)  # all ticked by default
+    assert not any(" checked" in attrs for _, attrs in boxes)  # Stage 6: a person ticks each picture value
     assert card.count('<svg class="crop') == 2  # the rating and the device have boxes; the voltage shows its text
     assert "400V 50Hz" in card and "Boxes show where each value was read." in card
-    assert "Approve 3 ticked" in visible_buttons(html)
+    assert "Approve 0 ticked" in visible_buttons(html)
+    assert "Read from a drawing picture" in card  # each value says why it is here
     assert {v.review_status for v in by_field.values()} == {"extracted"}  # nothing approved without a click
 
 
@@ -72,7 +75,8 @@ def test_untick_leaves_a_value_for_later_and_approves_only_the_ticked(client: Te
     url, data = form_lists(client.get(f"/enquiries/{pid}/review").text, "group")
     by_field = rows(client, pid)
     later = by_field["system.voltage"].id
-    data["value_id"] = [i for i in data["value_id"] if int(i) != later]
+    assert "value_id" not in data  # nothing ticked by default
+    data["value_id"] = [str(v.id) for f, v in by_field.items() if v.id != later]  # the engineer ticks two
     after = client.post(url, data=data, headers=HX).text
     now = rows(client, pid)
     assert now["system.voltage"].review_status == "extracted" and now["system.voltage"].approved_value is None

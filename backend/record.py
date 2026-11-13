@@ -58,7 +58,7 @@ FIXED_TIME = (2026, 1, 1, 0, 0, 0)  # zip entry time, so the same files give the
 def set_folders(sets: list[str]) -> list[tuple[str, str, Path]]:
     """(set, project id, folder) for the chosen sets."""
     # The generator is needed only to pack on the laptop; "run" on Colab needs the app requirements only.
-    from data_generator.sets import REWORDED_COUNT, TEST_COUNT, reworded_id, testset_id
+    from data_generator.sets import FRESH_COUNT, REWORDED_COUNT, TEST_COUNT, fresh_id, reworded_id, testset_id
 
     out = []
     if "showcase" in sets:
@@ -68,6 +68,8 @@ def set_folders(sets: list[str]) -> list[tuple[str, str, Path]]:
     if "reworded" in sets:
         out += [("reworded", reworded_id(i), DATA / "projects" / "reworded" / reworded_id(i))
                 for i in range(1, REWORDED_COUNT + 1)]
+    if "fresh" in sets:  # Stage 7: the frozen held-out set; recorded once, never used for tuning
+        out += [("fresh", fresh_id(i), DATA / "projects" / "fresh" / fresh_id(i)) for i in range(1, FRESH_COUNT + 1)]
     return out
 
 

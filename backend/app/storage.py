@@ -15,6 +15,7 @@ import hashlib
 import io
 import re
 import secrets
+import warnings
 import zipfile
 from enum import StrEnum
 from pathlib import Path
@@ -34,6 +35,12 @@ class FileType(StrEnum):
 EXTENSIONS: dict[str, FileType] = {".pdf": FileType.PDF, ".png": FileType.PNG, ".jpg": FileType.JPG,
                                    ".jpeg": FileType.JPG, ".dxf": FileType.DXF, ".docx": FileType.DOCX}
 KEY_PATTERN = re.compile(r"^[0-9a-f]{32}\.(pdf|png|jpg|dxf|docx)$")
+
+
+# Stage 8: limits against files that are small on disk but huge once opened.
+MAX_UNPACKED_BYTES = 100_000_000  # a DOCX is a ZIP: the sum of its parts' unpacked sizes
+MAX_ZIP_PARTS = 2_000
+MAX_PIXELS = 90_000_000  # a PNG or JPG: width x height (an A1 sheet at 300 dpi is about 70 million)
 
 
 class UploadRejected(ValueError):
@@ -105,6 +112,10 @@ def check_upload(filename: str, data: bytes, max_bytes: int, max_pdf_pages: int)
     actual = _content_type(data)
     if actual != claimed:
         raise UploadRejected(f"The file content does not match its {ext} extension.")
+    if actual == FileType.DOCX:
+        _check_zip(data)
+    if actual in (FileType.PNG, FileType.JPG):
+        _check_pixels(data)
     if actual == FileType.PDF:
         try:
             pages = pdf_page_count(data)
@@ -113,6 +124,40 @@ def check_upload(filename: str, data: bytes, max_bytes: int, max_pdf_pages: int)
         if pages > max_pdf_pages:
             raise UploadRejected(f"The PDF has {pages} pages; the limit is {max_pdf_pages}.")
     return actual
+
+
+def _check_zip(data: bytes) -> None:
+    """Refuse a ZIP bomb before any part is unpacked: too many parts, or too much once unpacked.
+
+    The sizes come from the ZIP's directory; Python's zipfile never unpacks more than a part's stated size, so
+    a part that lies about its size cannot get past this check when it is read later.
+    """
+    with zipfile.ZipFile(io.BytesIO(data)) as z:
+        parts = z.infolist()
+    if len(parts) > MAX_ZIP_PARTS:
+        raise UploadRejected(f"The document has {len(parts)} parts; the limit is {MAX_ZIP_PARTS}.")
+    unpacked = sum(p.file_size for p in parts)
+    if unpacked > MAX_UNPACKED_BYTES:
+        raise UploadRejected(f"The document unpacks to {unpacked / 1e6:.0f} MB; the limit is "
+                             f"{MAX_UNPACKED_BYTES / 1e6:.0f} MB.")
+
+
+def _check_pixels(data: bytes) -> None:
+    """Refuse a picture whose header gives more pixels than the limit (read from the header only)."""
+    from PIL import Image
+
+    try:
+        with warnings.catch_warnings():  # Pillow's own bomb warning: this check gives the message instead
+            warnings.simplefilter("ignore", Image.DecompressionBombWarning)
+            with Image.open(io.BytesIO(data)) as img:
+                width, height = img.size
+    except Image.DecompressionBombError as error:
+        raise UploadRejected(f"The picture has too many pixels; the limit is {MAX_PIXELS / 1e6:.0f} million.") from error
+    except Exception as error:  # a broken picture is a rejected upload, not a server error
+        raise UploadRejected("The picture could not be opened.") from error
+    if width * height > MAX_PIXELS:
+        raise UploadRejected(f"The picture has {width * height / 1e6:.0f} million pixels; the limit is "
+                             f"{MAX_PIXELS / 1e6:.0f} million.")
 
 
 class Storage(Protocol):

@@ -1,6 +1,5 @@
 {#- An enquiry's Summary (V4): six tiles worked out from the enquiry, the open tile's detail below them
-    (partials/summary_report.html), and the Ask column. Ask is a quiet empty state until it is built (UX-3): nothing here pretends
-    to answer. -#}
+    (partials/summary_report.html), and the Ask column (Stage 9: partials/ask_box.html). -#}
 {%- extends "layout_enquiry.html" -%}
 
 {%- block content %}
@@ -9,10 +8,6 @@
     {% include "partials/summary_report.html" %}
     <div class="watermark" aria-hidden="true">{{ watermark }}</div>
   </div>
-  <aside class="ask" aria-labelledby="ask-title">
-    <div class="summary__head"><h2 id="ask-title" class="block-title">Ask</h2></div>
-    <p class="ask__empty">Nothing asked yet.</p>
-    <p class="small muted">Questions about this enquiry will be answered from its own values, each with its source.</p>
-  </aside>
+  {% include "partials/ask_box.html" %}
 </div>
 {% endblock -%}

@@ -84,7 +84,7 @@
   <p id="accept-step" class="accept-line small">
     <a class="link-accept" href="/enquiries/{{ project.id }}/check/accept-all"
        hx-get="/enquiries/{{ project.id }}/check/accept-all" hx-target="#accept-step" hx-swap="outerHTML">Accept all {{ found.acceptable | length }} agreeing values</a>
-    <span class="muted">high confidence, no conflict, exact quote, not read from a picture. Not counted as decisions.</span>
+    <span class="muted">high confidence, read by the rules from the text, no file says otherwise; never a model or picture value. Not counted as decisions.</span>
   </p>
 </section>
 {%- endif %}

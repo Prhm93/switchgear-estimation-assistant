@@ -203,8 +203,10 @@ def test_accept_all_shows_the_count_needs_a_confirmation_and_leaves_doubtful_val
         approved = list(session.scalars(select(ExtractedValueRow).where(
             ExtractedValueRow.project_id == pid, ExtractedValueRow.review_status == "approved")))
     assert {v.id for v in approved} == expected and not expected & conflicted
-    assert all(v.confidence == "high" and v.method != "ocr" and v.quote_match != "words_on_page"
-               for v in approved)
+    with client.app.state.sessions() as session:  # Stage 6: high as assessed (agreement may raise it), rules only
+        levels = enquiry.review_groups(session.get(Project, pid))
+        assert all(enquiry.assessment(v, levels).level == "high" and v.method == "rules"
+                   and v.quote_match != "words_on_page" for v in approved)
     approvals = [e for e in actions(client, pid) if e.action == "approve"]
     assert sorted(int(e.entity_id) for e in approvals) == sorted(expected)  # one audit entry per value
     assert all(e.actor for e in approvals)  # each with the actor

@@ -39,10 +39,10 @@ WAY_FIELD = re.compile(r"^way\.([^.]+)\.(.+)$")
 DEVICE_WORDS = {"acb": "ACB", "mccb": "MCCB", "mcb": "MCB", "switch_disconnector": "Switch-disconnector"}
 KIND_WORDS = {"specification": "Specification", "schematic": "Drawing", "requirements": "Customer letter"}
 CONFIDENCE_WORDS = {
-    "high": "High: read by a fixed rule from a clear statement.",
+    "high": "High: read by a fixed rule from a clear statement, or confirmed by another file.",
     "medium": "Medium: read from free text, a model or a picture, so check it against the source.",
-    "low": "Low: the document leaves this open or the reading is weak.",
-    "conflict": "Conflict: the documents give different values.",
+    "low": "Low: the document leaves this open, the reading is weak, or another reading differs.",
+    "conflict": "Conflict: the values differ, and one of them was read reliably.",
 }
 LINE_WORDS = {"incomer": "Incomer", "cts": "Current transformers", "meter": "Meter", "sections": "Enclosure sections",
               "section.incomer": "Incomer section", "section.outgoing": "Outgoing sections", "busbar": "Busbar",

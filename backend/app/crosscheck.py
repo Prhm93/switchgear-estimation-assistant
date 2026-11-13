@@ -47,22 +47,39 @@ class Seen:
     file: str
     page: int | None
     ref: int | None = None  # the stored value's id, when there is one
+    # How it was read (Stage 6, for confidence): method, quote match, the reading's own level, flags, review status.
+    method: str = "rules"
+    quote_match: str | None = None
+    confidence: str | None = None
+    flags: tuple[str, ...] = ()
+    status: str = "extracted"
 
 
 def seen_from_values(values: Iterable[Any]) -> list[Seen]:
     """From extracted values (pipeline output)."""
-    return [Seen(v.field, v.value, v.unit, v.source.document.value, v.source.file, v.source.page)
-            for v in values if v.review_status.value != "rejected"]
+    return [Seen(v.field, v.value, v.unit, v.source.document.value, v.source.file, v.source.page, ref,
+                 method=v.method.value, quote_match=v.quote_match.value if v.quote_match else None,
+                 confidence=v.confidence.value, flags=tuple(f.value for f in v.flags),
+                 status=v.review_status.value)
+            for ref, v in enumerate(values) if v.review_status.value != "rejected"]
 
 
-def seen_from_rows(rows: Iterable[Any]) -> list[Seen]:
-    """From stored rows: the engineer's value once approved or edited, rejected rows left out."""
+def seen_from_rows(rows: Iterable[Any], *, as_read: bool = False) -> list[Seen]:
+    """From stored rows: the engineer's value once approved or edited, rejected rows left out.
+
+    ``as_read``: every row with the value as read, whatever the engineer decided since (the Review cards
+    keep a settled conflict as one group).
+    """
     out = []
     for r in rows:
-        if r.review_status == "rejected":
+        if r.review_status == "rejected" and not as_read:
             continue
-        value, unit = (r.approved_value, r.approved_unit) if r.review_status in DONE else (r.value, r.unit)
-        out.append(Seen(r.field, value, unit, r.source_document, r.source_file, r.page, r.id))
+        done = r.review_status in DONE and not as_read
+        value, unit = (r.approved_value, r.approved_unit) if done else (r.value, r.unit)
+        out.append(Seen(r.field, value, unit, r.source_document, getattr(r, "source_file", ""), r.page, r.id,
+                        method=getattr(r, "method", "rules"), quote_match=getattr(r, "quote_match", None),
+                        confidence=getattr(r, "confidence", None), flags=tuple(getattr(r, "flags", None) or ()),
+                        status="extracted" if as_read else r.review_status))
     return out
 
 
@@ -115,8 +132,20 @@ def _words(document: str) -> str:
     return DOCUMENT_WORDS.get(document, document)
 
 
-def differences(seen: list[Seen]) -> list[Difference]:
-    """Every field on which two files give values that do not overlap, then every way missing from a file."""
+def _reliable(items: Iterable[Seen]) -> bool:
+    """At least one value read reliably (high before any agreement): the Stage 6 gate."""
+    from backend.app.confidence import base_level
+
+    return any(base_level(x) == "high" for x in items)
+
+
+def differences(seen: list[Seen], *, gate: bool = False) -> list[Difference]:
+    """Every field on which two files give values that do not overlap, then every way missing from a file.
+
+    ``gate`` (Stage 6): two files are apart only when at least one of them gives a value read reliably
+    (high confidence before agreement: the rules on the file's text, or the engineer). A difference between
+    two lower readings (model against model, picture against model) is left to each value's own check.
+    """
     by_field: dict[str, dict[str, dict[tuple, list[Seen]]]] = {}
     for s in seen:
         if is_placeholder(s.value):  # "TBC" states the item but no value: a missing value, not a difference
@@ -125,7 +154,11 @@ def differences(seen: list[Seen]) -> list[Difference]:
     out: list[Difference] = []
     for field, docs in by_field.items():
         names = _ordered(docs)
-        apart = any(not set(docs[a]) & set(docs[b]) for i, a in enumerate(names) for b in names[i + 1:])
+        def counts(a: str, b: str) -> bool:
+            if set(docs[a]) & set(docs[b]):
+                return False
+            return not gate or _reliable(x for d in (a, b) for items in docs[d].values() for x in items)
+        apart = any(counts(a, b) for i, a in enumerate(names) for b in names[i + 1:])
         if not apart:
             continue
         sides = []
@@ -138,12 +171,16 @@ def differences(seen: list[Seen]) -> list[Difference]:
         said = "; ".join(f"{_words(s.document)} says {labels.display(s.value, s.unit)}" for s in sides)
         out.append(Difference(field=field, label=labels.field_label(field), kind=kind_of(field), sides=sides,
                               message=said[0].upper() + said[1:]))
-    out += missing_ways(seen)
+    out += missing_ways(seen, gate=gate)
     return out
 
 
-def missing_ways(seen: list[Seen]) -> list[Difference]:
-    """A way listed in one file but not in another file that lists ways (a quantity question)."""
+def missing_ways(seen: list[Seen], *, gate: bool = False) -> list[Difference]:
+    """A way listed in one file but not in another file that lists ways (a quantity question).
+
+    ``gate`` (Stage 6): flagged only when the way's own values or the listing of a file it is missing from
+    include a value read reliably; two lower listings that differ are left to each value's own check.
+    """
     listed: dict[str, dict[str, list[Seen]]] = {}
     for s in seen:
         if m := WAY_FIELD.match(s.field):
@@ -151,10 +188,14 @@ def missing_ways(seen: list[Seen]) -> list[Difference]:
     listing = {d for docs in listed.values() for d in docs}
     if len(listing) < 2:
         return []
+    # files whose list of ways includes a value read reliably: their silence about a way means something
+    reliable_listing = {d for d in listing if _reliable(x for docs in listed.values() for x in docs.get(d, []))}
     out = []
     for way, docs in sorted(listed.items(), key=lambda kv: (len(kv[0]), kv[0])):
         absent = _ordered(listing - set(docs))
         if not absent:
+            continue
+        if gate and not (_reliable(x for d in docs for x in docs[d]) or set(absent) & reliable_listing):
             continue
         present = _ordered(docs)
         sides = [Side(document=d, value=way, unit=None,

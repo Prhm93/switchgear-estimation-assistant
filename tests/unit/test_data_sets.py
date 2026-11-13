@@ -63,3 +63,25 @@ def test_training_and_test_never_share_a_seed_or_a_folder():
 def test_git_ignore_rules(path, ignored):
     result = subprocess.run(["git", "check-ignore", "-q", "--no-index", path], cwd=REPO)
     assert (result.returncode == 0) == ignored, path
+
+
+def test_the_fresh_set_has_its_own_seeds_and_folder_and_mixes_wordings():
+    fresh = sets.fresh_jobs()
+    seeds = {j.seed for j in fresh}
+    others = ({j.seed for j in sets.testset_jobs()} | {j.seed for j in sets.reworded_jobs()}
+              | {j.seed for j in sets.training_jobs()} | {sets.SHOWCASE_SEED})
+    assert len(seeds) == sets.FRESH_COUNT and not seeds & others
+    assert [j.item_id for j in fresh[:2]] == ["F01", "F02"] and all(j.out.parent.name == "fresh" for j in fresh)
+    assert [j.reword for j in fresh[:4]] == [False, True, False, True]
+    assert all(j.purpose == "test" for j in fresh)
+
+
+def test_the_frozen_manifest_notices_any_change(tmp_path):
+    (tmp_path / "F01").mkdir()
+    (tmp_path / "F01" / "answers.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "build-info.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "FROZEN.sha256").write_text(sets.frozen_manifest(tmp_path), encoding="utf-8")
+    assert sets.check_frozen(tmp_path) is None
+    assert "build-info" not in (tmp_path / "FROZEN.sha256").read_text(encoding="utf-8")
+    (tmp_path / "F01" / "answers.json").write_text('{"x": 1}', encoding="utf-8")
+    assert "differ" in sets.check_frozen(tmp_path)

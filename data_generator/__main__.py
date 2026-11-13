@@ -4,7 +4,7 @@ Commands::
 
     catalogue                      write data/catalogue/catalogue.csv
     planted                        write data/projects/test/PLANTED.md
-    build --set showcase|test|reworded|training|all [--count N] [--workers N] [--root PATH]
+    build --set showcase|test|reworded|fresh|training|all [--count N] [--workers N] [--root PATH]
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("planted", help="write PLANTED.md for the test set")
     sub.add_parser("diagnose-showcase", help="rebuild the showcase in a temp folder and report pixel differences")
     build = sub.add_parser("build", help="build a data set")
-    build.add_argument("--set", required=True, choices=["showcase", "test", "reworded", "training", "all"])
+    build.add_argument("--set", required=True, choices=["showcase", "test", "reworded", "fresh", "training", "all"])
     build.add_argument("--count", type=int, default=None, help="build only the first N items of the set")
     build.add_argument("--workers", type=int, default=2, help="parallel processes (default 2, for 8 GB RAM)")
     build.add_argument("--root", type=Path, default=sets.DATA, help="data folder (default: the repo's data/)")
@@ -59,6 +59,8 @@ def main(argv: list[str] | None = None) -> int:
             jobs, folder = [sets.showcase_job(root)], root / "projects" / "showcase"
         elif name == "test":
             jobs, folder = sets.testset_jobs(root, args.count or sets.TEST_COUNT), root / "projects" / "test"
+        elif name == "fresh":
+            jobs, folder = sets.fresh_jobs(root, args.count or sets.FRESH_COUNT), root / "projects" / "fresh"
         elif name == "reworded":
             jobs, folder = (sets.reworded_jobs(root, args.count or sets.REWORDED_COUNT),
                             root / "projects" / "reworded")
@@ -80,6 +82,8 @@ def main(argv: list[str] | None = None) -> int:
         else:
             sets.run_jobs(jobs, workers=args.workers)
         sets.write_build_info(folder, extra)
+        if name == "fresh":  # frozen once built: the manifest is committed, and the evaluation checks it
+            (folder / "FROZEN.sha256").write_bytes(sets.frozen_manifest(folder).encode("utf-8"))
         took = time.perf_counter() - start
         print(f"{name}: {len(jobs)} item(s) in {took:.1f} s, {_size_mb(folder):.1f} MB in "
               f"{folder.relative_to(root.parent) if root == sets.DATA else folder}")

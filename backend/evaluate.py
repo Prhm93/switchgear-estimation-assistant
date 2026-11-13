@@ -72,7 +72,7 @@ from backend.app.recordings import named_recording, recording_path
 from backend.app.schemas import ExtractedValue, QuoteMatch, ValueFlag
 from backend.app.storage import EXTENSIONS
 from data_generator.project import load_answers
-from data_generator.sets import DATA, REWORDED_COUNT, TEST_COUNT, reworded_id, testset_id
+from data_generator.sets import DATA, FRESH_COUNT, REWORDED_COUNT, TEST_COUNT, fresh_id, reworded_id, testset_id
 from estimation_assistant.providers import make_provider
 
 UPLOAD = ["specification.pdf", "requirements.docx", "drawing/schematic.pdf", "drawing/schematic_sheet1_scanned.png",
@@ -82,7 +82,8 @@ UPLOAD = ["specification.pdf", "requirements.docx", "drawing/schematic.pdf", "dr
 READ_FILES = ["specification.pdf", "requirements.docx", "drawing/schematic.dxf"]
 RECORDED_DIR = DATA / "recorded"  # current recordings (prompt PROMPT_VERSION)
 RECORDED_V1_DIR = DATA / "recorded-v1"  # Stage 3 Part A recordings (prompt llm-extract-1), kept for comparison
-SETS = {"test": (TEST_COUNT, testset_id), "reworded": (REWORDED_COUNT, reworded_id)}
+SETS = {"test": (TEST_COUNT, testset_id), "reworded": (REWORDED_COUNT, reworded_id),
+        "fresh": (FRESH_COUNT, fresh_id)}  # fresh: Stage 7, frozen, never used for tuning
 DRAWING_FILES = {"clean": ("drawing/schematic.pdf",),  # the drawing files of each version (Stage 4)
                  "scanned": ("drawing/schematic_sheet1_scanned.png", "drawing/schematic_sheet2_scanned.png"),
                  "photo": ("drawing/schematic_sheet1_photo.png", "drawing/schematic_sheet2_photo.png")}

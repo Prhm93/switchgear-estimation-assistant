@@ -12,6 +12,9 @@ data/projects/test/*
 !data/projects/test/PLANTED.md
 # The reworded set (Stage 3) is rebuilt with: python -m data_generator build --set reworded
 data/projects/reworded/
+# The fresh held-out set (Stage 7): python -m data_generator build --set fresh; only its frozen hashes are committed
+data/projects/fresh/*
+!data/projects/fresh/FROZEN.sha256
 data/training/
 
 # Real drawings and the local real-name denylist: never committed.
@@ -21,3 +24,6 @@ storage/
 
 # Vision model recordings (Stage 4 Part B): made on Colab, never committed
 data/recorded-vision/
+# Stage 7: saved rows of an evaluation run, so a stopped run resumes (never committed)
+data/eval-*-partial.json
+data/eval-*-partial.tmp

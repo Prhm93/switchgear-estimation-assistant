@@ -98,3 +98,30 @@ def total(scores: dict[str, BoxScore]) -> BoxScore:
     for s in scores.values():
         out.add(s)
     return out
+
+
+MISSED = "(missed)"  # predicted column: no prediction overlaps this answer box enough
+NOTHING_THERE = "(nothing there)"  # truth row: the prediction overlaps no answer box enough
+
+
+def confusion(predicted: Iterable[Box], truth: Iterable[Box], threshold: float = 0.5) -> dict[tuple[str, str], int]:
+    """Counts of (answer class, predicted class), matching boxes by overlap **whatever their class**.
+
+    Unlike :func:`match_boxes`, a prediction may take an answer box of another class, so the table shows
+    which class each answer box was given. Predictions go highest score first; each takes the unmatched
+    answer box with the largest IoU if it is at least ``threshold``. Unmatched answer boxes count under
+    ``MISSED``; predictions that match nothing count in the ``NOTHING_THERE`` row.
+    """
+    open_truth = list(truth)
+    table: dict[tuple[str, str], int] = {}
+    for p in sorted(predicted, key=lambda b: b.score, reverse=True):
+        best = max(open_truth, key=lambda t: iou(p.bbox, t.bbox), default=None)
+        if best is not None and iou(p.bbox, best.bbox) >= threshold:
+            open_truth.remove(best)
+            key = (best.cls, p.cls)
+        else:
+            key = (NOTHING_THERE, p.cls)
+        table[key] = table.get(key, 0) + 1
+    for t in open_truth:
+        table[(t.cls, MISSED)] = table.get((t.cls, MISSED), 0) + 1
+    return table

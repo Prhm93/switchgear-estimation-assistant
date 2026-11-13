@@ -167,7 +167,9 @@ def showcase_flow(client: TestClient) -> None:
     assert actions.count("upload") == len(SHOWCASE_FILES)
     activity = client.get(f"/enquiries/{pid}/activity").text
     assert "Exported the report (DOCX)" in activity and "drawing superseded by spec rev B" in activity
-    assert "Needs you (" in client.get("/enquiries").text  # the letter's medium-confidence values still wait
+    # Stage 6: the letter's medium values agree with the specification, so they rise to high and went with
+    # "Accept all"; after the export nothing waits and the enquiry is "Quoted"
+    assert "Quoted" in client.get("/enquiries").text
 
 
 def test_nothing_approved_means_an_empty_estimate(client: TestClient) -> None:

@@ -26,6 +26,9 @@ TEST_COUNT, TEST_SEED_BASE = 20, 1000
 # Held-out reworded set (Stage 3): seeds 2001 to 2020, fixed; the same planted-problem plans as T01 to T20.
 REWORDED_COUNT, REWORDED_SEED_BASE = 20, 2000
 TRAINING_COUNT, TRAINING_SEED_BASE = 300, 900_000
+# Fresh held-out set (Stage 7): seeds 3001 to 3020, made once and frozen (FROZEN.sha256); never used for tuning.
+# The same planted-problem plans as T01 to T20; even-numbered projects use the reworded wording.
+FRESH_COUNT, FRESH_SEED_BASE = 20, 3000
 
 
 @dataclass(frozen=True)
@@ -62,6 +65,47 @@ def reworded_jobs(root: Path = DATA, count: int = REWORDED_COUNT) -> list[Job]:
     """The reworded set: same kinds of facts and problems as the test set, in other words."""
     return [Job("project", reworded_id(i), REWORDED_SEED_BASE + i, root / "projects" / "reworded" / reworded_id(i),
                 "test", tuple(TEST_PLAN[i]), reword=True) for i in range(1, count + 1)]
+
+
+def fresh_id(i: int) -> str:
+    return f"F{i:02d}"
+
+
+def fresh_jobs(root: Path = DATA, count: int = FRESH_COUNT) -> list[Job]:
+    """The fresh held-out set (Stage 7): new seeds, the test set's plans, every other project reworded."""
+    return [Job("project", fresh_id(i), FRESH_SEED_BASE + i, root / "projects" / "fresh" / fresh_id(i), "test",
+                tuple(TEST_PLAN[i]), reword=i % 2 == 0) for i in range(1, count + 1)]
+
+
+def frozen_manifest(folder: Path) -> str:
+    """One line per file, ``sha256  relative/path``, sorted, then the hash of those lines (the set's hash).
+
+    ``build-info.json`` and the manifest itself are left out (they describe the build, not the data).
+    """
+    import hashlib
+
+    lines = []
+    for path in sorted(p for p in folder.rglob("*") if p.is_file()):
+        rel = path.relative_to(folder).as_posix()
+        if rel in ("build-info.json", "FROZEN.sha256"):
+            continue
+        lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {rel}")
+    body = "\n".join(lines) + "\n"
+    return body + f"set  {hashlib.sha256(body.encode('utf-8')).hexdigest()}\n"
+
+
+def check_frozen(folder: Path) -> str | None:
+    """None when the folder matches its FROZEN.sha256, else what differs (first line only)."""
+    manifest = folder / "FROZEN.sha256"
+    if not manifest.exists():
+        return f"{manifest} is missing"
+    want = manifest.read_text(encoding="utf-8")
+    have = frozen_manifest(folder)
+    if want == have:
+        return None
+    w, h = set(want.splitlines()), set(have.splitlines())
+    diff = sorted((w - h) | (h - w))
+    return f"{len(diff)} manifest lines differ, for example: {diff[0]}"
 
 
 def training_jobs(root: Path = DATA, count: int = TRAINING_COUNT) -> list[Job]:

@@ -94,6 +94,24 @@ def score(extracted: Iterable[ExtractedValue], truth: Iterable[TruthValue]) -> d
     return dict(out)
 
 
+def correct_flags(extracted: Iterable[ExtractedValue], truth: Iterable[TruthValue]) -> list[bool]:
+    """For each extracted value, in order: True when it is a true positive under :func:`score`'s rule.
+
+    The same one-to-one matching, value by value (Stage 6 calibration); ``sum`` equals the total true positives.
+    """
+    pending: dict[tuple, list[TruthValue]] = defaultdict(list)
+    for t in truth:
+        pending[_key(t.field, t.source.document.value, t.source.page)].append(t)
+    out = []
+    for e in extracted:
+        candidates = pending.get(_key(e.field, e.source.document.value, e.source.page), [])
+        hit = next((t for t in candidates if norm.same(t.value, t.unit, e.value, e.unit)), None)
+        if hit is not None:
+            candidates.remove(hit)
+        out.append(hit is not None)
+    return out
+
+
 def total(scores: dict[str, Score]) -> Score:
     all_ = Score()
     for s in scores.values():
