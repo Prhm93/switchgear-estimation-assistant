@@ -24,3 +24,6 @@ storage/
 
 # Vision model recordings (Stage 4 Part B): made on Colab, never committed
 data/recorded-vision/
+# Stage 7: saved rows of an evaluation run, so a stopped run resumes (never committed)
+data/eval-*-partial.json
+data/eval-*-partial.tmp
