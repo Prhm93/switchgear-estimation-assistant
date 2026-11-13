@@ -67,3 +67,31 @@ def test_totals_add_up_over_classes_and_empty_inputs_give_no_scores() -> None:
     assert (t.tp, t.fp, t.fn) == (1, 1, 1)
     assert match_boxes([], []) == {}
     assert total({}).precision is None and total({}).f1 is None
+
+
+# --- confusion: which class each answer box was given (Stage 6 Step 0) -------------------------------------
+
+from backend.app.drawing.boxes import MISSED, NOTHING_THERE, confusion  # noqa: E402
+
+
+def test_confusion_counts_a_box_given_another_class() -> None:
+    table = confusion([Box("mccb", [1, 0, 11, 10], 0.9)], [Box("acb", A)])
+    assert table[("acb", "mccb")] == 1
+    assert sum(table.values()) == 1
+
+
+def test_confusion_counts_right_boxes_misses_and_boxes_on_empty_paper() -> None:
+    truth = [Box("acb", A), Box("mcb", [50, 50, 60, 60])]
+    pred = [Box("acb", A, 0.9), Box("mccb", [100, 100, 110, 110], 0.8)]
+    table = confusion(pred, truth)
+    assert table[("acb", "acb")] == 1
+    assert table[("mcb", MISSED)] == 1
+    assert table[(NOTHING_THERE, "mccb")] == 1
+
+
+def test_confusion_matches_each_answer_box_once_by_overlap_whatever_the_class() -> None:
+    pred = [Box("mccb", A, 0.9), Box("acb", [1, 0, 11, 10], 0.8)]
+    table = confusion(pred, [Box("acb", A)])
+    assert table[("acb", "mccb")] == 1  # the higher score takes the box
+    assert table[(NOTHING_THERE, "acb")] == 1  # the duplicate lands on nothing
+    assert confusion([Box("acb", [0, 0, 10, 4], 0.9)], [Box("acb", A)])[("acb", MISSED)] == 1  # IoU 0.4

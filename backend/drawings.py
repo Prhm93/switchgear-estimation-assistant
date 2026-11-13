@@ -278,6 +278,53 @@ def score_symbols(samples: list[DrawingSample], detector) -> tuple[dict, list[fl
     return totals, seconds
 
 
+def symbol_confusion(samples: list[DrawingSample], detector) -> tuple[dict, dict, dict]:
+    """Box by box: which class each breaker answer box was given, and what sits inside the missed ones.
+
+    Returns the confusion table (:func:`boxes.confusion`, IoU at least 0.5 whatever the class), for each
+    missed answer box the class of a prediction whose centre lies inside it (``"(none)"`` if none), and the
+    mean IoU of predictions with the centre inside a missed box, per (answer class, predicted class).
+    """
+    from backend.app.drawing.boxes import Box, confusion, iou
+    from backend.app.drawing.symbols import BREAKER_CLASSES
+
+    keep = {c.value for c in BREAKER_CLASSES}
+    table: dict = {}
+    inside: dict = {}
+    inside_iou: dict = {}
+    for s in samples:
+        found = detector.detect(_sheet(s))
+        pred = [Box(f.cls.value, f.bbox, f.score) for f in found if f.cls.value in keep]
+        truth = [Box(t.cls.value, t.bbox) for t in s.symbols if t.cls.value in keep]
+        part = confusion(pred, truth)
+        for k, n in part.items():
+            table[k] = table.get(k, 0) + n
+        for t in truth:  # a missed answer box: no prediction of any class reached IoU 0.5
+            best = max((iou(p.bbox, t.bbox) for p in pred), default=0.0)
+            if best >= 0.5:
+                continue
+            hits = [p for p in pred if t.bbox[0] <= (p.bbox[0] + p.bbox[2]) / 2 <= t.bbox[2]
+                    and t.bbox[1] <= (p.bbox[1] + p.bbox[3]) / 2 <= t.bbox[3]]
+            hit = max(hits, key=lambda p: p.score, default=None)
+            key = (t.cls, hit.cls if hit else "(none)")
+            inside[key] = inside.get(key, 0) + 1
+            if hit:
+                inside_iou.setdefault(key, []).append(iou(hit.bbox, t.bbox))
+    return table, inside, {k: statistics.mean(v) for k, v in inside_iou.items()}
+
+
+def confusion_table(table: dict) -> str:
+    """A markdown table: rows are answer classes, columns the class the detector gave."""
+    from backend.app.drawing.boxes import MISSED, NOTHING_THERE
+
+    rows = sorted({k[0] for k in table} - {NOTHING_THERE}) + [NOTHING_THERE]
+    cols = sorted({k[1] for k in table} - {MISSED}) + [MISSED]
+    lines = ["| Answer / given | " + " | ".join(cols) + " |", "|---" * (len(cols) + 1) + "|"]
+    for r in rows:
+        lines.append(f"| {r} | " + " | ".join(str(table.get((r, c), 0)) for c in cols) + " |")
+    return "\n".join(lines)
+
+
 def symbol_table(totals: dict) -> str:
     def prf(t):
         p = t["tp"] / (t["tp"] + t["fp"]) if t["tp"] + t["fp"] else None
@@ -341,6 +388,37 @@ def _symbol_training(args) -> int:
     return 0
 
 
+def _symbol_confusion(args) -> int:
+    """``symbol-confusion``: a diagnosis only; nothing is tuned on what it prints.
+
+    On training drawings it uses the LAST projects, which neither the templates (first 80) nor the
+    threshold (first 10) used.
+    """
+    from backend.app.drawing.symbols import TemplateDetector
+
+    if args.set_name == "training":
+        pool = training_drawings()
+        projects = sorted({s.project_id for s in pool})[-(args.count or 20):]
+    else:
+        pool = evaluation_drawings(args.set_name)
+        projects = sorted({s.project_id for s in pool})[:args.count] if args.count else sorted({s.project_id for s in pool})
+    samples = [s for s in pool if s.project_id in projects and s.version.value == args.version]
+    if not samples:
+        print(f"no drawings for {args.set_name}", file=sys.stderr)
+        return 2
+    table, inside, inside_iou = symbol_confusion(samples, TemplateDetector())
+    print(f"## Symbol confusion (template), {args.set_name} set, {args.version} ({len(projects)} projects, "
+          f"{projects[0]} to {projects[-1]}, {len(samples)} sheets)\n")
+    print(confusion_table(table))
+    print("\nMissed answer boxes (IoU below 0.5 with every prediction): class of the best prediction whose "
+          "centre lies inside the box, and its mean IoU with the box\n")
+    print("| Answer | Inside it | Count | mean IoU |\n|---|---|---|---|")
+    for key in sorted(inside):
+        mi = inside_iou.get(key)
+        print(f"| {key[0]} | {key[1]} | {inside[key]} | {_f(mi)} |")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m backend.drawings", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -364,10 +442,16 @@ def main(argv: list[str] | None = None) -> int:
     u.add_argument("--count", type=int, default=10)
     u.add_argument("--version", choices=["clean", "scanned", "photo", "all"], default="all")
     d = sub.add_parser("symbols", help="score the symbol detector on one drawing version of a test set")
-    d.add_argument("--set", dest="set_name", choices=["test", "reworded", "showcase"], default="test")
+    d.add_argument("--set", dest="set_name", choices=["test", "reworded", "fresh", "showcase"], default="test")
     d.add_argument("--version", choices=["clean", "scanned", "photo"], default="clean")
     d.add_argument("--count", type=int, default=None, help="first N projects only")
+    k = sub.add_parser("symbol-confusion", help="box by box: which class each breaker answer box was given")
+    k.add_argument("--set", dest="set_name", choices=["training", "test", "reworded", "showcase"], default="training")
+    k.add_argument("--version", choices=["clean", "scanned", "photo"], default="clean")
+    k.add_argument("--count", type=int, default=None, help="first N projects only (training: the LAST N)")
     args = parser.parse_args(argv)
+    if args.command == "symbol-confusion":
+        return _symbol_confusion(args)
     if args.command in ("templates", "tune-symbols"):
         return _symbol_training(args)
     if args.command == "counts":
