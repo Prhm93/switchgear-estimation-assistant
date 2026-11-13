@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     symbol_detector: Literal["off", "template"] = Field(default="template", description="SYMBOL_DETECTOR")
     vision_recorded_dir: Path = Field(default=REPO_ROOT / "data" / "recorded-vision",
                                       description="VISION_RECORDED_DIR")
+    # Question box (Stage 9): "words" needs no model (hashed words, laptop and tests); "ollama" embeds with
+    # mxbai-embed-large on OLLAMA_URL (Colab). Answers quote the files either way; no text is generated.
+    embedder: Literal["words", "ollama"] = Field(default="words", description="EMBEDDER")
     # The sample enquiry (Stage UX): "Try the sample enquiry" uploads the committed showcase files from here.
     sample_dir: Path = Field(default=REPO_ROOT / "data" / "projects" / "showcase", description="SAMPLE_DIR")
     # Developer pages (Stage UX visual pass): /debug/breaker shows the breaker drawing with its anchor

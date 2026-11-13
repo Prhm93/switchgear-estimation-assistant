@@ -130,7 +130,7 @@ Two settings change how values are read: `MODEL_MODE` (`rules`, the default, `re
 | 6 Confidence and review | Approve, edit, reject; approved values only | Built: a level per value from how it was read, agreement and conflicts; review queue by risk; only rules-read high values accepted in bulk; model and picture values ticked by a person; cross-check false flags on the reworded set 182 to 47; calibration per level: [report](docs/stage-6.md) |
 | 7 Evaluation | One-command evaluation of all test projects | Not started (CI already runs the tests) |
 | 8 Hardening | Login, roles, upload checks, logging | Not started |
-| 9 Assistant | Questions about a project, with sources | Not started |
+| 9 Assistant | Questions about a project, with sources | Built: question box on the Summary; answers quote the enquiry's own files with file and page, refuse without evidence, check numbers against approved values, saved and audited; pgvector search; word embedder on the laptop (fresh set: right passage first 0.593, in the best 3 0.767), mxbai-embed-large waiting for Colab: [report](docs/stage-9.md) |
 
 Stage 9 (the question box) is listed after Stage 8. It is built before it, so that Stage 8's attack tests can run through the question box.
 

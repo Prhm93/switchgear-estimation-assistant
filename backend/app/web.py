@@ -26,7 +26,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from backend.app import enquiry, labels, services
+from backend.app import ask, enquiry, labels, rag, services
 from backend.app.design.breaker import breaker_svg
 from backend.app.drawing.render import can_render, drawing_png, sheet_size
 from backend.app.estimate import load_rules
@@ -216,7 +216,8 @@ def _summary_context(request: Request, session: Session, project: Project, tile:
             "tiles": enquiry.summary_tiles(project, found, items, estimate, blockers),
             "open_tile": tile if tile in TILE_KEYS else "agree",
             "main_values": enquiry.main_values(found.groups),
-            "proof_drawing": next((d for d in drawings if d.pages), None)}
+            "proof_drawing": next((d for d in drawings if d.pages), None),
+            "asked": ask.history(session, project.id)}
 
 
 @router.get("/enquiries/{project_id}", response_class=HTMLResponse)
@@ -241,6 +242,29 @@ def tile_detail(request: Request, project_id: int, key: str, session: SessionDep
     if not is_htmx(request):
         return RedirectResponse(f"/enquiries/{project_id}?tile={key}", status_code=303)
     return render(request, "partials/summary_report.html", **_summary_context(request, session, project, key))
+
+
+# --- the question box (Stage 9) ---------------------------------------------------------------------------
+
+@router.post("/enquiries/{project_id}/ask")
+def ask_question(request: Request, project_id: int, session: SessionDep,
+                 question: Annotated[str, Form()] = "") -> Response:
+    """Answer one question from the enquiry's own files, save it and audit it (backend/app/ask.py).
+
+    With HTMX the Ask column is swapped in place; without script the Summary opens again at the Ask column.
+    """
+    project = project_or_404(session, project_id)
+    if question.strip():
+        settings = request.app.state.settings
+        ask.ask(session, project, question, rag.make_embedder(settings.embedder, settings.ollama_url))
+    if not is_htmx(request):
+        return RedirectResponse(f"/enquiries/{project_id}#ask", status_code=303)
+    return render(request, "partials/ask_box.html", project=project, asked=ask.history(session, project_id))
+
+
+@router.get("/enquiries/{project_id}/ask")
+def ask_page(project_id: int) -> Response:
+    return RedirectResponse(f"/enquiries/{project_id}#ask", status_code=303)
 
 
 # --- rename, archive, delete (each asks first) ---------------------------------------------------------

@@ -20,7 +20,7 @@ from backend.app.catalogue import CatalogueItem, load_catalogue
 from backend.app.config import Settings
 from backend.app.estimate import ApprovedValue, Draft, build, load_rules
 from backend.app.llm.quote import QuoteCheckMode
-from backend.app.models import (AuditEvent, CatalogueItemRow, Document, EnquiryNote, Estimate, EstimateLineRow,
+from backend.app.models import (AskPassage, AuditEvent, CatalogueItemRow, Document, EnquiryNote, Estimate, EstimateLineRow,
                                 ExtractedValueRow, Match, Page, Project, Review, utcnow)
 from backend.app.drawing.symbols import make_detector
 from backend.app.drawing.vision import VisionUnavailable, make_vision_client
@@ -158,6 +158,7 @@ def delete_document(session: Session, storage: Storage, doc: Document) -> None:
     key, pid = doc.storage_key, doc.project_id
     ids = list(session.scalars(select(ExtractedValueRow.id).where(ExtractedValueRow.document_id == doc.id)))
     _delete_values(session, ids)
+    session.execute(delete(AskPassage).where(AskPassage.document_id == doc.id))  # Stage 9: rebuilt when asked
     audit(session, "document_delete", "document", doc.id, pid, name=doc.original_name, sha256=doc.sha256,
           values=len(ids))
     session.delete(doc)
@@ -173,6 +174,7 @@ def reset_document(session: Session, doc: Document) -> None:
     ids = list(session.scalars(select(ExtractedValueRow.id).where(ExtractedValueRow.document_id == doc.id)))
     _delete_values(session, ids)
     session.execute(delete(Page).where(Page.document_id == doc.id))
+    session.execute(delete(AskPassage).where(AskPassage.document_id == doc.id))  # Stage 9: rebuilt when asked
     doc.status, doc.note, doc.model_run, doc.read_method = DocumentStatus.UPLOADED.value, None, None, None
     audit(session, "read_again", "document", doc.id, doc.project_id, name=doc.original_name, values_removed=len(ids))
     session.commit()

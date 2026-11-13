@@ -14,6 +14,8 @@ from typing import Any
 from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, false
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
+from backend.app.vector import Embedding
+
 
 def utcnow() -> datetime:
     return datetime.now(UTC)
@@ -43,6 +45,9 @@ class Project(Base):
                                                            cascade="all, delete-orphan")
     notes: Mapped[list[EnquiryNote]] = relationship(back_populates="project", order_by="EnquiryNote.id",
                                                     cascade="all, delete-orphan")
+    # Stage 9: the question box's passages and every question asked (deleted with the enquiry)
+    ask_passages: Mapped[list[AskPassage]] = relationship(cascade="all, delete-orphan")
+    questions: Mapped[list[AskQuestion]] = relationship(order_by="AskQuestion.id", cascade="all, delete-orphan")
 
 
 class EnquiryNote(Base):
@@ -233,3 +238,40 @@ class AuditEvent(Base):
     entity: Mapped[str] = mapped_column(String(40))
     entity_id: Mapped[str | None] = mapped_column(String(64))
     detail: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
+
+class AskPassage(Base):
+    """A short passage of an enquiry's page text with its embedding (Stage 9, migration 0007).
+
+    Made again from the stored page text whenever needed (:mod:`backend.app.ask`), so these rows can be dropped
+    and rebuilt; ``embedder`` names the embedder whose vector this is, and a search only compares one embedder's.
+    """
+
+    __tablename__ = "ask_passages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    document_id: Mapped[int] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"), index=True)
+    page: Mapped[int] = mapped_column(Integer)
+    text: Mapped[str] = mapped_column(Text)
+    embedder: Mapped[str] = mapped_column(String(60))
+    embedding: Mapped[list[float] | None] = mapped_column(Embedding, nullable=True)
+
+    document: Mapped[Document] = relationship()
+
+
+class AskQuestion(Base):
+    """One question asked about an enquiry and the answer shown, with its sources (Stage 9). Also audited."""
+
+    __tablename__ = "ask_questions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    question: Mapped[str] = mapped_column(Text)
+    answer: Mapped[str] = mapped_column(Text)
+    refused: Mapped[bool] = mapped_column(Boolean)
+    sources: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    numbers: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)  # approved and not-approved numbers quoted
+    embedder: Mapped[str] = mapped_column(String(60))
+    actor: Mapped[str] = mapped_column(String(60))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

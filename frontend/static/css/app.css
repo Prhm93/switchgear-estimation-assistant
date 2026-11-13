@@ -1014,6 +1014,15 @@ a.chip--neutral:hover { background: var(--veil-hover); color: var(--text); }
 .tile__extra { font-size: var(--fs-md); color: var(--text); }
 .tile__note { font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.5; }
 .ask { padding-left: var(--space-6); box-shadow: inset 1px 0 0 var(--hairline); }
+.ask__form { display: grid; gap: var(--space-2); margin-top: var(--space-4); }
+.ask__row { display: flex; gap: var(--space-2); }
+.ask__row .input { flex: 1; min-width: 0; }
+.ask__list { list-style: none; margin: var(--space-5) 0 0; padding: 0; display: grid; gap: var(--space-5); }
+.ask__q { font-weight: 600; }
+.ask__a { margin-top: var(--space-1); }
+.ask__source { margin: var(--space-2) 0 0; }
+.ask__source blockquote { margin: var(--space-1) 0 0; padding-left: var(--space-3); white-space: pre-line;
+  overflow-wrap: anywhere; box-shadow: inset 2px 0 0 var(--hairline); }
 .ask__empty { margin-top: var(--space-4); font-size: var(--fs-lg); color: var(--text-soft); }
 
 @media (max-width: 900px) {
@@ -1072,7 +1081,6 @@ a.chip--neutral:hover { background: var(--veil-hover); color: var(--text); }
 .hero__add.dropzone--over .btn--xl { box-shadow: 0 0 0 3px var(--focus); }
 .simple-head { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-5); }
 .simple-head__text { max-width: 60ch; }
-.ask-soon { display: flex; gap: var(--space-2); align-items: center; }
 .review { max-width: 820px; }
 .review__progress { margin-bottom: var(--space-4); }
 .review__count { margin: 0 0 var(--space-2); }
