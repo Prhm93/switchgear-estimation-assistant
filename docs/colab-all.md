@@ -87,7 +87,8 @@ Expand-Archive -Force $env:USERPROFILE\Downloads\colab-all.zip -DestinationPath 
 Copy-Item -Recurse -Force $env:TEMP\colab-all\recorded\fresh data\recorded\                 # language model
 Copy-Item -Recurse -Force $env:TEMP\colab-all\recorded-vision\* data\recorded-vision\        # vision model
 Copy-Item -Recurse -Force $env:TEMP\colab-all\recorded-ask data\                             # question box
-.venv\Scripts\python.exe -m backend.evaluation_report --set fresh --baseline test           # fills docs/evaluation.md
+.venv\Scripts\python.exe -m backend.evaluation_report --set fresh                         # adds the model rows (saved rows reused)
+.venv\Scripts\python.exe -m backend.evaluation_report --write-only                         # docs/evaluation.md, fresh and test
 .venv\Scripts\python.exe -m backend.drawings vision --set fresh --version photo               # vision scores
 ```
 
