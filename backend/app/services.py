@@ -349,6 +349,15 @@ def review_value(session: Session, value_id: int, action: str, new_value: str | 
     if action == "approve":
         if row.value is None:
             raise ReviewError("This value is missing in the document (for example TBC). Edit it to give a value.")
+        # Stage 6: two lower readings that differ are checked one by one, so guard against approving both
+        for other in session.scalars(select(ExtractedValueRow).where(
+                ExtractedValueRow.project_id == row.project_id, ExtractedValueRow.field == row.field,
+                ExtractedValueRow.id != row.id,
+                ExtractedValueRow.review_status.in_([ReviewStatus.APPROVED.value, ReviewStatus.EDITED.value]))):
+            if not norm.same(other.approved_value, other.approved_unit, row.value, row.unit):
+                raise ReviewError(f"Another value is already approved for {labels.field_label(row.field)} "
+                                  f"({labels.display(other.approved_value, other.approved_unit)}). Use Change to "
+                                  "type the right value instead.")
         row.review_status, row.approved_value, row.approved_unit = ReviewStatus.APPROVED.value, row.value, row.unit
     elif action == "edit":
         value = parse_input(new_value or "")
@@ -392,13 +401,14 @@ def resolve_field(session: Session, project_id: int, field: str, keep_value_id: 
         kept_value, kept_unit = enquiry.shown(keep)
         chosen = (norm.value_key(kept_value), norm.unit(kept_unit))
         why = reason or f"Other source chosen: {labels.display(kept_value, kept_unit)}"
-        for r in rows:
-            value, unit = enquiry.shown(r)
-            if r.value is not None and (norm.value_key(value), norm.unit(unit)) == chosen:
-                if r.review_status == ReviewStatus.EXTRACTED.value:
-                    review_value(session, r.id, "approve", reason=reason, actor=actor)
-            else:
+        same = [r for r in rows if r.value is not None and
+                (norm.value_key(enquiry.shown(r)[0]), norm.unit(enquiry.shown(r)[1])) == chosen]
+        for r in rows:  # set the others aside first, so no other value is still approved (Stage 6 guard)
+            if r not in same:
                 review_value(session, r.id, "reject", reason=why, actor=actor)
+        for r in same:
+            if r.review_status == ReviewStatus.EXTRACTED.value:
+                review_value(session, r.id, "approve", reason=reason, actor=actor)
         return
     if parse_input(typed_value or "") is None:
         raise ReviewError("Type a value, or choose one of the sources.")

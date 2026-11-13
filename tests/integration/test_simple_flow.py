@@ -20,7 +20,9 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
+from backend.app.confidence import assess
 from backend.app.config import Settings
+from backend.app.crosscheck import seen_from_rows
 from backend.app.main import create_app
 from backend.app.models import AuditEvent, Document, Estimate, ExtractedValueRow
 from data_generator.sets import DATA
@@ -209,9 +211,11 @@ def test_the_ticked_count_is_the_approved_count_each_with_its_own_audit_entry(cl
     assert sorted(approved) == sorted(int(i) for i in data["value_id"])
     assert sorted(audited(client, pid, "approve")) == sorted(approved)  # one entry per value
     assert progress(after)[0] == 1
-    with client.app.state.sessions() as session:
-        for v in session.scalars(select(ExtractedValueRow).where(ExtractedValueRow.id.in_(approved))):
-            assert v.confidence == "high" and v.method not in ("ocr", "vision", "detector")
+    with client.app.state.sessions() as session:  # Stage 6: high as assessed (agreement may raise it), rules only
+        rows = session.scalars(select(ExtractedValueRow).where(ExtractedValueRow.project_id == pid)).all()
+        levels = assess(seen_from_rows(rows, as_read=True))
+        for v in (r for r in rows if r.id in approved):
+            assert levels[v.id].level == "high" and v.method == "rules"
             assert v.quote_match != "words_on_page" and v.value is not None
 
 

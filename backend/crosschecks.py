@@ -15,7 +15,9 @@ its values. Against the answer key's planted problems:
   difference there is a false flag;
 - a planted **missing value** is found when the app's missing-information list names its field.
 
-Nothing is tuned here; the cross-check has no thresholds.
+Nothing is tuned here; the cross-check has no thresholds. ``--gate`` applies the Stage 6 confidence gate (a
+difference needs a value read reliably on one side; :func:`backend.app.crosscheck.differences`), which the app
+uses since Stage 6; without it the Stage 5 behaviour is scored.
 """
 
 from __future__ import annotations
@@ -40,8 +42,8 @@ def missing_fields(values) -> set[str]:
             or m["why"].startswith("Stated as TBC")}
 
 
-def score_project(key: AnswerKey, values) -> dict:
-    diffs = differences(seen_from_values(values))
+def score_project(key: AnswerKey, values, gate: bool = False) -> dict:
+    diffs = differences(seen_from_values(values), gate=gate)
     planted = [p for p in key.planted if p.kind.value in CONFLICTS]
     found, used = [], set()
     for p in planted:
@@ -58,7 +60,7 @@ def score_project(key: AnswerKey, values) -> dict:
             "missing_planted": wanted_missing, "missing_found": [p for p in wanted_missing if p.field in missing]}
 
 
-def run(set_name: str, mode: str, count: int | None = None) -> str:
+def run(set_name: str, mode: str, count: int | None = None, gate: bool = False) -> str:
     from backend.evaluate import project_values
 
     root = REPO_ROOT / "data" / "projects" / set_name
@@ -68,7 +70,7 @@ def run(set_name: str, mode: str, count: int | None = None) -> str:
     rows, totals = [], {"planted": 0, "found": 0, "false": 0, "missing_planted": 0, "missing_found": 0}
     for folder in folders:
         key = AnswerKey.model_validate_json((folder / "answers.json").read_bytes())
-        result = score_project(key, project_values(folder, with_dxf=True, mode=mode, set_name=set_name))
+        result = score_project(key, project_values(folder, with_dxf=True, mode=mode, set_name=set_name), gate)
         for k in totals:
             totals[k] += len(result[k])
         planted = ", ".join(f"{p.kind.value} {p.field}" for p in result["planted"]) or "none"
@@ -80,7 +82,8 @@ def run(set_name: str, mode: str, count: int | None = None) -> str:
     r = tp / (tp + fn) if tp + fn else None
     f = 2 * p * r / (p + r) if p and r else None
     fmt = lambda x: "n/a" if x is None else f"{x:.3f}"  # noqa: E731
-    out = [f"## Cross-checks, {set_name} set, {mode} mode, with the DXF ({len(folders)} projects)", "",
+    gated = ", confidence gate (Stage 6)" if gate else ", no gate (Stage 5)"
+    out = [f"## Cross-checks, {set_name} set, {mode} mode, with the DXF{gated} ({len(folders)} projects)", "",
            f"Planted conflicts found: {tp} of {totals['planted']}; false flags: {fp}; "
            f"P {fmt(p)}, R {fmt(r)}, F1 {fmt(f)}. Planted missing values listed: "
            f"{totals['missing_found']} of {totals['missing_planted']}.", "",
@@ -91,11 +94,12 @@ def run(set_name: str, mode: str, count: int | None = None) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m backend.crosschecks", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--set", dest="set_name", choices=["test", "reworded"], default="test")
+    parser.add_argument("--set", dest="set_name", choices=["test", "reworded", "fresh"], default="test")
     parser.add_argument("--mode", choices=["rules", "combined"], default="rules")
     parser.add_argument("--count", type=int, default=None)
+    parser.add_argument("--gate", action="store_true", help="the Stage 6 confidence gate (as the app uses it)")
     args = parser.parse_args(argv)
-    print(run(args.set_name, args.mode, args.count))
+    print(run(args.set_name, args.mode, args.count, args.gate))
     return 0
 
 

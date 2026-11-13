@@ -28,7 +28,12 @@
 
   <h3 class="panel__label">How it was read</h3>
   <p class="small">{{ method_words(v.method, v.agreement, v.quote_match) }}.</p>
+  {%- if assessed %}
+  <p class="small muted" data-confidence="{{ assessed.level }}">{{ confidence_words.get(assessed.level, assessed.level) }}</p>
+  <ul class="plain-list plain-list--tight small muted">{% for r in assessed.reasons %}<li>{{ r }}</li>{% endfor %}</ul>
+  {%- else %}
   <p class="small muted">{{ confidence_words.get(v.confidence, v.confidence) }}</p>
+  {%- endif %}
 
   {%- if others %}
   <h3 class="panel__label">Other sources for this</h3>

@@ -618,7 +618,12 @@ def _panel(request: Request, session: Session, v: ExtractedValueRow, error: str 
     headers = {"HX-Retarget": "#panel", "HX-Reswap": "innerHTML"} if error else None
     return render(request, "partials/value_panel.html", status_code=status_code, headers=headers, v=v, others=others,
                   proof=proof_of(v), error=error, open_reason=open_reason,
-                  confidence_words=labels.CONFIDENCE_WORDS)
+                  confidence_words=labels.CONFIDENCE_WORDS, assessed=_assessed(v))
+
+
+def _assessed(v: ExtractedValueRow) -> Any:
+    """The Stage 6 assessment of one value (level and reasons), worked out over its whole enquiry."""
+    return enquiry.assessment(v, enquiry.review_groups(v.project))
 
 
 @router.get("/values/{value_id}/panel", response_class=HTMLResponse)
@@ -630,7 +635,7 @@ def value_panel(request: Request, value_id: int, session: SessionDep, open: str 
     if not is_htmx(request):  # opened as a page (no script): the same panel on its own screen
         return render(request, "value.html", v=v, panel_error=None, open_reason=open, proof=proof_of(v),
                       others=[o for o in v.project.values if o.field == v.field and o.id != v.id],
-                      confidence_words=labels.CONFIDENCE_WORDS, error=None, tab="check",
+                      confidence_words=labels.CONFIDENCE_WORDS, error=None, tab="check", assessed=_assessed(v),
                       **enquiry_context(session, v.project))
     return _panel(request, session, v, open_reason=open)
 
@@ -790,12 +795,18 @@ def _crop(request: Request, v: ExtractedValueRow, sizes: dict[tuple[int, int], A
             + (f"&page={v.page}" if v.page else "")}
 
 
-def _value_item(request: Request, v: ExtractedValueRow, sizes: dict) -> dict[str, Any]:
-    """One value on a group card: its label, value, where it was read, and its box or its marked text."""
+def _value_item(request: Request, v: ExtractedValueRow, sizes: dict, groups: Any = None) -> dict[str, Any]:
+    """One value on a group card: its label, value, where it was read, and its box or its marked text.
+
+    Stage 6: ``why`` gives the assessment's reasons (how it was read, agreement, a differing reading), and
+    ``tick`` is False for a value read from a picture or by a model: a person ticks it, it is never pre-ticked.
+    """
     value, unit = enquiry.shown(v)
+    a = enquiry.assessment(v, groups) if groups is not None else None
     return {"v": v, "label": labels.field_label(v.field), "value": labels.display(value, unit),
             "source": labels.value_source(v), "crop": _crop(request, v, sizes), "proof": proof_of(v, context_lines=1),
-            "kind": box_kind(v)}
+            "kind": box_kind(v), "level": a.level if a else v.confidence, "why": a.reasons if a else [],
+            "tick": v.method not in enquiry.PICTURE_METHODS and v.method != "llm"}
 
 
 def _review_context(request: Request, session: Session, project: Project, error: str | None = None,
@@ -848,7 +859,7 @@ def _review_context(request: Request, session: Session, project: Project, error:
         doc = group.document
         where = f"{'sheet' if doc.kind == 'schematic' else 'page'} {group.page or 1}"
         context["card"] = {"kind": "page", "key": group.key, "document": doc, "page": group.page or 1, "where": where,
-                           "items": [_value_item(request, v, sizes) for v in group.pending(later)]}
+                           "items": [_value_item(request, v, sizes, found.groups) for v in group.pending(later)]}
     return context
 
 

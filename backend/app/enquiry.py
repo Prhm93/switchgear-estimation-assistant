@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 from backend.app import labels
 from backend.app import normalise as norm
 from backend.app.catalogue import CatalogueItem
+from backend.app.confidence import Assessment, assess
 from backend.app.crosscheck import Difference, differences, seen_from_rows
 from backend.app.estimate import ApprovedValue, Draft, EstimateRules, build
 from backend.app.injection import find_instructions
@@ -43,6 +44,8 @@ PICTURE_METHODS = {"ocr", "vision", "detector"}  # read from a drawing picture: 
 REASONS: OrderedDict[str, tuple[str, str]] = OrderedDict([
     ("open", ("Left open in a document", "The document names the item but gives no value (for example TBC). "
                                          "Type the value once it is confirmed.")),
+    ("weak", ("Readings differ", "Two less reliable readings (a model or a drawing picture) give different values. "
+                                 "Check each one against its file; neither is used until you approve it.")),
     ("ocr", ("Read from a drawing picture", "Text read from a picture can be misread. Check each one against "
                                             "the drawing.")),
     ("pieced", ("Quote pieced together", "Every word of the model's quote is on the page, but not as one "
@@ -96,6 +99,7 @@ def review_groups(project: Project) -> OrderedDict[str, dict[str, Any]]:
         g = groups.setdefault(v.field, {"field": v.field, "label": labels.field_label(v.field), "values": []})
         g["values"].append(v)
     partial = partial_ways(project.values)
+    assessed = assess(seen_from_rows(project.values))  # Stage 6: level, reasons and risk of each live value
     for g in groups.values():
         m = WAY_FIELD.match(g["field"])
         g["missing_from"] = partial.get(m.group(1), []) if m else []
@@ -105,7 +109,11 @@ def review_groups(project: Project) -> OrderedDict[str, dict[str, Any]]:
             value, unit = shown(v)
             sides.setdefault((norm.value_key(value), norm.unit(unit)), []).append(v)
         g["sides"] = list(sides.values())
-        g["conflict"] = len(sides) > 1
+        g["assessed"] = {v.id: assessed[v.id] for v in g["values"] if v.id in assessed}
+        # a conflict needs a reliable value on one side (Stage 6); two lower readings that differ are a weak
+        # difference, checked value by value
+        g["conflict"] = len(sides) > 1 and any(a.level == "conflict" for a in g["assessed"].values())
+        g["weak"] = len(sides) > 1 and not g["conflict"]
         g["pending"] = any(v.review_status == ReviewStatus.EXTRACTED.value for v in g["values"])
         g["left_open"] = open_in_a_document(g["values"])
     return groups
@@ -142,26 +150,38 @@ def missing_information(groups: OrderedDict[str, dict[str, Any]]) -> list[dict[s
 
 
 def bulk_acceptable(groups: OrderedDict[str, dict[str, Any]]) -> list[ExtractedValueRow]:
-    """The values "Accept all" may approve: high confidence, no conflict, exact quote, not read by OCR.
+    """The values "Accept all" may approve: high confidence (Stage 6), read by the rules from a file's text (no
+    model, no picture, no pieced quote), and no file says otherwise.
 
     Also left out: a way missing from one of the documents that list ways, and a field that one
     document leaves open while another gives a value.
     """
     out = []
     for g in groups.values():
-        if g["conflict"] or g["missing_from"] or g["left_open"]:
+        if g["conflict"] or g["weak"] or g["missing_from"] or g["left_open"]:
             continue
         for v in g["values"]:
-            if v.quote_match == "words_on_page" or v.method in PICTURE_METHODS:
-                continue
-            if v.review_status == ReviewStatus.EXTRACTED.value and v.confidence == "high" and v.value is not None:
+            a = g["assessed"].get(v.id)
+            if v.review_status == ReviewStatus.EXTRACTED.value and v.value is not None and a and a.bulk_ok:
                 out.append(v)
     return out
+
+
+def risk(v: ExtractedValueRow, groups: OrderedDict[str, dict[str, Any]]) -> int:
+    """How early the engineer should look at a value (higher first; :mod:`backend.app.confidence`)."""
+    a = groups.get(v.field, {}).get("assessed", {}).get(v.id)
+    return a.risk if a else 0
+
+
+def assessment(v: ExtractedValueRow, groups: OrderedDict[str, dict[str, Any]]) -> Assessment | None:
+    return groups.get(v.field, {}).get("assessed", {}).get(v.id)
 
 
 def _reason(v: ExtractedValueRow, g: dict[str, Any]) -> str:
     if v.value is None:
         return "open"
+    if g.get("weak"):
+        return "weak"
     if v.method in PICTURE_METHODS:
         return "ocr"
     if v.quote_match == "words_on_page":
@@ -233,7 +253,7 @@ def decisions(project: Project) -> Decisions:
                 found.setdefault(_reason(v, g), []).append(v)
     for key in REASONS:
         if key in found:
-            reasons[key] = found[key]
+            reasons[key] = sorted(found[key], key=lambda v: -risk(v, groups))  # riskiest first (Stage 6)
     return Decisions(
         groups=groups, conflicts=[g for g in groups.values() if g["conflict"]], reasons=reasons,
         acceptable=acceptable, missing=missing_information(groups),
@@ -242,7 +262,7 @@ def decisions(project: Project) -> Decisions:
         busy=any(d.status in BUSY for d in project.documents),
         total=sum(1 for v in project.values if v.review_status != ReviewStatus.REJECTED.value),
         approved=sum(1 for v in project.values if v.review_status in DONE),
-        between_files={d.field: d for d in differences(seen_from_rows(project.values)) if d.field in groups})
+        between_files={d.field: d for d in differences(seen_from_rows(project.values), gate=True) if d.field in groups})
 
 
 # --- how the enquiry was read -------------------------------------------------------------------------
@@ -533,17 +553,23 @@ def review_plan(project: Project) -> list[ReviewGroup]:
     Groups are worked out from what each value is, not from its review status, so the number of groups stays
     the same while the engineer works through them:
 
-    - **agreeing**: the values "Accept all" may take (high confidence, no conflict, exact quote, not read from
-      a picture; :func:`bulk_acceptable`'s rule), whatever their status now;
-    - **conflict**: a field whose files gave values that do not match (values approved or set aside since then
-      still count, so a settled conflict stays one checked group);
-    - **page**: every other value with a value, by file and page: values read from a picture, by a model with a
-      pieced quote, or with lower confidence. Each is ticked on its card and approved on its own.
+    - **agreeing**: the values "Accept all" may take (high confidence, read by the rules, no file says
+      otherwise; :func:`bulk_acceptable`'s rule), whatever their status now;
+    - **conflict**: a field whose values, as read, differ with a reliable value on one side (Stage 6; values
+      approved or set aside since then still count, so a settled conflict stays one checked group);
+    - **page**: every other value with a value, by file and page: values read from a picture or by a model,
+      two lower readings that differ, or lower confidence. Each is ticked on its card and approved on its own.
 
-    A value marked TBC (no value) is in no group: it is on the missing-information list.
+    Stage 6 order: the agreeing card stays first (one click for what needs least thought); after it the
+    queue goes by risk: conflicts first, then the page cards with the riskiest value first, and inside a card
+    the riskiest value first. A value marked TBC (no value) is in no group: it is on the missing-information list.
     """
     groups = review_groups(project)
-    conflicts = [f for f, g in groups.items() if len({_raw_key(v) for v in g["values"] if v.value is not None}) > 1]
+    as_read = assess(seen_from_rows(project.values, as_read=True))
+    conflicts = [f for f, g in groups.items() if any(as_read.get(v.id) and as_read[v.id].level == "conflict"
+                                                     for v in g["values"])]
+    weak = {f for f, g in groups.items() if f not in conflicts and any(
+        as_read.get(v.id) and as_read[v.id].weak_difference for v in g["values"])}
     agreeing: list[ExtractedValueRow] = []
     pages: OrderedDict[tuple[int, int | None], list[ExtractedValueRow]] = OrderedDict()
     for f, g in groups.items():
@@ -552,11 +578,16 @@ def review_plan(project: Project) -> list[ReviewGroup]:
         for v in g["values"]:
             if v.value is None:
                 continue
-            if (not g["missing_from"] and not g["left_open"] and v.confidence == "high"
-                    and v.quote_match != "words_on_page" and v.method not in PICTURE_METHODS):
+            a = as_read.get(v.id)
+            if (not g["missing_from"] and not g["left_open"] and f not in weak and a is not None and a.bulk_ok):
                 agreeing.append(v)
             else:
                 pages.setdefault((v.document_id, v.page), []).append(v)
+
+    def risk_of(v: ExtractedValueRow) -> int:
+        a = as_read.get(v.id)
+        return a.risk if a else 0
+
     out: list[ReviewGroup] = []
     if agreeing:
         out.append(ReviewGroup("agreeing", "agreeing", agreeing))
@@ -564,7 +595,10 @@ def review_plan(project: Project) -> list[ReviewGroup]:
         out.append(ReviewGroup("conflict", f"conflict:{f}", [v for v in groups[f]["values"] if v.value is not None],
                                field=f))
     order = {d.id: i for i, d in enumerate(project.documents)}
-    for (doc_id, page), values in sorted(pages.items(), key=lambda kv: (order.get(kv[0][0], 0), kv[0][1] or 0)):
+    cards = sorted(pages.items(), key=lambda kv: (-max(risk_of(v) for v in kv[1]), order.get(kv[0][0], 0),
+                                                  kv[0][1] or 0))
+    for (doc_id, page), values in cards:
+        values = sorted(values, key=lambda v: -risk_of(v))
         out.append(ReviewGroup("page", f"page:{doc_id}:{page}", values, document=values[0].document, page=page))
     return out
 

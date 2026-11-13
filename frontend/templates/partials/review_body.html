@@ -105,16 +105,16 @@
   {%- set n = card["items"] | length %}
   <article class="review-card review-card--group" id="card-{{ card.key | replace(':', '-') }}" data-doc="{{ card.document.id }}" data-page="{{ card.page }}">
     <div class="review-card__head"><h2 class="review-card__title">{{ card.document.original_name }}, {{ card.where }}</h2></div>
-    <p class="small muted">Read from a picture, by a model, or with less certainty. Untick any value that looks wrong: it is left for later and not priced.</p>
+    <p class="small muted">Read from a picture, by a model, or with less certainty; the riskiest first. Values read from a picture or by a model start unticked: tick each one you have checked against the file. An unticked value is left for later and not priced.</p>
     <form method="post" action="/enquiries/{{ project.id }}/review/group" hx-post="/enquiries/{{ project.id }}/review/group" hx-target="#review-body" hx-swap="outerHTML" data-tick-form>
       <input type="hidden" name="key" value="{{ card.key }}">
       <ul class="group-values">
         {%- for it in card["items"] %}
         <li class="group-value" data-doc="{{ it.v.document_id }}" data-page="{{ it.v.page or 1 }}">
           <input type="hidden" name="in_group" value="{{ it.v.id }}">
-          <label class="group-value__tick"><input type="checkbox" name="value_id" value="{{ it.v.id }}" checked data-tick>
+          <label class="group-value__tick"><input type="checkbox" name="value_id" value="{{ it.v.id }}"{% if it.tick %} checked{% endif %} data-tick>
             <span>{{ it.label }}: <span class="mono">{{ it.value }}</span></span></label>
-          <div class="small muted">{{ it.source }}</div>
+          <div class="small muted">{{ it.source }}{% if it.why %} · <span data-why>{{ it.why | join("; ") }}</span>{% endif %}</div>
           {%- if it.crop %}
           {%- set c = it.crop %}
           <svg class="crop crop--small" viewBox="{{ c.view }}" role="img" aria-label="Where {{ it.label }} was read on the drawing">
@@ -134,7 +134,7 @@
       </ul>
       <p class="small muted sheet__legend">{{ box_legend() }}</p>
       <div class="review-card__actions">
-        <button class="btn btn--primary" type="submit">Approve <span data-ticked>{{ n }}</span> ticked</button>
+        <button class="btn btn--primary" type="submit">Approve <span data-ticked>{{ card["items"] | selectattr("tick") | list | length }}</span> ticked</button>
       </div>
     </form>
   </article>
