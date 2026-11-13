@@ -17,9 +17,10 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 
-# Dependencies first, so code changes do not reinstall them.
+# Dependencies first, so code changes do not reinstall them. pip itself is upgraded first: the pip in the base
+# image had published advisories (pip-audit, Stage 8).
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --upgrade "pip>=26.3" && pip install -r requirements.txt
 
 COPY ai_engine ./ai_engine
 COPY backend ./backend

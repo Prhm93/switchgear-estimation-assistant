@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import zipfile
+from pathlib import Path
 
 import pytest
 
@@ -28,8 +29,16 @@ def test_showcase_files_are_accepted(name, file_type):
 
 
 def test_jpg_is_accepted():
-    data = b"\xff\xd8\xff\xe0" + b"\x00" * 100
-    assert check_upload("photo.JPEG", data, MB, 50) == FileType.JPG
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("L", (40, 30), 255).save(buf, "JPEG")
+    assert check_upload("photo.JPEG", buf.getvalue(), MB, 50) == FileType.JPG
+
+
+def test_a_picture_that_cannot_be_opened_is_rejected():  # Stage 8: a JPG signature alone is not a picture
+    with pytest.raises(UploadRejected, match="could not be opened"):
+        check_upload("photo.jpg", b"\xff\xd8\xff\xe0" + b"\x00" * 100, MB, 50)
 
 
 @pytest.mark.parametrize("name", ["notes.txt", "macro.docm", "archive.zip", "drawing.dwg", "noextension", "x.exe"])
@@ -95,3 +104,50 @@ def test_a_hostile_filename_is_checked_by_extension_only(tmp_path):
     stored = storage.save(data, FileType.PDF)
     assert list((tmp_path / "store").iterdir()) == [(tmp_path / "store" / stored.key)]
     assert not (tmp_path / "x.pdf").exists()
+
+
+# --- Stage 8: archive and picture bombs ------------------------------------------------------------------
+
+def _docx_with(extra: dict[str, bytes | int], level: int = 9) -> bytes:
+    import zipfile as zf
+
+    buf = io.BytesIO()
+    with zf.ZipFile(buf, "w", zf.ZIP_DEFLATED, compresslevel=level) as z:
+        z.writestr("[Content_Types].xml", "<Types/>")
+        z.writestr("word/document.xml", "<w:document/>")
+        for name, data in extra.items():
+            if isinstance(data, int):  # that many zero bytes, written in 1 MB pieces (never all in memory)
+                with z.open(name, "w", force_zip64=True) as f:
+                    for _ in range(data // 1_000_000):
+                        f.write(bytes(1_000_000))
+            else:
+                z.writestr(name, data)
+    return buf.getvalue()
+
+
+def test_a_zip_bomb_docx_is_rejected_before_it_is_opened():
+    bomb = _docx_with({"word/media/huge.bin": 300_000_000})  # 300 MB of zeros packs to about 0.3 MB
+    assert len(bomb) < 1_000_000
+    with pytest.raises(UploadRejected, match="unpacks"):
+        check_upload("letter.docx", bomb, max_bytes=25_000_000, max_pdf_pages=60)
+
+
+def test_a_docx_with_too_many_parts_is_rejected():
+    many = _docx_with({f"word/x{i}.xml": b"<x/>" for i in range(2_100)})
+    with pytest.raises(UploadRejected, match="parts"):
+        check_upload("letter.docx", many, max_bytes=25_000_000, max_pdf_pages=60)
+
+
+def test_a_picture_bomb_is_rejected_by_its_pixel_count():
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("1", (10_000, 10_000)).save(buf, "PNG")  # 100 million pixels, a few kB on disk
+    with pytest.raises(UploadRejected, match="pixels"):
+        check_upload("drawing.png", buf.getvalue(), max_bytes=25_000_000, max_pdf_pages=60)
+
+
+def test_the_real_letter_and_drawing_pictures_still_pass():
+    for name in ("requirements.docx", "drawing/schematic_sheet1_scanned.png", "drawing/schematic_sheet1_photo.png"):
+        data = (SHOWCASE / name).read_bytes()
+        check_upload(Path(name).name, data, max_bytes=25_000_000, max_pdf_pages=60)
