@@ -1135,13 +1135,27 @@ a.chip--neutral:hover { background: var(--veil-hover); color: var(--text); }
 .change-inline[open] { flex-basis: 100%; }
 .link-like { color: var(--blue-text); font-size: var(--fs-sm); box-shadow: inset 0 -1px 0 currentColor; }
 
-/* The home sketch (stage-simple fix): on wide screens with motion, the hero is about two screens tall and the
-   drawing stays pinned near the top for one screen of scrolling while home.js opens and closes it with the
-   scroll. "overflow: clip" keeps the background inside without breaking the pin. Reduced motion: static. */
-@media (min-width: 901px) and (prefers-reduced-motion: no-preference) {
-  .hero { overflow: clip; min-height: calc(200svh - var(--nav-h)); justify-content: flex-start; }
-  .hero__inner { flex: 1; align-items: start; padding-top: var(--space-6); }
-  .hero__art { position: sticky; top: calc(var(--nav-h) + 16px); align-self: start; }
+/* The pinned hero (stage-hero-pin): with motion allowed, the hero is a taller scroll area (two screens less the
+   top bar) and its scene (headline, text, buttons, hint, then the drawing) sticks under the top bar for one
+   screen of scrolling while home.js opens and closes the drawing with the scroll. Then the pin releases and the
+   page scrolls on. The drawing fills the space left under the text and scales as a whole (viewBox, meet), so
+   it is fully visible and keeps its look. "overflow: clip" keeps the background inside without breaking the
+   pin. Reduced motion, or a screen under 600 px tall: no pin, the finished drawing, still, in the page flow. */
+@media (prefers-reduced-motion: no-preference) and (min-height: 600px) {
+  .hero { display: block; overflow: clip; min-height: calc(200svh - var(--nav-h)); }
+  .hero__scene { position: sticky; top: var(--nav-h); height: calc(100svh - var(--nav-h)); display: flex; flex-direction: column; overflow: clip; }
+  .hero__inner { flex: 1; min-height: 0; padding: var(--space-6) var(--space-7) 72px; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: var(--space-6); align-items: stretch; }
+  .hero__art { margin-right: 0; min-height: 0; }
+  .hero__art .breaker { position: absolute; inset: 0; width: 100%; height: 100%; }
+}
+/* Wide screens: the buttons and the hint stand to the right of the headline, so the drawing gets more height. */
+@media (prefers-reduced-motion: no-preference) and (min-height: 600px) and (min-width: 1100px) {
+  .hero__body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 360px); column-gap: var(--space-8); align-items: end; }
+  .hero__body > .label-mono, .hero__title, .hero__lede { grid-column: 1; }
+  .hero__body > .hero__add { grid-column: 2; grid-row: 1 / span 3; margin-top: 0; align-self: end; }
+}
+@media (prefers-reduced-motion: no-preference) and (min-height: 600px) and (max-width: 900px) {
+  .hero__inner { padding: var(--space-5) var(--space-5) 64px; gap: var(--space-5); }
 }
 
 @media (max-width: 700px) {

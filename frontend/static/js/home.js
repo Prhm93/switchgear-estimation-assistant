@@ -3,9 +3,10 @@
  *
  * - The top bar height goes into --nav-h, so the story card sticks just under it.
  * - The hero drawing draws itself on load in about 3 s: the parts first, from the frame outwards, then
- *   the leader lines, then the labels. After that the drawing is pinned (CSS, position: sticky) while the
- *   hero scrolls by, and the scroll through the pinned part opens it and closes it again
- *   (SeaBreaker.setExplode, 0 to 1 to 0, a half sine of the progress), so it is never left open out of view.
+ *   the leader lines, then the labels. After that the whole hero scene (headline, buttons and drawing) is
+ *   pinned (CSS, position: sticky) while the taller hero scrolls by, and the scroll through the pinned part
+ *   opens the drawing and closes it again (SeaBreaker.setExplode, 0 to 1 to 0, a half sine of the progress).
+ *   At the end of the pin the drawing is closed, the pin releases and the page scrolls on.
  * - The story: the step nearest the middle of the screen is worked out here, in one place, and set as
  *   data-step on the section; CSS shows that step's text and caption from the same attribute.
  *
@@ -68,11 +69,13 @@
   function update() {
     queued = false;
     if (exploding && hero && heroSvg) {
-      /* Progress through the pinned part: 0 when the hero's top reaches the top bar, 1 when its bottom
-         reaches the bottom of the screen. Open at the middle, closed at both ends. */
+      /* Progress through the pin: 0 while the hero's top is at the top bar (where the scene sticks), 1 when
+         its bottom reaches the bottom of the screen and the pin releases. Open at the middle, closed at both
+         ends. */
+      var nav = header ? header.offsetHeight : 0;
       var box = hero.getBoundingClientRect();
-      var span = Math.max(1, box.height - window.innerHeight);
-      var p = Math.min(1, Math.max(0, -box.top / span));
+      var span = Math.max(1, box.height - (window.innerHeight - nav));
+      var p = Math.min(1, Math.max(0, (nav - box.top) / span));
       window.SeaBreaker.setExplode(heroSvg, Math.sin(Math.PI * p));
     }
     if (story && steps.length) {

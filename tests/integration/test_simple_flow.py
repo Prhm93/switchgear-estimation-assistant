@@ -330,12 +330,26 @@ def test_a_new_enquiry_with_no_files_still_opens_files(client: TestClient) -> No
 
 
 def test_the_home_sketch_is_pinned_and_opens_and_closes_with_the_scroll() -> None:
+    """Changed on purpose (stage-hero-pin): the whole hero scene is pinned, not the drawing alone. Before, the
+    headline scrolled away while the drawing stuck, and the drawing then slid off with the page. Now the scene
+    (headline, buttons, hint, then the drawing) sticks under the top bar while the taller hero scrolls by, the
+    scroll opens and closes the drawing, and the pin releases at the end, with the drawing closed."""
     static = Path(__file__).parents[2] / "frontend" / "static"
     css = (static / "css" / "app.css").read_text(encoding="utf-8")
-    block = re.search(r"@media \(min-width: 901px\) and \(prefers-reduced-motion: no-preference\) \{(.*?)\n\}", css, re.S)
-    assert block, "only on wide screens with motion allowed"
-    assert "position: sticky" in block.group(1) and ".hero__art" in block.group(1)
-    assert "overflow: clip" in block.group(1)  # overflow: hidden would stop the pin
+    block = re.search(r"@media \(prefers-reduced-motion: no-preference\) and \(min-height: 600px\) \{(.*?)\n\}", css, re.S)
+    assert block, "only with motion allowed and room for the scene"
+    rules = block.group(1)
+    assert re.search(r"\.hero \{[^}]*overflow: clip;[^}]*min-height: calc\(200svh - var\(--nav-h\)\)", rules)
+    assert re.search(r"\.hero__scene \{ position: sticky; top: var\(--nav-h\); height: calc\(100svh - var\(--nav-h\)\);", rules)
+    assert "grid-template-rows: auto minmax(0, 1fr)" in rules  # the text on top, the drawing below it
+    assert re.search(r"\.hero__art \.breaker \{ position: absolute; inset: 0; width: 100%; height: 100%; \}", rules)
+    assert "position: sticky" not in re.search(r"\.hero__art \{[^}]*\}", rules).group(0)  # never the drawing alone
+    assert "overflow: hidden" not in rules  # overflow: hidden would stop the pin
     js = (static / "js" / "home.js").read_text(encoding="utf-8")
     assert "Math.sin(Math.PI * p)" in js and "v <= 1.05" not in js  # closed at both ends of the pinned scroll
+    assert "(nav - box.top) / span" in js and "box.height - (window.innerHeight - nav)" in js  # ends as the pin releases
     assert 'matchMedia("(prefers-reduced-motion: reduce)")' in js  # reduced motion: the still drawing
+    html = (Path(__file__).parents[2] / "frontend" / "templates" / "home.html").read_text(encoding="utf-8")
+    scene = re.search(r'<div class="hero__scene">(.*)</section>', html, re.S).group(1)
+    assert scene.index('class="hero__title"') < scene.index("data-add-text") < scene.index("hero__add-hint") \
+        < scene.index('data-breaker="hero"')  # headline, buttons, hint, then the drawing, all in the scene

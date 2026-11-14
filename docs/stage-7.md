@@ -35,15 +35,29 @@ Laptop, 13 Nov 2026. Full tables, per field group and the error analysis: [evalu
 | Rules + OCR, clean | **0.674** (0.993, 0.510) | 0.940 | 0.196 | 0.948 (0.996, 0.903) |
 | Rules + OCR, scanned | **0.663** (0.989, 0.499) | 0.925 | 0.198 | 0.934 (0.994, 0.880) |
 | Rules + OCR, photo | **0.493** (0.978, 0.329) | 0.752 | 0.063 | 0.814 (0.975, 0.699) |
-| Rules + model | waiting for Colab recordings | | | 0.944 with DXF, 0.643 without (rules + strict v2 model; the model alone: 0.778, 0.561) |
+| Rules + model, DXF | **0.850** (0.842, 0.858) | 0.936 | 0.748 | 0.944 (0.893, 1.000) |
+| Rules + model, no drawing | **0.566** (0.890, 0.415) | 0.634 | 0.487 | 0.643 (0.950, 0.486) |
+| Model alone, DXF | **0.763** (0.832, 0.705) | 0.794 | 0.728 | 0.778 (0.856, 0.713) |
+| Model alone, no drawing | **0.534** (0.882, 0.383) | 0.575 | 0.487 | 0.561 (0.940, 0.400) |
+| Rules + OCR + vision, clean | **0.722** (0.991, 0.568) | 0.945 | 0.357 | no vision recordings |
+| Rules + OCR + vision, scanned | **0.725** (0.984, 0.574) | 0.936 | 0.383 | no vision recordings |
+| Rules + OCR + vision, photo | **0.606** (0.954, 0.444) | 0.809 | 0.297 | no vision recordings |
 
 - **On plain wording the held-out numbers match the test set** (rules with the DXF 1.000 on both; OCR clean 0.940
   against 0.948, scanned 0.925 against 0.934, photo 0.752 against 0.814): the rules and the OCR linker carry over
   to new seeds.
 - **On reworded documents the rules fail**: F1 0.351 with the DXF and 0.013 without, because the reworded
   specification's way tables and clauses are not read (most misses are way ratings, poles, devices and breaking
-  capacities on the specification's way-table page). This is the gap the model is for; its fresh numbers wait for
-  Colab (`docs/colab-all.md`, Cell 6).
+  capacities on the specification's way-table page). This is the gap the model is for.
+- **The model holds its level on new seeds** (recorded on a Colab T4, 13 Nov 2026, the strict v2 quote check,
+  nothing tuned): alone with the DXF it scores 0.794 on plain wording and 0.728 reworded, against 0.778 on the test
+  set and 0.727 on the reworded set. Rules + model with the DXF give 0.850 (0.936 plain, 0.748 reworded): on
+  reworded documents the model more than doubles the rules (0.351 to 0.748). The cost is precision (0.971 to 0.842):
+  454 wrong values against the rules' 52.
+- **The vision model** (110 of 120 sheets read; 10 cut off, reported as not read) raises rules + OCR from 0.674 to
+  0.722 (clean), 0.663 to 0.725 (scanned) and 0.493 to 0.606 (photo). See stage-4.md section 8.
+- All fresh-set numbers are from the same generator as the test set: held out and not tuned on, but not real
+  drawings.
 - Precision stays high everywhere (0.97 to 1.00): the rules miss values far more than they misread them. The 52
   wrong rules values with the DXF are way descriptions read from the DXF where the key names the load ("M.C.C.B.
   160 A 3-POLE Icu=36kA" against "Sprinkler pump").
@@ -63,6 +77,8 @@ The detector holds its Stage 4 level on new seeds; the ACB is still almost never
 - Rules with the DXF: high values right 1678 of 1678; "conflict" values 73 of 125 (0.584; a conflict means the files
   disagree, not that a value is wrong).
 - Rules + OCR on the scanned drawing: high 686 of 686, medium 688 of 689 (0.999), low 9 of 13 (0.692).
+- Cross-checks with the gate, combined mode (rules + model): 9 of 10 found with 23 false flags; without the gate 9 of
+  10 with 67 false flags (the gate lost no conflict here; on the reworded set it lost 2, stage-6.md).
 - Cross-checks with the gate: planted conflicts found 8 of 10, 1 false flag; planted missing values listed 5 of 5
   (test set: 10 of 10, 1 false flag, 4 of 5).
 
