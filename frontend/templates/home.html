@@ -30,6 +30,8 @@
 
 <main id="main" class="home">
   <section class="hero" aria-labelledby="hero-title">
+    {#- stage-hero-pin: the scene is pinned (sticky) while the taller hero scrolls by and drives the drawing. -#}
+    <div class="hero__scene">
     <div class="hero__inner">
       <div class="hero__body">
         <div class="label-mono">An engineer-led way to estimate</div>
@@ -49,6 +51,7 @@
       <div class="hero__art" data-breaker="hero">{{ breaker }}</div>
     </div>
     <div class="hero__foot label-mono"><span>Sample data only</span><span aria-hidden="true">Scroll to explore</span></div>
+    </div>
   </section>
 
   <section class="statement" aria-label="Read. Check. Approve.">

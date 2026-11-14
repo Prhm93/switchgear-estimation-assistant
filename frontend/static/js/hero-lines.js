@@ -12,7 +12,8 @@
  */
 (function () {
   "use strict";
-  var hero = document.querySelector(".hero");
+  // The pinned scene when there is one (stage-hero-pin), so the canvas is one screen, not the whole scroll area.
+  var hero = document.querySelector(".hero__scene") || document.querySelector(".hero");
   if (!hero) return;
   var canvas = document.createElement("canvas");
   var ctx = canvas.getContext("2d");
