@@ -4,6 +4,7 @@ Usage (Colab, after the test sets are unzipped from the laptop-built files)::
 
     python -m backend.record_vision --set test --version scanned
     python -m backend.record_vision --set reworded --version photo --count 2
+    python -m backend.record_vision --set fresh --version clean --projects F12,F15,F19,F20
 
 Each sheet of each drawing version of the set is sent to the vision model on
 the Ollama server (``--url``, ``--model``; ``gemma4:e2b`` by default) and its
@@ -68,7 +69,10 @@ def record(samples: list[DrawingSample], client: VisionClient, out: Path, set_na
                               prompt_version=VISION_PROMPT_VERSION, prompt=VISION_PROMPT,
                               input_name=f"{s.project_id}/{s.path.relative_to(s.path.parents[1]).as_posix()}",
                               input_sha256=hashlib.sha256(data).hexdigest(), sheet=s.sheet, output=output,
-                              seconds=round(time.perf_counter() - start, 2), fake=fake)
+                              seconds=round(time.perf_counter() - start, 2), fake=fake,
+                              reply=(f"cut off, {len(output.ways)} ways kept" if getattr(client, "last_cut_off", False)
+                                     else "complete"),
+                              options=getattr(client, "options", None))
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(rec.model_dump_json(indent=1), encoding="utf-8")
         made += 1
@@ -81,6 +85,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--set", dest="set_name", choices=["test", "reworded", "fresh", "showcase"], default="test")
     parser.add_argument("--version", choices=["clean", "scanned", "photo"], default="scanned")
     parser.add_argument("--count", type=int, default=None, help="first N projects only")
+    parser.add_argument("--projects", default=None, help="only these projects, comma separated (e.g. F12,F15)")
     parser.add_argument("--out", type=Path, default=OUT)
     parser.add_argument("--url", default="http://127.0.0.1:11434")
     parser.add_argument("--model", default="gemma4:e2b")
@@ -89,6 +94,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.count:
         keep = sorted({s.project_id for s in samples})[:args.count]
         samples = [s for s in samples if s.project_id in keep]
+    if args.projects:
+        wanted = {p.strip() for p in args.projects.split(",") if p.strip()}
+        samples = [s for s in samples if s.project_id in wanted]
     if not samples:
         print(f"no drawings for {args.set_name}: unzip the laptop-built set first", file=sys.stderr)
         return 2

@@ -23,6 +23,13 @@ text it saw. Code turns that into values (:func:`vision_values`):
 
 The model gives no counts: the number of ways is counted in code, as for OCR.
 The picture is data, never instructions: the prompt says so.
+
+A reply cut off part-way through the JSON (the model ran out of output room)
+keeps its complete ways, as the Stage 3b recovery does for language-model
+replies (:func:`parse_vision_reply`): each way is either wholly in the reply and
+valid, or dropped; nothing is repaired or guessed. The recording says so
+("cut off, N ways kept"). The output room was raised after 10 of 120 fresh-set
+sheets were cut off on the first Colab run (:data:`VISION_OPTIONS`).
 """
 
 from __future__ import annotations
@@ -49,6 +56,10 @@ the device type (ACB, MCCB, MCB or switch-disconnector), the rating in amperes, 
 the breaking capacity in kA, and the exact text you read for that way.
 Leave a field empty (null) when it is not written. Never guess and never count: list each way once.
 Answer with JSON only, in the given schema."""
+
+# Model options for every live call (saved in each recording). The first fresh-set run used Ollama's default
+# context, and 10 of 120 replies stopped mid-JSON: the context now has room for the picture and a long reply.
+VISION_OPTIONS: dict[str, Any] = {"temperature": 0, "seed": 42, "num_ctx": 8192, "num_predict": 4096}
 
 
 class VisionUnavailable(RuntimeError):
@@ -90,6 +101,8 @@ class VisionRecording(_Strict):
     output: VisionSheetOutput
     seconds: float | None = Field(default=None, ge=0)
     fake: bool = False  # True only for recordings made by tests
+    reply: str = "complete"  # or "cut off, N ways kept" (see parse_vision_reply)
+    options: dict[str, Any] | None = None  # model options of the call; None in recordings made before they were kept
 
     @property
     def label(self) -> str:
@@ -139,6 +152,8 @@ class OllamaVisionClient:
         self.model, self.url, self.timeout = model, url, timeout
         self.label = f"{model} (live), {datetime.now(UTC).date().isoformat()}"
         self.last_seconds: float | None = None
+        self.last_cut_off = False
+        self.options = dict(VISION_OPTIONS)
 
     def read(self, *, file_sha256: str, sheet: int, image: Callable[[], bytes]) -> VisionSheetOutput:
         try:
@@ -146,15 +161,63 @@ class OllamaVisionClient:
 
             start = time.perf_counter()
             reply = ollama.Client(host=self.url, timeout=self.timeout).chat(
-                model=self.model, format=VisionSheetOutput.model_json_schema(), options={"temperature": 0},
+                model=self.model, format=VisionSheetOutput.model_json_schema(), options=dict(self.options),
                 messages=[{"role": "system", "content": VISION_PROMPT},
                           {"role": "user", "content": f"Read sheet {sheet} of this drawing.", "images": [image()]}])
             self.last_seconds = time.perf_counter() - start
-            return VisionSheetOutput.model_validate(json.loads(reply["message"]["content"]))
+            output, self.last_cut_off = parse_vision_reply(reply["message"]["content"])
+            return output
+        except VisionUnavailable:
+            raise
         except (ValidationError, ValueError, KeyError) as error:
             raise VisionUnavailable(f"the vision model's answer did not fit the schema: {error}") from error
         except Exception as error:  # connection errors come from several libraries
             raise VisionUnavailable(f"the vision model could not be reached: {error}") from error
+
+
+def parse_vision_reply(text: str) -> tuple[VisionSheetOutput, bool]:
+    """The model's answer, and whether its reply was cut off.
+
+    A complete JSON reply must fit the schema as a whole (else
+    :class:`VisionUnavailable`). A reply that stops part-way keeps every way
+    that is complete and valid on its own, read one by one with the standard
+    JSON decoder up to the first incomplete one; a reply with no complete way is
+    not read.
+    """
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        ways = _complete_ways(text)
+        if not ways:
+            raise VisionUnavailable("the vision model's reply was empty or cut off before the first complete way")
+        return VisionSheetOutput(ways=ways), True
+    try:
+        return VisionSheetOutput.model_validate(data), False
+    except ValidationError as error:
+        raise VisionUnavailable(f"the vision model's answer did not fit the schema: {error}") from error
+
+
+def _complete_ways(text: str) -> list[VisionWay]:
+    m = re.search(r'"ways"\s*:\s*\[', text)
+    if not m:
+        return []
+    decoder = json.JSONDecoder()
+    ways: list[VisionWay] = []
+    i = m.end()
+    while True:
+        while i < len(text) and text[i] in " \t\r\n,":
+            i += 1
+        if i >= len(text) or text[i] == "]":
+            break
+        try:
+            item, i = decoder.raw_decode(text, i)
+        except json.JSONDecodeError:
+            break  # the incomplete way at the end: dropped
+        try:
+            ways.append(VisionWay.model_validate(item))
+        except ValidationError:
+            continue  # complete but outside the schema: dropped, never fixed
+    return ways
 
 
 def make_vision_client(settings: Any) -> VisionClient | None:
