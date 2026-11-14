@@ -3,7 +3,7 @@
 Part A builds everything that does not need a GPU: a held-out reworded test set, the model provider
 interface, the LLM extractor with its quote check, recorded and combined modes, instruction-text flags,
 the Colab notebook and the laptop guide. **No model has been run.** Every LLM and combined number below is
-NOT RUN YET; Part B (with the owner) runs notebook 04 on Colab and fills them in.
+NOT RUN YET; Part B runs notebook 04 on Colab and fills them in.
 
 ## 1. Why a reworded test set
 

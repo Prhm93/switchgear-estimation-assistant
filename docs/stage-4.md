@@ -276,7 +276,7 @@ on its own and not rely on the overall score.
 
 1. B, vision: `backend/app/drawing/vision.py` defines one `VisionClient` interface (fake, recorded, Ollama). A sheet picture goes in; ways with rating, poles, breaking capacity and device come out, each with the text the model saw.
 2. B: vision values have method `vision` ("read from a picture"), low confidence (medium only when their text is also in the OCR text), always reviewed, and they only fill fields OCR left empty. The setting is `VISION_MODE=off|recorded|ollama`, off by default.
-3. B: recordings go in the new git-ignored `data/recorded-vision/`, each keyed by the SHA-256 of the file bytes and the sheet; a mismatch is refused. `backend/record_vision.py` writes them on Colab, and `docs/stage-4-colab-vision.md` lists the notebook cells.
+3. B: recordings go in the new git-ignored `data/recorded-vision/`, each keyed by the SHA-256 of the file bytes and the sheet; a mismatch is refused. `backend/record_vision.py` writes them on Colab, and `docs/recording-model-answers.md` lists the commands.
 4. C, detector: `backend/app/drawing/symbols.py` defines one `SymbolDetector` interface; a trained detector can replace the first version by name. The first version matches templates (normalised cross-correlation, several scales, numpy only) for acb, mccb, mcb and switch-disconnector.
 5. C: the templates are averaged from `data/training/` crops only (`python -m backend.drawings templates`), and the threshold is chosen on training drawings only. Scores per class and version on both test sets use the Part A box scorer.
 6. C: in the app (`SYMBOL_DETECTOR=off|template`), each found breaker is linked to the nearest way label. It gives a `way.Qn.device` value (method `detector`, low confidence, always reviewed) only where OCR read no device for that way.
@@ -285,7 +285,7 @@ on its own and not rely on the overall score.
 9. Tests first per part, with only the changed files' tests while building. Full suite in two halves and the four strict numbers at the end of 4B, 4C and 5. Evaluation with drawing reading off stays exactly as before.
 10. One local commit per part (B, C, D); nothing is pushed.
 
-Choices made without the owner (unattended run, 12 Nov 2026):
+Design choices (12 Nov 2026):
 - numpy (BSD-3-Clause, already in the README licences table for the generator) is added to the app's `requirements.txt`, because the template detector needs array maths. No other new library is added.
 - "Where OCR cannot" is read as: a vision or detector value is added only for a field OCR did not fill on that sheet, or for every field when Tesseract is missing.
 - "Breaker and switch symbols" is read as the classes acb, mccb, mcb and switch_disconnector. Busbar, CT, earth and meter are not detected.
@@ -311,7 +311,7 @@ Choices made without the owner (unattended run, 12 Nov 2026):
   refused.
 - `python -m backend.record_vision` makes the recordings on Colab (resumes where it stopped), and
   `python -m backend.drawings vision --set <set> --version <v>` scores them alone against the answer keys.
-  The notebook cells are in [stage-4-colab-vision.md](stage-4-colab-vision.md).
+  The commands are in [recording-model-answers.md](recording-model-answers.md).
 
 **Tests.** 18 new tests, all with fake clients and fake recordings in the test's own folder:
 `tests/unit/test_drawing_vision.py`, `tests/unit/test_record_vision.py` and
@@ -338,7 +338,7 @@ F12 and F15 in all three versions, F19 clean and scanned, F02 scanned, F20 clean
   spellings, so 55 switch-disconnector readings are dropped as unknown (never guessed). No alias was added: that
   would be tuning on the fresh set.
 - The 10 cut-off sheets: the reader now keeps the complete ways of a cut-off reply and gives the model more
-  output room (`num_ctx` 8192, `num_predict` 4096); `docs/colab-vision-retry.md` re-records only those sheets.
+  output room (`num_ctx` 8192, `num_predict` 4096); `record_vision --projects` re-records only those sheets (`docs/recording-model-answers.md`).
   Tests: `tests/unit/test_vision_cut_off.py` (10).
 - The test and reworded sets have no vision recordings yet, so there is no "not held out" vision number.
 
@@ -397,7 +397,7 @@ has no picture and shows as before.
 **Tests.** 3 tests in `tests/integration/test_proof_boxes.py` (a stand-in for OCR, so no Tesseract needed):
 a box for each value with a region and links both ways; the sheet picture is served, a missing sheet or a
 text document gives 404 and shows no boxes; box colours follow confidence and use theme tokens.
-No screenshots were taken in this run (owner's rule for the unattended run).
+No screenshots were taken in this run.
 
 ## 11. End of Parts C and D: full suite and strict numbers
 

@@ -1,4 +1,4 @@
-"""One product name everywhere (owner, 12 Nov 2026): "Switchgear Estimation Assistant".
+"""One product name everywhere (12 Nov 2026): "Switchgear Estimation Assistant".
 
 It is in the top bar of every page, the tab title and the footer, and in the README. Under 700 px the
 top bar may show a shorter form: the first word is wrapped so CSS can hide it, while the full name

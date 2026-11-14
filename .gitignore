@@ -30,3 +30,12 @@ data/recorded-ask/
 # Stage 7: saved rows of an evaluation run, so a stopped run resumes (never committed)
 data/eval-*-partial.json
 data/eval-*-partial.tmp
+
+# Local recordings: only the README of data/recorded/ is committed
+data/recorded/*
+!data/recorded/README.md
+data/recorded-v1/
+# Local sample stock data (not part of the committed project)
+data/catalogue/stock.csv
+data_generator/stock.py
+tests/unit/test_stock.py

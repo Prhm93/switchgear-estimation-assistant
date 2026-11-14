@@ -477,7 +477,7 @@ def section(set_name: str, label: str, names: list[str], versions: tuple[str, ..
                       f"{f1('way.*.poles')} | {f1('way.*.breaking_capacity')} | {_f(a.precision)}, {_f(a.recall)}, "
                       f"**{_f(a.f1)}** ({a.tp}/{a.fp}/{a.fn}) | {sum(r.get('padded', 0) for r in saved)} |")
     if not any_vision:
-        vision = ["Waiting for Colab recordings of the drawing pictures (`docs/colab-all.md`, Cell 8)."]
+        vision = ["Waiting for Colab recordings of the drawing pictures (`docs/recording-model-answers.md`)."]
     det = ["| Version | TP | FP | FN | P | R | F1 | acb found | s/sheet |", "|---|---|---|---|---|---|---|---|---|"]
     for v in versions:
         classes: dict[str, list[int]] = {}

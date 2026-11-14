@@ -98,7 +98,7 @@ python -m backend.app.design.contrast
 | `tests/integration/test_health_page.py` | 6 | `/healthz` with no database and with an unreachable one, every component on the page, banned wording, fonts, CSS and icons served |
 | `tests/integration/test_database.py` | 2 | pgvector installed and `/healthz` reports `ok` against a real database (skipped without `DATABASE_URL`) |
 
-I also checked the page visually with headless Edge screenshots at 1280 px wide: the full page (`docs/images/stage-0-health-check.png`) and the first 800 px (`docs/images/stage-0-first-screen.png`). The screenshots exposed layout defects in both rounds, which were fixed before the final capture: wrapped card metadata, a full-width toggle and a stretched badge in the first; a cramped conflict pair and a wrapped button row in the second.
+I also checked the page visually with headless Edge screenshots at 1280 px wide: the full page and the first 800 px. The screenshots exposed layout defects in both rounds, which were fixed before the final capture: wrapped card metadata, a full-width toggle and a stretched badge in the first; a cramped conflict pair and a wrapped button row in the second.
 
 ## Results (all run on 5 November 2026, after the design revision)
 
@@ -176,18 +176,11 @@ All 32 pairs pass.
 | File | Change |
 |---|---|
 | `pyproject.toml` | `pythonpath = ["src"]` became `["ai_engine", "."]` (`.` makes `backend` importable). Test markers and project metadata were added |
-| `notebooks/01-colab-run-agent.ipynb`, cell 9 | `!mkdir -p src/estimation_assistant` and `!touch src/estimation_assistant/__init__.py` now use `ai_engine/estimation_assistant`; `sys.path.insert(0, "src")` became `sys.path.insert(0, "ai_engine")` |
-| `notebooks/01-colab-run-agent.ipynb`, cells 11, 13, 15, 17, 19 | `%%writefile src/estimation_assistant/{schemas,tools,retrieval,checks,agent}.py` now writes to `ai_engine/estimation_assistant/...` |
-| `notebooks/02-colab-rag.ipynb`, cell 28 | The same `mkdir`, `touch` and `sys.path` changes as notebook 01, cell 9 |
-| `notebooks/02-colab-rag.ipynb`, cells 30, 32, 34, 36, 38 | `%%writefile` targets moved to `ai_engine/estimation_assistant/...` |
-| `notebooks/02-colab-rag.ipynb`, cell 40 | `!ls -l` and `!grep` paths moved to `ai_engine/estimation_assistant/...` |
-| `notebooks/02-colab-rag.ipynb`, cell 45 | `!ls -l src/estimation_assistant` became `!ls -l ai_engine/estimation_assistant` |
-| `notebooks/03-colab-vision.ipynb` | No change needed: it does not write or import the package |
-| `docs/01-tool-layer-and-safe-execution.ipynb` (cells 0, 5), `docs/02-agent-loop.ipynb` (cells 0, 6), `docs/03-retrieval.ipynb` (cell 1), `tutorials/02-tools-and-agent-loop.ipynb` (cell 64) | Path mentions in the text updated |
+| `docs/01-tool-layer-and-safe-execution.ipynb` (cells 0, 5), `docs/02-agent-loop.ipynb` (cells 0, 6), `docs/03-retrieval.ipynb` (cell 1) | Path mentions in the text updated |
 | `data/README.md`, `README.md` | Path mentions updated |
 | `tests/test_*.py` | Moved to `tests/unit/`, contents unchanged |
 
-Only cell sources were edited. Saved cell outputs were left as they were, because they record past runs; notebook 02's saved outputs still show `src/...` paths. The notebooks have not been re-run on Colab since the move.
+Only cell sources were edited. Saved cell outputs were left as they were, because they record past runs. The notebooks have not been re-run on Colab since the move.
 
 ## Cap Docker and WSL memory
 
@@ -228,39 +221,6 @@ Docker Desktop runs inside a WSL 2 virtual machine. Without a cap, WSL may use u
    Expect about 3.1 GB (3,100,000,000 bytes, give or take).
 
 Later stages that build PyTorch images may need the cap raised to 4 GB while building.
-
-## Renaming the GitHub repo and the local folder
-
-The GitHub remote is still `Prhm93/agentic-rag-assistant`. To rename (I have not done this):
-
-1. On GitHub: open the repo, then **Settings**, **General**, **Repository name**, enter `switchgear-estimation-assistant`, and click **Rename**. GitHub redirects the old URL.
-2. Point the local clone at the new URL:
-
-   ```powershell
-   git remote set-url origin https://github.com/Prhm93/switchgear-estimation-assistant.git
-   git remote -v
-   ```
-
-3. Rename the local folder. First close every editor, terminal and notebook using it, then:
-
-   ```powershell
-   docker compose down          # from the repo folder; the volume keeps its name
-   cd D:\parham\Parham_Learning
-   Rename-Item agentic-ai switchgear-estimation-assistant
-   cd switchgear-estimation-assistant
-   ```
-
-4. Recreate the virtual environment, because a venv stores absolute paths and breaks when its folder moves:
-
-   ```powershell
-   Remove-Item -Recurse -Force .venv
-   python -m venv .venv
-   .venv\Scripts\Activate.ps1
-   pip install -r requirements-dev.txt
-   python -m pytest
-   ```
-
-5. Run `docker compose up -d`. The compose project name is fixed (`switchgear-estimation-assistant`), so the database volume is reused.
 
 ## Known limits
 

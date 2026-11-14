@@ -1,6 +1,6 @@
 """The six tiles on an enquiry's Summary page (Stage UX visual pass, V4), worked out from the enquiry.
 
-Owner decisions of 12 Nov 2026: the cost tile says "Waiting for approvals" until something is approved,
+Design decisions of 12 Nov 2026: the cost tile says "Waiting for approvals" until something is approved,
 then shows the total built from approved values only, marked "Draft, from N of M lines". The missing
 tile counts required fields that no file gives ("Required, not found", from the app's own list of
 required fields, not from the specification) and shows TBC values apart, as "Marked TBC".
@@ -84,7 +84,7 @@ def test_missing_counts_required_fields_and_keeps_tbc_apart() -> None:
 
 
 def test_the_decision_count_leaves_out_the_accept_all_line() -> None:
-    """Owner, 12 Nov 2026: "Accept all agreeing values" is not a decision. The count is conflicts plus
+    """Design decision, 12 Nov 2026: "Accept all agreeing values" is not a decision. The count is conflicts plus
     values to review, and the agreeing values are shown apart."""
     from collections import OrderedDict
 

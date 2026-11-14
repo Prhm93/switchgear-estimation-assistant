@@ -63,102 +63,9 @@ Three numbers are not measured yet and read `[PLACEHOLDER]`:
 
 "Model answers must quote their source" is marked as a Stage 3 feature. "Sign in" is hidden until Stage 8.
 
-## Screenshots next to the mockups
+## Mockups
 
-Taken with headless Edge from the Docker stack, after the showcase was uploaded, agreed values approved and the estimate built.
-- **1440 px**: taken directly.
-- **390 px**: headless Edge keeps a minimum viewport of 518 px (measured: `innerWidth` was 518 at `--window-size=390`). So each page was framed in a 390 px iframe and the image cropped to 390 px.
-
-Long pages are cut at the bottom.
-
-### Home page (`/`)
-
-The approved design is [`docs/design/mockup-home.html`](design/mockup-home.html) (open it in a browser).
-
-| 1440 px | 390 px |
-|---|---|
-| ![Home page, 1440 px](images/design-v2-home-1440.png) | ![Home page, 390 px](images/design-v2-home-390.png) |
-
-### Projects (`/projects`)
-
-
-
-| 1440 px | 390 px |
-|---|---|
-| ![Projects, 1440 px](images/design-v2-projects-1440.png) | ![Projects, 390 px](images/design-v2-projects-390.png) |
-
-### Project dashboard (`/projects/{id}`)
-
-The approved design is [`docs/design/mockup-dashboard.html`](design/mockup-dashboard.html) (open it in a browser).
-
-| 1440 px | 390 px |
-|---|---|
-| ![Project dashboard, 1440 px](images/design-v2-dashboard-1440.png) | ![Project dashboard, 390 px](images/design-v2-dashboard-390.png) |
-
-### New project (`/projects/new`)
-
-
-
-| 1440 px | 390 px |
-|---|---|
-| ![New project, 1440 px](images/design-v2-new-1440.png) | ![New project, 390 px](images/design-v2-new-390.png) |
-
-### Documents and upload (`/projects/{id}/upload`)
-
-
-
-| 1440 px | 390 px |
-|---|---|
-| ![Documents and upload, 1440 px](images/design-v2-upload-1440.png) | ![Documents and upload, 390 px](images/design-v2-upload-390.png) |
-
-### Analysis (`/projects/{id}/analysis`)
-
-
-
-| 1440 px | 390 px |
-|---|---|
-| ![Analysis, 1440 px](images/design-v2-analysis-1440.png) | ![Analysis, 390 px](images/design-v2-analysis-390.png) |
-
-### Review (`/projects/{id}/review`)
-
-
-
-| 1440 px | 390 px |
-|---|---|
-| ![Review, 1440 px](images/design-v2-review-1440.png) | ![Review, 390 px](images/design-v2-review-390.png) |
-
-### Estimate (`/projects/{id}/estimate`)
-
-
-
-| 1440 px | 390 px |
-|---|---|
-| ![Estimate, 1440 px](images/design-v2-estimate-1440.png) | ![Estimate, 390 px](images/design-v2-estimate-390.png) |
-
-### Audit log (`/projects/{id}/audit`)
-
-
-
-| 1440 px | 390 px |
-|---|---|
-| ![Audit log, 1440 px](images/design-v2-audit-1440.png) | ![Audit log, 390 px](images/design-v2-audit-390.png) |
-
-### Error page (`a 404, for example /projects/999`)
-
-
-
-| 1440 px | 390 px |
-|---|---|
-| ![Error page, 1440 px](images/design-v2-error-1440.png) | ![Error page, 390 px](images/design-v2-error-390.png) |
-
-### System check (`/health`)
-
-
-
-| 1440 px | 390 px |
-|---|---|
-| ![System check, 1440 px](images/design-v2-health-1440.png) | ![System check, 390 px](images/design-v2-health-390.png) |
-
+The approved designs are [`docs/design/mockup-home.html`](design/mockup-home.html) (home page) and [`docs/design/mockup-dashboard.html`](design/mockup-dashboard.html) (project dashboard); open them in a browser.
 
 ## Differences from the mockups, and why
 
@@ -289,7 +196,6 @@ Then open:
 
 ## Known limits
 
-- Some screenshots are cut at the bottom; they show each page's layout, not every row.
 - On a 390 px phone, the wide tables (dashboard values, estimate lines, audit log) scroll sideways inside their card.
 - The home page counts come from the newest project whose name contains "showcase"; no such project means `[PLACEHOLDER]`.
 - The analysis screen still shows document text, not a rendered page image; highlighted regions on drawings arrive with Stage 4.

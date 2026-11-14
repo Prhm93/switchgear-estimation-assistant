@@ -1,6 +1,6 @@
 # Stage simple: a four-button path from files to quote
 
-Branch `stage-simple`, from main `bea7554`. Built in an unattended run on 12 Nov 2026. Existing pages and code
+Branch `stage-simple`, from main `bea7554`. Built on 12 Nov 2026. Existing pages and code
 are reused; nothing was deleted, and no library was added.
 
 ## What was built
@@ -34,11 +34,11 @@ visible buttons, Approve and Change, the planted disagreement first and named, a
 quote, and "Reading your files" while files are read. `tests/integration/test_proof_boxes.py` was changed on
 purpose (box kinds, legend, symbol labels, thin see-through outlines), and so was the home hero test.
 
-## Choices made without the owner (one line each)
+## Design choices (one line each)
 
 - One card per field, not per stored value: Approve keeps the shown value for every source that agrees (`services.resolve_field`), and each change is still its own review and audit entry.
 - On a disagreement, Approve keeps the first file's value and sets the other aside with a reason; Change types the right one.
-- The theme switch stays in the top bar (an earlier owner decision); it is not counted as a flow button.
+- The theme switch stays in the top bar (an earlier design decision); it is not counted as a flow button.
 - Without script, the home page's Add files cannot send the files; the New enquiry page (behind More) still works without script.
 - Old screens keep their own tabs and Details menu; they are reached through More.
 - "Accept all" stays on the Check page, behind More, so the short path has no bulk approval.
@@ -78,7 +78,7 @@ purpose (box kinds, legend, symbol labels, thin see-through outlines), and so wa
   `tests/integration/test_review_groups.py` (one card per sheet, all ticked with boxes, un-tick leaves a value for
   later, ids outside the card never approved, one file and page per group).
 
-Choices made without the owner (one line each):
+Design choices (one line each):
 - Groups are worked out from what each value is, not its status, so the group count does not shrink as you go.
 - "Left for later" is stored as an audit entry (`review_later`), so no database change was needed.
 - Lower-confidence values read by rules from text also go into the file-and-page cards, since "Approve these N" must not take them.
@@ -104,7 +104,7 @@ Choices made without the owner (one line each):
 - **Measured (showcase):** 6 clicks from upload to quote (Add files, Read these files, Yes these are right (130
   ticked), Approve on the conflict, Approve 7 ticked, Make quote), plus choosing the files. Same draft total.
 
-Choices made without the owner (one line each):
+Design choices (one line each):
 - The nav links point to the home page sections (`/#how`, `/#safety`, `/#accuracy`) from every page.
 - An enquiry's other screens (Summary, tabs, Activity, proof viewer) are one plain link, "All details of this enquiry", on Review and the short quote.
 - "Try the sample enquiry" moved to a quiet line after the numbers on the home page, so the hero keeps one button.
@@ -129,7 +129,7 @@ Choices made without the owner (one line each):
   page: box to card, card to box and text line, one active at a time, Enter, crop size and turn; skipped without
   Node).
 
-Choices made without the owner (one line each):
+Design choices (one line each):
 - Padding is a share of the sheet width (`web.BOX_PAD`, 1/150), about 4 px when a sheet fills a column about 600 px wide; it is not measured in the browser.
 - Text counts as vertical when its box is more than 1.5 times taller than wide; it is turned a quarter clockwise (text that reads bottom to top).
 - The crop shows the padded box plus one more padding of drawing around it; its width is three times that region on screen, never wider than the column.

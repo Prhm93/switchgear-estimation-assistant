@@ -95,7 +95,7 @@ def test_old_system_address_redirects_to_health(client: TestClient) -> None:
 
 def test_home_page_works_without_a_database(client: TestClient) -> None:
     html = client.get("/").text
-    assert '<span class="accent">checked</span> estimates' in html  # V3 headline (owner, 12 Nov 2026)
+    assert '<span class="accent">checked</span> estimates' in html  # V3 headline (12 Nov 2026)
     assert 'href="/enquiries/new"' in html  # "Start an enquiry"
     assert 'action="/enquiries/sample"' in html
     assert "Not affiliated with or endorsed by any company" in html

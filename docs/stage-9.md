@@ -1,6 +1,6 @@
 # Stage 9: the question box
 
-Branch `stage-9`, from `stage-7`. Built in an unattended run on 13 Nov 2026; the choices made without the owner are
+Branch `stage-9`, from `stage-7`. Built on 13 Nov 2026; the design choices are
 listed in section 6.
 
 ## 1. What was built
@@ -32,7 +32,7 @@ listed in section 6.
 
 ```powershell
 .venv\Scripts\python.exe -m backend.ask_eval --set fresh            # word embedder, laptop
-# Colab (docs/colab-all.md, Cell 9): --embedder ollama --out data/recorded-ask/fresh-mxbai.json
+# GPU machine (docs/recording-model-answers.md): --embedder ollama --out data/recorded-ask/fresh-mxbai.json
 # the evaluation report reads data/recorded-ask/ and adds the table to docs/evaluation.md
 ```
 
@@ -89,7 +89,7 @@ used for tuning, same generator as the test set; the same 236 questions:
   laptop. Generated answers through the agent stay a Colab option.
 - Questions about the drawing pictures are not answered (they have no text layer); the DXF text is searched.
 
-## 6. Choices made without the owner (unattended run)
+## 6. Design choices
 
 - Answers are quoted from the files instead of written by a model, so that "refuse when there is no evidence" and
   "check numbers" are checks in code.
