@@ -451,7 +451,9 @@ def section(set_name: str, label: str, names: list[str], versions: tuple[str, ..
     vision = ["Each sheet of the version is one picture sent to the vision model (recorded on Colab). A sheet "
               "without a recording is **not read**: it is left out of these scores, never counted as an empty "
               "reading or an error. Scores are on the drawing's way values (device, rating, poles, breaking "
-              "capacity) of the sheets that were read; \"empty ways\" are ways the model listed with nothing read.", "",
+              "capacity) of the sheets that were read. \"All\" is against every value the key gives for those sheets; the "
+              "model is asked only for ways, so its recall is low by design. \"Empty ways\" are ways the model listed "
+              "with nothing read.", "",
               "| Version | Sheets read | Not read | Device F1 | Rating F1 | Poles F1 | Breaking F1 | All (P, R, F1) "
               "| Empty ways |", "|---|---|---|---|---|---|---|---|---|"]
     any_vision = False
