@@ -45,3 +45,15 @@ Known weak points to discuss openly, each with what was measured and what is not
    survived because they were written to Google Drive and the recorders resume (`--resume`, skip what exists).
 11. **Ollama server stopped between cells.** Calls then fail with "connection refused"; the cell list now says to
    start `ollama serve` again before the next cell. The vision recorder lists the sheets that failed and carries on with the rest.
+12. **The question box once showed an unrelated passage for a rating question.** With the word embedder (the
+   laptop default), "What IP rating is the enclosure?" on the showcase quoted "3.1 Rated operational voltage",
+   because "rated" and "rating" share a stem and the search matches words, not meaning. The right clause was in the
+   best three. The answer always names its file and page, so the wrong passage is visible, but it is still a wrong
+   answer. mxbai-embed-large ranks better on the fresh set (right passage first 0.708 against 0.593) but is only
+   available where Ollama runs.
+13. **A stray "2" in an answer sentence.** Asked "What IP rating is asked for?", the box answered: schematic.dxf,
+   sheet 1 says: "2. DEGREE OF PROTECTION: IP54" 2 is read from the file and not approved by an engineer yet.
+   Cause (checked in `backend/app/rag.py`): the number check skips a clause number like "3.4 " at the start of a
+   line, but not a one-level item number like "2. ", so the 2 is taken as a value; the 54 of "IP54" is skipped
+   because digits joined to letters are not read as numbers. The quote itself is right; the sentence after it is
+   wrong. Not fixed yet: the fix is to skip "N. " item numbers too and to read the number in "IP54".
