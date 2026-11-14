@@ -13,6 +13,12 @@ at it):
 - field values: precision, recall and F1 per field group and over all fields, for the rules with the DXF, the
   rules without the DXF (drawing not read), the rules plus OCR on each drawing version (no DXF), and the rules
   plus the model (recorded runs; "waiting for Colab recordings" when there are none for the set);
+- the model alone (strict v2 quote check, recorded runs), next to the rules plus the model;
+- the vision model (recorded runs): rules plus OCR plus vision per drawing version, and the vision model alone on
+  the drawing's ways; a sheet without a recording (the model's reply was cut off on Colab) is counted as "not read",
+  never scored as an empty reading and never as an error;
+- the question box search (Stage 9) from the saved ``data/recorded-ask/<set>-*.json`` files: the word embedder and
+  mxbai-embed-large side by side, with how many refusals were right;
 - the symbol detector: precision and recall per drawing version (IoU at least 0.5, the Stage 4 scorer);
 - confidence calibration (Stage 6): share right per level, with the DXF and with OCR on the scanned drawing;
 - cross-checks with the Stage 6 gate: planted conflicts found and false flags;
@@ -48,6 +54,8 @@ from backend.app.evaluation import Score, field_group, total
 from backend.app.paths import REPO_ROOT
 
 DOC = REPO_ROOT / "docs" / "evaluation.md"
+ASK_DIR = REPO_ROOT / "data" / "recorded-ask"
+VISION_DIR = REPO_ROOT / "data" / "recorded-vision"
 PARTIAL = REPO_ROOT / "data" / "eval-{set}-partial.json"
 VERSIONS = ("clean", "scanned", "photo")
 WAITING = "waiting for Colab recordings"
@@ -153,10 +161,22 @@ class Partial:
 
     def put(self, row: str, project: str, result: Any) -> None:
         self.data["done"][f"{row}|{project}"] = result
+        self._save()
+
+    def _save(self) -> None:
         tmp = self.path.with_suffix(".tmp")
         tmp.parent.mkdir(parents=True, exist_ok=True)
         tmp.write_text(json.dumps(self.data), encoding="utf-8")
         os.replace(tmp, self.path)  # a stop during the write never leaves half a file
+
+    def drop(self, prefixes: list[str]) -> int:
+        """Forget every saved row whose name starts with one of ``prefixes`` (to score new recordings)."""
+        gone = [k for k in self.data["done"] if k.split("|")[0].startswith(tuple(prefixes))]
+        for k in gone:
+            del self.data["done"][k]
+        if gone:
+            self._save()
+        return len(gone)
 
     def rows(self, row: str, projects: list[str]) -> list[Any] | None:
         """The saved results of every project of ``row``, or None if any is missing."""
@@ -223,6 +243,70 @@ READINGS: dict[str, dict[str, Any]] = {
 }
 
 
+_VISION: dict[str, Any] = {}
+
+
+def vision_client():
+    """The recorded vision client (loaded once per run), or None when there are no recordings."""
+    from backend.app.drawing.vision import RecordedVisionClient, VisionUnavailable
+
+    if "client" not in _VISION:
+        try:
+            _VISION["client"] = RecordedVisionClient(VISION_DIR)
+        except VisionUnavailable:
+            _VISION["client"] = None
+    return _VISION["client"]
+
+
+def _samples(set_name: str) -> list:
+    from backend.app.drawing.data import evaluation_drawings
+
+    if _VISION.get("set") != set_name:
+        _VISION["set"], _VISION["samples"] = set_name, evaluation_drawings(set_name)
+    return _VISION["samples"]
+
+
+def has_vision(set_name: str) -> bool:
+    """True when at least one vision recording exists for this set (only file names are looked at)."""
+    return any((VISION_DIR / set_name).glob("*/*.json"))
+
+
+def vision_sheets(set_name: str, project: str, version: str) -> tuple[list, list[str]]:
+    """(samples with a recording, names of the sheets not read) for one project and drawing version."""
+    import hashlib
+
+    client = vision_client()
+    read, not_read = [], []
+    for s in _samples(set_name):
+        if s.project_id != project or s.version.value != version:
+            continue
+        sha = hashlib.sha256(s.path.read_bytes()).hexdigest()
+        if client is not None and (sha, s.sheet) in client.recordings:
+            read.append((s, client.recordings[(sha, s.sheet)].output))
+        else:
+            not_read.append(f"{project} {s.path.name} sheet {s.sheet}")
+    return read, not_read
+
+
+def vision_alone(set_name: str, folder: Path, version: str) -> dict:
+    """The vision model's answers alone, scored on the drawing's ways; unread sheets listed, not scored."""
+    from backend.app.drawing.vision import vision_values
+    from backend.app.evaluation import score
+
+    start = time.perf_counter()
+    read, not_read = vision_sheets(set_name, folder.name, version)
+    grouped: dict[str, Score] = {}
+    padded = 0
+    for s, output in read:
+        values = vision_values(output, file=s.path.name, version=s.version, sheet=s.sheet, ocr_text="", filled=set())
+        for g, sc in score(values, s.values).items():
+            grouped.setdefault(g, Score()).add(sc)
+        # ways the model listed with nothing read at all (no device, rating, poles or breaking capacity)
+        padded += sum(all(x is None for x in (w.device, w.rating_a, w.poles, w.breaking_ka)) for w in output.ways)
+    return {"scores": _scores(grouped), "sheets": [len(read), len(read) + len(not_read), not_read],
+            "padded": padded, "seconds": round(time.perf_counter() - start, 2)}
+
+
 def read_project(set_name: str, folder: Path, row: str, options: dict[str, Any]) -> dict:
     """One project read one way: its scores, mismatches and, where used, calibration and cross-check counts."""
     from backend.app.evaluation import score
@@ -232,12 +316,20 @@ def read_project(set_name: str, folder: Path, row: str, options: dict[str, Any])
     from data_generator.project import load_answers
 
     key = load_answers(folder / "answers.json")
+    options = dict(options)
+    if options.pop("vision", False):
+        options["vision"] = vision_client()
     start = time.perf_counter()
     values = project_values(folder, set_name=set_name, **options)
     seconds = time.perf_counter() - start
     wrong, missed = plain(*mismatches(values, key.values))
     result: dict[str, Any] = {"scores": _scores(score(values, key.values)), "wrong": wrong, "missed": missed,
                               "seconds": round(seconds, 2)}
+    if row.startswith("vision_"):
+        _, not_read = vision_sheets(set_name, folder.name, options["drawing_version"])
+        total_sheets = sum(1 for s in _samples(set_name)
+                           if s.project_id == folder.name and s.version.value == options["drawing_version"])
+        result["sheets"] = [total_sheets - len(not_read), total_sheets, not_read]
     if row in ("rules_dxf", "ocr_scanned"):
         result["calibration"] = [[lv, ok] for lv, _, ok in project_pairs(values, key.values)]
     if row == "rules_dxf":
@@ -288,11 +380,18 @@ def run_set(set_name: str, folders: list[Path], versions: tuple[str, ...], parti
 
     v2 = next(c for c in columns() if c.label == "v2")
     if has_recordings(v2, folders, set_name):
-        for dxf in (True, False):
-            row = f"combined_{'dxf' if dxf else 'nodxf'}"
-            each(row, lambda f, dxf=dxf, row=row: read_project(
-                set_name, f, row, {"with_dxf": dxf, "mode": "combined", "recorded_dir": v2.recorded_dir,
-                                   "prompt_version": v2.prompt_version}))
+        for mode, name in (("combined", "combined"), ("llm", "llm")):
+            for dxf in (True, False):
+                row = f"{name}_{'dxf' if dxf else 'nodxf'}"
+                each(row, lambda f, dxf=dxf, row=row, mode=mode: read_project(
+                    set_name, f, row, {"with_dxf": dxf, "mode": mode, "recorded_dir": v2.recorded_dir,
+                                       "prompt_version": v2.prompt_version}))
+    if has_vision(set_name):
+        for v in versions:
+            each(f"visiononly_{v}", lambda f, v=v: vision_alone(set_name, f, v))
+        for v in versions:
+            row = f"vision_{v}"
+            each(row, lambda f, row=row, v=v: read_project(set_name, f, row, {**READINGS[f"ocr_{v}"], "vision": True}))
 
 
 # --- writing the report from the saved rows -------------------------------------------------------------------
@@ -330,14 +429,53 @@ def section(set_name: str, label: str, names: list[str], versions: tuple[str, ..
     if "ocr_scanned" in got:
         examples.append(("Rules + OCR, scanned drawing, no DXF", [w for r in got["ocr_scanned"] for w in r["wrong"]],
                          [m for r in got["ocr_scanned"] for m in r["missed"]]))
-    for dxf in ("dxf", "nodxf"):
-        saved = partial.rows(f"combined_{dxf}", names)
-        drawing = "DXF" if dxf == "dxf" else "none"
+    for name, method in (("combined", "Rules + model"), ("llm", "Model alone")):
+        for dxf in ("dxf", "nodxf"):
+            saved = partial.rows(f"{name}_{dxf}", names)
+            drawing = "DXF" if dxf == "dxf" else "none"
+            if saved is None:
+                rows.append(f"| {method}{' (v2, strict)' if name == 'llm' else ''} | {drawing} | {WAITING} |")
+            else:
+                got[f"{name}_{dxf}"] = saved
+                add(f"{name}_{dxf}", f"{method} (v2, strict)", drawing, f"{method}, {drawing}")
+    if "combined_nodxf" in got:
+        examples.append(("Rules + model (v2, strict), no DXF", [w for r in got["combined_nodxf"] for w in r["wrong"]],
+                         [m for r in got["combined_nodxf"] for m in r["missed"]]))
+    for v in versions:
+        saved = partial.rows(f"vision_{v}", names)
         if saved is None:
-            rows.append(f"| Rules + model | {drawing} | {WAITING} |")
+            rows.append(f"| Rules + OCR + vision | {v}, no DXF | {WAITING} |")
         else:
-            got[f"combined_{dxf}"] = saved
-            add(f"combined_{dxf}", "Rules + model (v2, strict)", drawing, f"Rules + model, {drawing}")
+            got[f"vision_{v}"] = saved
+            add(f"vision_{v}", "Rules + OCR + vision", f"{v}, no DXF", f"Rules + OCR + vision, {v}")
+    vision = ["Each sheet of the version is one picture sent to the vision model (recorded on Colab). A sheet "
+              "without a recording is **not read**: it is left out of these scores, never counted as an empty "
+              "reading or an error. Scores are on the drawing's way values (device, rating, poles, breaking "
+              "capacity) of the sheets that were read; \"empty ways\" are ways the model listed with nothing read.", "",
+              "| Version | Sheets read | Not read | Device F1 | Rating F1 | Poles F1 | Breaking F1 | All (P, R, F1) "
+              "| Empty ways |", "|---|---|---|---|---|---|---|---|---|"]
+    any_vision = False
+    for v in versions:
+        saved = partial.rows(f"visiononly_{v}", names)
+        if saved is None:
+            vision.append(f"| {v} | {WAITING} | | | | | | | |")
+            continue
+        any_vision = True
+        grouped = _grouped(saved)
+        read, total_sheets = sum(r["sheets"][0] for r in saved), sum(r["sheets"][1] for r in saved)
+        not_read = ", ".join(n for r in saved for n in r["sheets"][2]) or "none"
+        seconds += sum(r["seconds"] for r in saved)
+
+        def f1(group: str, grouped=grouped) -> str:
+            s = grouped.get(group)
+            return "n/a" if s is None else _f(s.f1)
+
+        a = total(grouped)
+        vision.append(f"| {v} | {read} of {total_sheets} | {not_read} | {f1('way.*.device')} | {f1('way.*.rating')} | "
+                      f"{f1('way.*.poles')} | {f1('way.*.breaking_capacity')} | {_f(a.precision)}, {_f(a.recall)}, "
+                      f"**{_f(a.f1)}** ({a.tp}/{a.fp}/{a.fn}) | {sum(r.get('padded', 0) for r in saved)} |")
+    if not any_vision:
+        vision = ["Waiting for Colab recordings of the drawing pictures (`docs/colab-all.md`, Cell 8)."]
     det = ["| Version | TP | FP | FN | P | R | F1 | acb found | s/sheet |", "|---|---|---|---|---|---|---|---|---|"]
     for v in versions:
         classes: dict[str, list[int]] = {}
@@ -362,13 +500,45 @@ def section(set_name: str, label: str, names: list[str], versions: tuple[str, ..
         f"{len(names)} projects ({names[0]} to {names[-1]}); {seconds / 60:.0f} min of reading on the laptop.", "",
         "### Field values (all fields, micro-averaged)", "", *rows, "",
         "### Field values per field group: F1 (TP/FP/FN)", "", *per_field(fields), "",
+        "### Vision model alone (drawing ways, recorded)", "", *vision, "",
         "### Symbol detector (template; breaker classes, IoU at least 0.5)", "", *det, "",
         "### Confidence calibration (Stage 6), rules with the DXF", "", _calibration(got["rules_dxf"]), "",
         "### Confidence calibration, rules + OCR on the scanned drawing (no DXF)", "", cal_ocr, "",
         "### Cross-checks with the Stage 6 gate, rules with the DXF", "",
         f"Planted conflicts found: {tp} of {cross['planted']}; false flags: {fp}. Planted missing values listed: "
         f"{cross['missing_found']} of {cross['missing_planted']}.", "",
-        "### Error analysis", "", error_analysis(examples)])
+        "### Error analysis", "", error_analysis(examples),
+        *([ask] if (ask := ask_section(set_name)) else [])])
+
+
+def ask_section(set_name: str, folder: Path = ASK_DIR) -> str | None:
+    """The question box search (Stage 9) of this set, both embedders side by side; None when nothing is saved."""
+    from backend.ask_eval import mark_refusals, project_folders
+
+    lines = []
+    for name in ("words", "mxbai"):
+        path = folder / f"{set_name}-{name}.json"
+        if not path.exists():
+            continue
+        data = json.loads(path.read_text(encoding="utf-8"))
+        rows = data["rows"]
+        if any(r["refused"] and "right_refusal" not in r for r in rows):
+            rows = mark_refusals(rows, project_folders(set_name))
+        t = data["totals"]
+        n = t["questions"] or 1
+        right = sum(1 for r in rows if r["refused"] and r["right_refusal"])
+        lines.append(f"| {data['embedder']} (threshold {data['min_score']}) | {t['questions']} | "
+                     f"{t['found_at_1'] / n:.3f} | {t['found_in_3'] / n:.3f} | {t['refused']} | {right} |")
+    if not lines:
+        return None
+    return "\n".join([
+        "### Question box search (Stage 9)", "",
+        "One question per field the specification or letter states (\"What is the fault level?\"). Found at 1: the "
+        "quoted passage holds the key's source text on the key's page; found in 3: one of the three best does. A "
+        "refusal is **right** when the best passage did not hold the answer (answering would have quoted the wrong "
+        "passage), wrong when it did and only the score was under the threshold. Nothing was tuned on these numbers.",
+        "", "| Embedder | Questions | Found at 1 | Found in 3 | Refused | Right refusals |", "|---|---|---|---|---|---|",
+        *lines, ""])
 
 
 def folders_of(set_name: str, count: int | None) -> list[Path]:
@@ -409,6 +579,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--count", type=int, default=None)
     parser.add_argument("--out", type=Path, default=DOC)
     parser.add_argument("--write-only", action="store_true", help="write the report from the saved rows, run nothing")
+    parser.add_argument("--redo", nargs="+", default=[], metavar="ROW",
+                        help="forget saved rows starting with these names first (e.g. vision_ visiononly_)")
     args = parser.parse_args(argv)
     fresh = REPO_ROOT / "data" / "projects" / "fresh"
     problem = check_frozen(fresh) if (fresh / "FROZEN.sha256").exists() else "FROZEN.sha256 is missing"
@@ -424,7 +596,10 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         path = Path(str(PARTIAL).format(set=args.set_name))
         print(f"{args.set_name}: {len(folders)} projects; saved rows in {path}", file=sys.stderr)
-        run_set(args.set_name, folders, versions, Partial(path, args.set_name))
+        partial = Partial(path, args.set_name)
+        if args.redo:
+            print(f"  forgot {partial.drop(args.redo)} saved project rows ({', '.join(args.redo)})", file=sys.stderr)
+        run_set(args.set_name, folders, versions, partial)
     written = write_doc(args.out, versions, args.count, set_hash)
     print(f"wrote {args.out} ({', '.join(written) or 'no complete set yet'})")
     return 0

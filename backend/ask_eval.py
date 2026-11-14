@@ -96,6 +96,31 @@ def evaluate(folders: list[Path], embedder: rag.Embedder) -> dict:
     return {"totals": totals, "rows": rows}
 
 
+def mark_refusals(rows: list[dict], folders: list[Path]) -> list[dict]:
+    """Each refused question marked ``right_refusal``: True when its best passage did not hold the answer.
+
+    A refusal is right when answering would have quoted a passage that is not the key's source (or there was no
+    passage at all); it is wrong when the best passage was the source and the score was only under the threshold.
+    Questions that were answered are returned unchanged. Works on saved rows (``--out`` files), so a Colab run can
+    be checked on the laptop against the same answer keys.
+    """
+    by_name = {f.name: f for f in folders}
+    keys: dict[str, object] = {}
+    out = []
+    for row in rows:
+        if not row["refused"]:
+            out.append(row)
+            continue
+        if row["project"] not in keys:
+            keys[row["project"]] = load_answers(by_name[row["project"]] / "answers.json")
+        truths = [(t.source.file, t.source.page, t.source.source_text) for t in keys[row["project"]].values_for(row["field"])
+                  if t.source.file in FILES and t.source.source_text]
+        best = row["hits"][0] if row["hits"] else None
+        held = best is not None and is_source(rag.Passage(0, best["file"], "", best["page"], best["text"]), truths)
+        out.append(dict(row, right_refusal=not held))
+    return out
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--set", default="fresh", choices=["showcase", *SETS])

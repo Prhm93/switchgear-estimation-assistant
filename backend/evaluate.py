@@ -166,7 +166,7 @@ def project_values(folder: Path, with_dxf: bool, mode: str = "rules", set_name: 
                    recorded_dir: Path = RECORDED_DIR, coverage: Coverage | None = None, *, salvage: bool = True,
                    own_prompt: bool = False, prompt_version: str | None = None,
                    quote_check: QuoteCheckMode = QuoteCheckMode.STRICT, drawing_reading: str = "off",
-                   drawing_version: str = "clean", ocr_dpi: int = 300) -> list[ExtractedValue]:
+                   drawing_version: str = "clean", ocr_dpi: int = 300, vision=None) -> list[ExtractedValue]:
     values: list[ExtractedValue] = []
     for name in UPLOAD:
         if name.endswith(".dxf") and not with_dxf:
@@ -188,7 +188,7 @@ def project_values(folder: Path, with_dxf: bool, mode: str = "rules", set_name: 
         system_prompt = recording.system_prompt if (recording is not None and own_prompt) else None
         analysis = analyse_file(EXTENSIONS[path.suffix.lower()], data, name, provider, system_prompt=system_prompt,
                                 salvage=salvage, quote_check=quote_check, drawing_reading=drawing_reading,
-                                ocr_dpi=ocr_dpi)
+                                ocr_dpi=ocr_dpi, vision=vision)
         if coverage is not None and analysis.llm is not None:
             coverage.replies += analysis.llm.replies
             coverage.rescued += sum(v.quote_match == QuoteMatch.WORDS_ON_PAGE for v in analysis.llm.values)
