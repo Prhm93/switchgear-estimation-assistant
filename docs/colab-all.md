@@ -2,7 +2,8 @@
 
 Three jobs, one session: the language model reads the fresh set (Stage 7), the vision model reads drawing pictures
 (Stage 4 Part B, starting with one drawing as a smoke test), and the question box runs with real embeddings
-(Stage 9). None of this has been run yet: every result that needs it reads "waiting for Colab recordings".
+(Stage 9). First run on 13 Nov 2026 (results in `docs/evaluation.md`); 10 vision sheets were cut off and are
+re-recorded with `docs/colab-vision-retry.md`.
 
 Recordings only replay for the exact bytes the laptop built (the SHA-256 is checked), so Colab never rebuilds a set:
 it gets the laptop's files in zips.
@@ -47,6 +48,8 @@ assert {"repo.zip", "laptop-files.zip", "sets.zip"} <= set(uploaded), "upload al
 !mkdir -p /content/sea && unzip -q -o repo.zip -d /content/sea
 %cd /content/sea
 !pip install -q -r requirements.txt
+# The evaluation also imports the data generator: these are not all in requirements.txt (reportlab is generator-only)
+!pip install -q reportlab ezdxf python-docx pypdfium2 pdfplumber
 !unzip -q -o /content/sets.zip -d data/projects
 import os
 os.environ["PYTHONPATH"] = "ai_engine:."
@@ -74,11 +77,20 @@ for v in ["clean", "scanned", "photo"]:
 !python -m backend.ask_eval --set fresh --embedder words --out {OUT}/recorded-ask/fresh-words.json
 
 # Cell 10: Download everything in one zip
+# Import under another name: the upload cell (Cell 4) reuses the name `files`, so files.download can fail
+from google.colab import files as colab_files
 !cd {OUT} && zip -q -r /content/colab-all.zip .
-files.download("/content/colab-all.zip")
+colab_files.download("/content/colab-all.zip")
 ```
 
 If the session stops, run the cells again from the top: Cells 6 and 8 skip what is already recorded in Drive.
+
+Two things that happened on the first run:
+
+- Colab recycles an idle session (the runtime is gone, `/content` is empty): run from Cell 1 again; Drive keeps the
+  recordings and `--resume` skips them.
+- The Ollama server can stop between cells (a call fails with "connection refused"): start it again before the
+  next cell with `!nohup ollama serve > ollama.log 2>&1 &` and `!sleep 8`.
 
 ## Back on the laptop (PowerShell)
 

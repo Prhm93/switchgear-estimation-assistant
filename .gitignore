@@ -24,6 +24,9 @@ storage/
 
 # Vision model recordings (Stage 4 Part B): made on Colab, never committed
 data/recorded-vision/
+# Language-model recordings of the fresh set and question-box scores (Colab): never committed
+data/recorded/fresh/
+data/recorded-ask/
 # Stage 7: saved rows of an evaluation run, so a stopped run resumes (never committed)
 data/eval-*-partial.json
 data/eval-*-partial.tmp
