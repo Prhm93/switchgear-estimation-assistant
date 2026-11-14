@@ -32,7 +32,8 @@ listed in section 6.
 
 ```powershell
 .venv\Scripts\python.exe -m backend.ask_eval --set fresh            # word embedder, laptop
-# Colab (docs/colab-all.md, Cell 9): --embedder ollama
+# Colab (docs/colab-all.md, Cell 9): --embedder ollama --out data/recorded-ask/fresh-mxbai.json
+# the evaluation report reads data/recorded-ask/ and adds the table to docs/evaluation.md
 ```
 
 In the app: open an enquiry's Summary and type a question in the Ask column.
@@ -45,7 +46,25 @@ In the app: open an enquiry's Summary and type a question in the Ask column.
 | test (not held out) | 236 | 114 (0.483) | 183 (0.775) | 16 |
 | reworded (not held out) | 236 | 158 (0.669) | 179 (0.758) | 28 |
 
-- mxbai-embed-large: **waiting for Colab recordings** (docs/colab-all.md, Cell 9).
+**mxbai-embed-large (Colab T4, 13 Nov 2026; scored on the laptop against the same answer keys).** Fresh set, not
+used for tuning, same generator as the test set; the same 236 questions:
+
+| Embedder | Right passage first | In the best 3 | Refused | Right refusals | Wrong refusals |
+|---|---|---|---|---|---|
+| words (threshold 0.2) | 140 (0.593) | 181 (0.767) | 15 | 5 | 10 |
+| mxbai-embed-large (threshold 0.5) | 167 (0.708) | 185 (0.784) | 29 | 20 | 9 |
+| showcase, mxbai | 8 of 12 | 9 of 12 | 3 | 2 | 1 |
+
+- A refusal is **right** when the best passage did not hold the answer (answering would have quoted the wrong
+  passage) and **wrong** when the best passage held it and only its score was under the threshold.
+- mxbai ranks better (0.708 against 0.593 first) but **refuses more** (29 against 15). Most of its refusals are
+  right (20 of 29), but 9 are wrong and they sit just under the threshold (scores 0.481 to 0.488), 7 of them on the
+  incomer rating. The words embedder's wrong refusals are mostly the CT ratio (scores 0.17 to 0.20).
+- The thresholds were not changed: they were set by hand before this run, and the fresh set is not used for
+  tuning. A threshold for mxbai would be chosen on the test set and then checked once on the fresh set.
+- The Colab words run gives exactly the laptop numbers above (140 and 181), so both embedders were scored on the
+  same passages.
+- The report table is also in `docs/evaluation.md` (fresh set section).
 - Typical miss with words: "What IP rating is the enclosure?" on the showcase quotes "3.1 Rated operational voltage"
   because "rated" and "rating" share a stem; the right clause is in the best three. The quote always names its file
   and page, so a wrong passage is visible as such.

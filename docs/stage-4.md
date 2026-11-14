@@ -317,8 +317,30 @@ Choices made without the owner (unattended run, 12 Nov 2026):
 `tests/unit/test_drawing_vision.py`, `tests/unit/test_record_vision.py` and
 `tests/integration/test_drawing_vision_pipeline.py`.
 
-**Results.** NOT RUN YET: no vision recordings exist. The scorer prints "NOT RUN YET" until the Colab
-cells have been run.
+**Results (fresh set, recorded on a Colab T4 on 13 Nov 2026, scored on the laptop; not tuned, same generator as
+the test set).** 110 of the 120 fresh-set sheets have a recording (plus 2 showcase sheets). The other 10 are
+**not read**: the model's reply stopped part-way through the JSON (all are sheet 1, the sheet with the ways:
+F12 and F15 in all three versions, F19 clean and scanned, F02 scanned, F20 clean). Full tables in
+[evaluation.md](evaluation.md).
+
+| Version | Sheets read (sheet 1 and 2) | Way device F1 | Way rating F1 | Way poles F1 | Breaking F1 | Rules + OCR | Rules + OCR + vision |
+|---|---|---|---|---|---|---|---|
+| clean | 36 of 40 | 0.860 | 0.883 | 0.882 | 0.860 | 0.674 | **0.722** |
+| scanned | 36 of 40 | 0.834 | 0.907 | 0.927 | 0.935 | 0.663 | **0.725** |
+| photo | 38 of 40 | 0.823 | 0.741 | 0.794 | 0.836 | 0.493 | **0.606** |
+
+- The vision model adds most on the photo version (F1 0.493 to 0.606), where OCR is weakest; on clean and scanned
+  it adds about 0.05 to 0.06. Precision stays at 0.95 to 0.99; recall rises because vision fills ways OCR missed.
+- On plain wording the fresh set with vision gives 0.945 / 0.936 / 0.809 (clean, scanned, photo).
+- The model pads its answer: about 160 of about 290 listed ways per version have nothing read (no device, rating,
+  poles or breaking capacity). They add no values, but they are why replies get long and are cut off.
+- Device words are written as on the drawing ("SW-DISC", "M.C.C.B."), and the device mapper does not know these
+  spellings, so 55 switch-disconnector readings are dropped as unknown (never guessed). No alias was added: that
+  would be tuning on the fresh set.
+- The 10 cut-off sheets: the reader now keeps the complete ways of a cut-off reply and gives the model more
+  output room (`num_ctx` 8192, `num_predict` 4096); `docs/colab-vision-retry.md` re-records only those sheets.
+  Tests: `tests/unit/test_vision_cut_off.py` (10).
+- The test and reworded sets have no vision recordings yet, so there is no "not held out" vision number.
 
 ## 9. Part C: symbol detector (template matching)
 
