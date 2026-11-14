@@ -203,7 +203,7 @@ def measure_vision(samples: list[DrawingSample], folder: Path) -> str:
     try:
         client = RecordedVisionClient(folder)
     except VisionUnavailable as error:
-        return f"NOT RUN YET: {error}. Make the recordings on Colab (docs/stage-4-colab-vision.md)."
+        return f"NOT RUN YET: {error}. Make the recordings first (docs/recording-model-answers.md)."
     grouped: dict[str, Score] = {}
     missing = 0
     for s in samples:

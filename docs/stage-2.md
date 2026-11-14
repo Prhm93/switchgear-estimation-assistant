@@ -38,31 +38,14 @@ The showcase enquiry now goes from upload to an exported DOCX report in the app,
 
 ## Screens
 
-All screenshots are of the Docker stack at 1280 px wide (headless Edge), showcase project.
-
-**Projects dashboard**: counts, values to review, read errors, draft totals.
-![Dashboard](images/stage-2-dashboard.png)
-
-**New project**
-![New project](images/stage-2-new-project.png)
-
-**Documents and upload**: drag and drop or choose files; each file card shows type, size, page count, the start of its SHA-256 and its status. The drawing PDF and the PNGs are marked "Not read yet" with the reason.
-![Upload](images/stage-2-upload.png)
-
-**Analysis**: document text on the left with the source of every value highlighted; values on the right with source, rule, method and confidence. Page 5 of the specification.
-![Analysis](images/stage-2-analysis.png)
-
-**Review**: conflicts first, both sources side by side (here way Q2: 250 A in the specification, 200 A on the drawing), then the drawings that are not read yet, then every field.
-![Review](images/stage-2-review.png)
-
-**Estimate with the conflict still open**: everything else is priced; the Q2 breaker is listed as not built.
-![Estimate, conflict open](images/stage-2-estimate-conflict-open.png)
-
-**Estimate after review**: the engineer rejected the drawing's 200 A with a reason and approved the specification's 250 A. All 17 lines equal the answer key's lines.
-![Estimate](images/stage-2-estimate.png)
-
-**Audit log**
-![Audit log](images/stage-2-audit.png)
+- **Projects dashboard**: counts, values to review, read errors, draft totals.
+- **New project**
+- **Documents and upload**: drag and drop or choose files; each file card shows type, size, page count, the start of its SHA-256 and its status. The drawing PDF and the PNGs are marked "Not read yet" with the reason.
+- **Analysis**: document text on the left with the source of every value highlighted; values on the right with source, rule, method and confidence. Page 5 of the specification.
+- **Review**: conflicts first, both sources side by side (here way Q2: 250 A in the specification, 200 A on the drawing), then the drawings that are not read yet, then every field.
+- **Estimate with the conflict still open**: everything else is priced; the Q2 breaker is listed as not built.
+- **Estimate after review**: the engineer rejected the drawing's 200 A with a reason and approved the specification's 250 A. All 17 lines equal the answer key's lines.
+- **Audit log**
 
 ## How to run it
 

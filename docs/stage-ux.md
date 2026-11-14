@@ -137,7 +137,7 @@ below replaces most of this look; what it keeps is listed there.
 
 ### Decision reversed: no serif
 
-UX-1 kept Instrument Serif for the home page. The owner's UX-V style names IBM Plex Sans and IBM Plex
+UX-1 kept Instrument Serif for the home page. The UX-V style names IBM Plex Sans and IBM Plex
 Mono only, so the serif is gone everywhere: its two woff2 files, `OFL-InstrumentSerif.txt`, its
 `@font-face` rules, the `--font-serif` token, the home page preload and its row in the README licences
 table. The design-rule test that kept the serif on the home page now checks that there is none.
@@ -231,7 +231,7 @@ the rest were not, because the visual pass below replaced the look first.
 
 ## Visual pass (V1 to V4)
 
-The owner's design prototype is a visual reference only: no code, sample numbers or replies are
+The design prototype is a visual reference only: no code, sample numbers or replies are
 copied from it, and nothing from its vendor folder (React 16.0.0 and ReactDOM 16.0.1, MIT, with a
 Modernizr 3.0.0pre piece, MIT). Kept from UX-V: the view logic (`?view=`, swapped in place, Back works),
 the "Drawing (CAD)" and "Drawing (picture)" source labels with only true duplicates merged, the Export
@@ -367,7 +367,7 @@ the hero mid draw-on, story steps 1 to 3 at 1440.
   `decisions` and `items`, so old links work); one line under them: "A value is one fact read from your
   files. Approve it and it can be priced."; Quote says "Nothing is approved yet. Go to Check and approve
   values." while nothing is approved.
-- The count on Check (owner fix): it was conflicts + values to review + 1 when an "Accept all" line was
+- The count on Check (fix): it was conflicts + values to review + 1 when an "Accept all" line was
   waiting, so the 46th on the sample was the Accept all line (39 read from a drawing picture + 6 medium
   confidence + 1). The Accept all line is not a decision: the count is now conflicts + values to review
   (`Decisions.needs`), and the line sits apart at the end of "To check" under "Agreeing values", marked
@@ -382,8 +382,7 @@ the hero mid draw-on, story steps 1 to 3 at 1440.
   `tests/integration/test_enquiry_summary.py`, and a 0006 test in `test_migrations.py`.
 
 Results (this laptop): database tests 5 passed, the rest 824 passed; the strict v2 numbers reproduce
-(0.778, 0.561, 0.727, 0.497). No V4 screenshots were taken here (headless Edge skipped to save memory;
-the owner takes them).
+(0.778, 0.561, 0.727, 0.497). No V4 screenshots were taken here (headless Edge skipped to save memory).
 
 ### V4, second part: the tile detail and the Summary buttons
 
@@ -413,4 +412,4 @@ Steps 6 and 7 of the visual-pass brief, finished after the first V4 commit.
   unapproved values. Changed on purpose: the tile hrefs and the "What is quoted" value.
 
 Results (this laptop): database tests 5 passed, the rest 832 passed; the strict v2 numbers reproduce
-(0.778, 0.561, 0.727, 0.497). No screenshots taken here (the owner takes them).
+(0.778, 0.561, 0.727, 0.497). No screenshots taken here.

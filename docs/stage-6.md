@@ -1,7 +1,7 @@
 # Stage 6: confidence and review
 
-Branch `stage-6`, from main f0741d4 (stage-simple merged). Built in an unattended run on 13 Nov 2026; the choices
-made without the owner are listed in section 6.
+Branch `stage-6`, from main f0741d4 (stage-simple merged). Built on 13 Nov 2026; the design choices
+are listed in section 6.
 
 ## 1. What was built
 
@@ -111,9 +111,9 @@ model, as in Stage 5). No threshold was tuned: the rules above were written befo
 - Levels are worked out on every screen; with hundreds of values this is a few milliseconds, not measured on
   very large enquiries.
 
-## 6. Choices made without the owner (unattended run)
+## 6. Design choices
 
-- The agreeing-values card stays first on Review (the owner's stage-simple flow); "ordered by risk" applies to the
+- The agreeing-values card stays first on Review (the stage-simple flow); "ordered by risk" applies to the
   rest of the queue.
 - "Agreeing" is read as "no file says otherwise", not "confirmed by two files"; agreement raises the level.
 - A rules value with medium confidence that another file confirms becomes high and may be bulk-accepted.

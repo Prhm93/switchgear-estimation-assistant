@@ -1,7 +1,7 @@
 # Stage 5: cross-document checks
 
-Branch `stage-5`, from `stage-4bcd` (Stage 4 Parts B to D, not merged yet). Built in an unattended run on
-12 Nov 2026; the choices made without the owner are listed at the end.
+Branch `stage-5`, from `stage-4bcd` (Stage 4 Parts B to D, not merged yet). Built on 12 Nov 2026; the design
+choices are listed at the end.
 
 ## 1. What was built
 
@@ -63,11 +63,11 @@ called "Two readings of one file differ").
 
 - Many false flags whenever model values are included on reworded files; a Stage 6 confidence rule (for example,
   only flag between values of medium confidence or better) is the next step, not built here.
-- Device spellings outside the normaliser's aliases are differences; adding aliases needs the owner's yes and the
+- Device spellings outside the normaliser's aliases are differences; adding aliases needs a separate decision and the
   strict numbers to stay exact.
 - Differences are flagged on Check only; the Summary tile and the report still count conflicts as before.
 
-## 6. Choices made without the owner (unattended run)
+## 6. Design choices
 
 - `normalise.py` left unchanged (the ACB alias was already there; reworded-set spellings not added).
 - Placeholder text counts as a missing value, like TBC (chosen after seeing the test-set combined run; labelled).

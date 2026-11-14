@@ -1,6 +1,6 @@
 """The button bar under the tabs on Check: To check, Parts list and Report, with live counts.
 
-Renamed on purpose in V4 (owner, plain language): "Decisions" is now "To check", "Items" is "Parts list".
+Renamed on purpose in V4 (plain language): "Decisions" is now "To check", "Items" is "Parts list".
 
 Each view is kept in the address (``?view=...``), so Back and links work; HTMX swaps the view in place.
 Export is offered only when something is approved, and refused otherwise.

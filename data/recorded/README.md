@@ -2,7 +2,8 @@
 
 Saved LLM output for the app's **recorded** mode (Stage 3). The recordings are made by
 `notebooks/04-colab-llm-extraction.ipynb` on a Colab T4 GPU from a zip of the files this laptop built
-(`python -m backend.record pack`), never from files rebuilt elsewhere. They are not committed.
+(`python -m backend.record pack`), never from files rebuilt elsewhere. They are not committed. The steps
+for all three recordings (language model, drawing reading, question box) are in `docs/recording-model-answers.md`.
 
 Layout: `<set>/<project>/<file>.json`, for example `test/T03/specification.pdf.json` or
 `reworded/R08/drawing__schematic.dxf.json` ("/" in a file path becomes "__").

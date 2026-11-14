@@ -186,7 +186,7 @@ One question per field the specification or letter states ("What is the fault le
 
 ### Vision model alone (drawing ways, recorded)
 
-Waiting for Colab recordings of the drawing pictures (`docs/colab-all.md`, Cell 8).
+Waiting for Colab recordings of the drawing pictures (`docs/recording-model-answers.md`).
 
 ### Symbol detector (template; breaker classes, IoU at least 0.5)
 

@@ -1,6 +1,6 @@
 # Stage 7: evaluation on a fresh, held-out set
 
-Branch `stage-7`, from `stage-6`. Built in an unattended run on 13 Nov 2026.
+Branch `stage-7`, from `stage-6`. Built on 13 Nov 2026.
 
 ## 1. What was built
 

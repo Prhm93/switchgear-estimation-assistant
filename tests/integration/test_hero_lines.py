@@ -1,6 +1,6 @@
 """The hero background (Stage UX visual pass, V3): a faint grid and thin contour lines on a 2D canvas.
 
-Changed on purpose: it replaces the UX-V WebGL shader (hero-shader.js), on the owner's decision of
+Changed on purpose: it replaces the UX-V WebGL shader (hero-shader.js), by the design decision of
 12 Nov 2026. No WebGL and no filled shapes, only strokes. Colours come from the theme tokens, so the
 light theme gets its own. It pauses when the tab is hidden or the hero is off screen, caps the pixel
 ratio at 1.5 and the frame rate at 30, and draws one still frame for reduced motion.

@@ -1,7 +1,7 @@
 # Stage 8: safety and security
 
-Branch `stage-8`, from `stage-9` (after the question box, so attacks are also tried through it). Built in an
-unattended run on 13 Nov 2026. Streamlit and AWS are left out, as asked.
+Branch `stage-8`, from `stage-9` (after the question box, so attacks are also tried through it). Built on
+13 Nov 2026. Streamlit and AWS are left out.
 
 ## 1. What was tested, found and fixed
 

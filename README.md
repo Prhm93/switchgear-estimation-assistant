@@ -99,8 +99,6 @@ Not built:
 
 ## Known limits
 
-From [docs/interview-issues.md](docs/interview-issues.md):
-
 - **ACB read as MCCB.** The symbol detector finds almost no air circuit breakers (0 to 3 of 20 per drawing version), because an ACB symbol contains the MCCB symbol.
 - **No real drawings tested.** Every score is on synthetic enquiries; real drawings are messier.
 - **10 vision sheets cut off.** 10 of 120 fresh-set drawing sheets were not read because the model's reply stopped mid-answer. The reader now keeps the complete part of such a reply; the 10 sheets wait to be recorded again.
@@ -129,7 +127,7 @@ python -m pytest
 
 Database tests run when `DATABASE_URL` points at a PostgreSQL with pgvector (for example the Docker one); they use their own test database and never touch the app's data.
 
-**Recordings are never committed.** Model recordings live in git-ignored folders (`data/recorded*`). Without them the app and the tests run in rules mode, and the model rows of the evaluation say "waiting for Colab recordings". The Colab steps are in [docs/colab-all.md](docs/colab-all.md).
+**Recordings are never committed.** Model recordings live in git-ignored folders (`data/recorded*`). Without them the app and the tests run in rules mode, and the model rows of the evaluation say "waiting for Colab recordings". How they are made: [docs/recording-model-answers.md](docs/recording-model-answers.md).
 
 ## Stage docs
 
@@ -146,7 +144,6 @@ Database tests run when `DATABASE_URL` points at a PostgreSQL with pgvector (for
 | 8 Safety and security | [stage-8.md](docs/stage-8.md) |
 | 9 Question box | [stage-9.md](docs/stage-9.md) |
 | Screens | [stage-ux.md](docs/stage-ux.md), [stage-simple.md](docs/stage-simple.md) |
-| Known issues | [interview-issues.md](docs/interview-issues.md) |
 
 ## Licences
 
